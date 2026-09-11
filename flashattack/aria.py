@@ -146,9 +146,17 @@ _INV = [ARIA_SB1.astype(np.int64), ARIA_SB2.astype(np.int64),
 
 
 def recover_final_roundkey(ct, timing, *, line_shift=4, key_for_truth=None):
-    """Recover ek_final (the last round key, 16 bytes) from ciphertext + timing.
-    SPN => full bytes (nonlinear inverse-S-box predictor). Bytes sharing a table
-    (positions p,p+4,p+8,p+12) collide."""
+    """Recover ek_final via the last-round collision. WORKS ONLY IF the last round
+    funnels its lookups through a SINGLE table (as AES's FSb does).
+
+    HARDWARE FINDING (F429, mbedtls ARIA): this attack FAILS on ARIA (ek_final 0/16;
+    known-key within-table collision dip ~0). ARIA's last substitution layer uses
+    FOUR separate S-box tables (SB1,SB2,IS1,IS2), only 4 lookups per table, and on
+    the 128 B cache those few same-table lines are evicted between lookups -> no
+    exploitable within-round collision (like the interleaved 4-table case). ARIA is
+    an SPN, but the *single-table last round* is the real vulnerability condition,
+    not SPN-vs-Feistel. Validated on SYNTHETIC (16/16) where a single table is
+    assumed; kept for that case and for reference. See EXPERIMENTAL.md."""
     ct = np.asarray(ct, np.uint8).reshape(-1, 16).astype(np.int64)
     y = np.asarray(timing, float); y = y - y.mean()
     ek = [0] * 16

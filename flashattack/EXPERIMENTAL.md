@@ -1,11 +1,14 @@
 # Experimental / partial results and their ceilings
 
-This documents two investigations whose outcomes are **partial** — real, validated,
-but not full key recovery — so future work knows exactly where the walls are and
-why. Both stem from the same fact: a flash-line collision reveals only the **top
-bits** of a lookup index (a 16-byte line ⇒ nibble resolution for an S-box), and it
-is only useful when the collision relates to the key through a **nonlinear**
-function. AES's SPN last round provides that; other structures do not.
+This documents the investigations whose outcomes are **partial or negative** —
+real, validated, but not full key recovery — so future work knows exactly where the
+walls are and why: (1) known-plaintext-only AES, (2) SM4, and (3) ARIA/Camellia.
+They stem from the same fact: a flash-line collision reveals only the **top bits**
+of a lookup index (a 16-byte line ⇒ nibble resolution for an S-box), and it is only
+exploitable when many lookups pass through a **single table** so a within-round
+collision survives the cache, *and* the collision relates to the key through a
+**nonlinear** function. AES's single-table SPN last round provides both; other
+structures fail one or the other.
 
 ## 1. Known-plaintext-only recovery (AES) — `engine.recover_round1_keyspace`
 
@@ -70,13 +73,50 @@ diffs), and on real F429 silicon (S-box build) — see RESULTS. A previous "full
 recovery" claim was a modeling error (collisions were planted on the S-box
 *output* instead of the *index*); corrected here.
 
-**Future:** the same partial leak applies to other Feistel/ARX table ciphers;
-Camellia (FL/S-box) and ARIA (SPN, like AES — likely fully recoverable) are natural
-next comparisons.
+**Future:** the same partial leak applies to other Feistel/ARX table ciphers; see
+ARIA and Camellia below for the tested comparisons.
 
 ---
 
-Both results reinforce the project's central theme: **the flash-timing collision
-recovers the full key only for an SPN last round with a table (AES-style); Feistel
-structure and non-table (bitsliced/constant-time) or interleaved-4-table layouts
-reduce it to a partial leak or nothing.**
+## 3. ARIA and Camellia — the *single-table last round* is the real condition
+
+The initial hypothesis was "SPN ⇒ recoverable like AES." ARIA falsifies it, and
+the corrected condition is sharper: **full last-round recovery requires the last
+round to funnel its lookups through a SINGLE table** (AES's `FSb`, 16 lookups on
+one 16-byte-line S-box). Both new ciphers were verified on real F429 silicon
+(mbedtls, `ACR=00000705`, 128 B ART data cache) against their published test
+vectors before the timing check.
+
+- **ARIA (`aria.py`) — SPN, but resists.** ARIA *is* an SPN whose last round is
+  `ct = SL(state ^ ek) ^ ek_final`, structurally identical to AES. But its
+  substitution layer uses **four separate S-box tables** (`SB1,SB2,IS1,IS2`); the
+  last SL sends only **4 of the 16 bytes** through each table. On the 128 B cache
+  those few same-table lines are evicted between the sparse lookups, so the
+  within-round collision never survives. **Measured:** known-key within-table
+  collision dip ≈ **0** (−0.01 / +0.04 / −0.06 / +0.06 cyc across the four tables),
+  `recover_final_roundkey` scores **0/16** on hardware — despite the overall
+  `cyc std ≈ 19.6` (the cipher *does* leak, just not an exploitable within-round
+  same-table collision). Synthetic single-table model still gives 16/16, so the
+  code is kept for reference and for genuinely single-table SPN targets.
+- **Camellia (`camellia` firmware target) — Feistel + 4-table F, resists.**
+  Camellia is Feistel (key XOR *before* the S-box, like SM4 — a linear index anchor
+  at best) *and* its F-function spreads lookups over four SP tables. Both walls at
+  once. **Measured:** NIST vector `67673138…eabe43` OK, `cyc std ≈ 16.1`
+  (data-dependent timing present), but no clean full-key path — partial at best,
+  like SM4.
+
+**Summary of the structural map (all validated on F429 silicon):**
+
+| Cipher | Structure | Last round | Result |
+|---|---|---|---|
+| AES-128/192/256 | SPN | single table (`FSb`) | **full key** (192/256 via 2nd-round MixColumns-linearity) |
+| ARIA | SPN | **4 tables**, 4 lookups each | **resists** (dip ≈ 0, 0/16) |
+| SM4 | Feistel | 1 table (`SM4_SBOX=1`) | **partial** — top-nibble `rk31` diffs only |
+| Camellia | Feistel | **4 tables** | **resists** (leaks timing, no clean recovery) |
+
+Both results reinforce — and correct — the project's central theme: **the
+flash-timing collision recovers the full key only when the last round funnels many
+lookups through a *single* table (AES-style); a Feistel key-XOR-before-S-box, a
+multi-table substitution layer, or a non-table (bitsliced/constant-time) layout
+each independently reduces it to a partial leak or nothing.** SPN-vs-Feistel was
+the wrong axis; single-table-last-round is the right one.
