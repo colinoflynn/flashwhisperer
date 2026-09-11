@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flashattack"
+version = "0.1.0"
+description = "Flash-accelerator AES timing side-channel toolkit (target-agnostic recovery engine, transports, modes, feasibility)"
+requires-python = ">=3.9"
+dependencies = ["numpy>=1.20"]
+
+[project.optional-dependencies]
+serial = ["pyserial>=3.5"]
+dev = ["pytest>=7"]
+
+[project.scripts]
+flashattack = "flashattack.cli:main"
+
+[tool.setuptools]
+packages = ["flashattack", "flashsim"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
