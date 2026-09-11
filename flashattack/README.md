@@ -38,8 +38,17 @@ whose confidence gap flags them) until it matches. This turns near-misses
   the last round key → master via schedule inversion.
 - `direction="dec"` (firmware image case; attacker knows the InvCipher output) →
   recovers the first round key, which for AES-128 **is** the master key.
-- `keysize` 128 fully supported end-to-end; 192/256 reference + inversion present,
-  full recovery needs multi-round-key extraction (round-1 + last-round) — future.
+- **`keysize` 128 / 192 / 256 all supported end-to-end on unmodified firmware.**
+  For 192/256, `engine.recover_full` also recovers the second-to-last round key
+  via a MixColumns-linearity reduction (byte-wise, same traces) and inverts the
+  schedule to the master:
+  ```python
+  r = engine.recover_full(ct, timing, keysize=256, line_shift_last=4,
+                          line_shift_prev=2, verify=(pt, ct_known))
+  print(r["master"], r["verified"])
+  ```
+  `line_shift_prev` = the round Nr-1 table granularity (2 = 4-byte T-table,
+  4 = S-box). CLI: `attack --full`.
 
 ## CLI
 

@@ -41,6 +41,21 @@ def test_mode_mapping_consistency():
     assert dd == "dec" and np.array_equal(dec, aesref.decrypt_blocks(KEY128, m).astype(int))
 
 
+def test_second_round_transforms():
+    # peel + MixColumns-linearity reduction algebra (deterministic, no scan)
+    key = bytes.fromhex(NIST[32][0]); rk = aesref.key_expansion(key)
+    rng = np.random.default_rng(2)
+    pt = rng.integers(0, 256, (200, 16), np.uint8)
+    ct = aesref.encrypt_blocks(key, pt)
+    a = engine.peel_last_round(ct, rk[-1])                 # round Nr-1 output
+    # re-applying the last round to `a` must reproduce ct
+    reapplied = aesref.SBOX[a][:, aesref._SHIFT_ROWS] ^ np.frombuffer(bytes(rk[-1]), np.uint8)
+    assert np.array_equal(reapplied, ct)
+    # rk[Nr-1] = MC(SR(K')) with K' = SR^{-1}(MC^{-1}(rk[Nr-1]))
+    kp = aesref._mix(np.frombuffer(bytes(rk[-2]), np.uint8)[None, :].copy(), inv=True)[0][aesref._ISR]
+    assert engine._roundkey_from_Kprime(kp) == bytes(rk[-2])
+
+
 def _synth(direction, key, N, delta, noise, seed, weak=(), weak_delta=1.6):
     rng = np.random.default_rng(seed)
     rk = aesref.key_expansion(key)

