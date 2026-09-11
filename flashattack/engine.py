@@ -203,6 +203,41 @@ def _rk_last_from_master(master):
     return bytes(aesref.key_expansion(master)[-1])
 
 
+def recover_round1_diffs(plaintext, timing, *, ref=0, line_shift=4):
+    """EXPERIMENTAL / PARTIAL (see docs, "investigation of #8"). Known-plaintext-
+    only path: recover round-key *differences* topbits(k0[ref] ^ k0[j]) from
+    round-1 collisions, when the attacker sees inputs but not outputs.
+
+    Limitation: only the byte pairs that are temporally adjacent in the target's
+    round-1 loop actually collide, so this naive all-vs-ref form recovers only a
+    subset (measured ~10/15 for a pure S-box, ~3/15 for a 4-table T-table) and
+    yields differences, not absolute key bytes. Kept as a research primitive; not
+    wired into attack(). A robust version would select leaking pairs by margin and
+    needs an absolute anchor -- marked future.
+
+    Round-1 lookup index = pt ^ k0, and topbits(pt^k0) = topbits(pt) ^ topbits(k0)
+    (XOR is bitwise), so two positions collide iff
+        topbits(pt[ref]) ^ topbits(pt[j])  ==  topbits(k0[ref] ^ k0[j]).
+    Bucket by the left side; the bucket with the shortest mean time is the
+    difference. `line_shift`=4 (S-box) or 2 (4-byte T-table). Returns a list of 16
+    difference values (ref entry is 0); these are PARTIAL (differences, top bits
+    only) -- combine with one absolute anchor for a full key."""
+    pt = np.asarray(plaintext, np.int64)
+    y = np.asarray(timing, float); y = y - y.mean()
+    hp = pt >> line_shift
+    nb = 1 << (8 - line_shift)
+    diffs = [0] * 16
+    for j in range(16):
+        if j == ref:
+            continue
+        v = (hp[:, ref] ^ hp[:, j])                 # 0..nb-1 per trace
+        sums = np.zeros(nb); cnt = np.zeros(nb)
+        np.add.at(sums, v, y); np.add.at(cnt, v, 1.0)
+        means = np.where(cnt > 0, sums / np.maximum(cnt, 1), np.inf)
+        diffs[j] = int(np.argmin(means))            # topbits(k0[ref]^k0[j])
+    return diffs
+
+
 # --------------------------------------------------------------------------
 # Second-to-last round recovery -> full AES-192/256 master, on FULL (unmodified,
 # no round-reduction) firmware, from the SAME traces. MixColumns is linear, so we

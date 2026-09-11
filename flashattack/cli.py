@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import numpy as np
 from . import engine, modes, feasibility, aesref
+from .attack import attack as engine_attack
 
 DEFAULT_KEY = "2b7e151628aed2a6abf7158809cf4f3c"
 
@@ -117,6 +118,32 @@ def cmd_feasibility(args):
     print("estimated traces for full recovery:", f"{est['n_needed_est']:,}")
 
 
+def cmd_assess(args):
+    from .sources import RecordedSource
+    from . import tvla
+    cap = RecordedSource(args.file, mode=args.mode, keysize=args.keysize).capture()
+    res = tvla.assess(cap)
+    print("constant-time:", res["constant_time"]["verdict"])
+    if res["exploitability"]:
+        print("exploitability:", res["exploitability"]["verdict"])
+    print("=>", res["summary"])
+
+
+def cmd_attack_file(args):
+    from .sources import RecordedSource
+    from . import stats
+    cap = RecordedSource(args.file, mode=args.mode, keysize=args.keysize).capture()
+    if args.detrend:
+        cap = stats.apply(cap)
+    verify = None
+    if args.verify_pt and args.verify_ct:
+        verify = (bytes.fromhex(args.verify_pt), bytes.fromhex(args.verify_ct))
+    rep = engine_attack(cap, verify=verify)
+    print(rep.summary())
+    if args.json:
+        print(rep.to_json(indent=2))
+
+
 def build_parser():
     p = argparse.ArgumentParser("flashattack")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -141,6 +168,16 @@ def build_parser():
     b.add_argument("--acr", default="00000705"); b.add_argument("--key", default=DEFAULT_KEY)
     b.add_argument("--seed-int", type=int, default=1234)
     b.add_argument("--verify", action="store_true")
+    # recorded-data workflow (no hardware)
+    a = sub.add_parser("assess"); a.set_defaults(fn=cmd_assess)
+    a.add_argument("--file", required=True, help="recorded capture (.npz/.csv)")
+    a.add_argument("--mode", default="ecb-enc"); a.add_argument("--keysize", type=int, default=128)
+    af = sub.add_parser("attack-file"); af.set_defaults(fn=cmd_attack_file)
+    af.add_argument("--file", required=True, help="recorded capture (.npz/.csv)")
+    af.add_argument("--mode", default="ecb-enc"); af.add_argument("--keysize", type=int, default=128)
+    af.add_argument("--verify-pt", default=None); af.add_argument("--verify-ct", default=None)
+    af.add_argument("--detrend", action="store_true", help="apply drift/outlier preprocessing")
+    af.add_argument("--json", action="store_true")
     return p
 
 

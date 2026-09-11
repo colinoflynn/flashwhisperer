@@ -9,13 +9,40 @@ part worth keeping and generalising.
 ```
 flashattack/
   aesref.py      reference AES-128/192/256 (enc/dec, key-schedule + inversion), FIPS-197 verified
-  engine.py      unified last-round cache-collision engine + robust key assembler
-  modes.py       AES mode -> the block-cipher output the attacker reconstructs (ECB/CBC/CTR/GCM, enc+dec)
-  transport.py   serial target + timing sources (on-chip batch; host ACK-latency w/ amplification+min-filter)
+  sm4.py         SM4 (GM/T 0002) reference + last-round-collision recovery (synthetic-validated)
+  engine.py      unified last-round cache-collision engine + robust assembler; recover_full (192/256)
+  modes.py       AES mode -> block the attacker reconstructs (ECB/CBC/CTR/GCM/CMAC, enc+dec)
+  capture.py     Capture: target-agnostic OBSERVED data (pt/ct + timing, NO key); save/load npz, from_csv
+  sources.py     TraceSource interface (Recorded/Array/SerialModes) -- the extension point for agents
+  attack.py      attack(capture, verify=...) -> AttackReport (JSON/summary); unknown-key entry point
+  tvla.py        quick check: constant-time detector, key-free exploitability, fixed-vs-random t-test
+  stats.py       jitter-robust preprocessing: trim, detrend (drift), min-filter
+  transport.py   serial target + timing sources (on-chip batch; host ACK-latency w/ amplify+min-filter)
   feasibility.py trace-count estimate + amplification (K) advice from a pilot capture
   boards.py      board descriptors (L552/G474/F429/F303): part, VCP, cache size, ACR presets
-  cli.py         `python -m flashattack {selftest,attack,boot,feasibility}`
+  cli.py         `python -m flashattack {selftest,attack,boot,feasibility,assess,attack-file}`
 ```
+
+## Working with recorded data / any interface (no key needed)
+The engine consumes a **Capture** (observed data + timing, no key). Build one from
+a file, from arrays, or from your own interface, and attack it:
+```python
+from flashattack import Capture, run_attack
+cap = Capture(timing=t, mode="ctr", plaintext=pt, ciphertext=ct)   # observed; no key
+report = run_attack(cap, verify=(known_pt, known_ct))              # key used only to verify
+print(report.summary()); print(report.to_json())
+```
+To add a **new hardware interface or data format**, implement one method
+(`sources.TraceSource.capture() -> Capture`) — nothing else in the tool changes.
+CLI on recorded files: `attack-file --file cap.npz [--verify-pt .. --verify-ct ..] [--json]`.
+
+## Quick vulnerability check (before committing to full recovery)
+```bash
+python -m flashattack assess --file cap.npz        # constant-time? exploitable? ~traces-to-break
+```
+`tvla.assess` returns a constant-time verdict (std≈0) and, if data-dependent, a
+key-free collision-margin strength estimate. (A first-order/Bernstein test is flat
+for this channel, so the check measures the *pairwise collision* the attack uses.)
 
 ## Engine
 
