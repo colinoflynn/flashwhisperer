@@ -50,9 +50,16 @@ python -m flashattack boot    --port COM9 --n 60000 --K 255 --verify   # ACK-lat
 python -m flashattack feasibility --port COM9 --mode ecb-dec --n 20000
 ```
 
-## Tests
+## Tests (two tiers)
 ```bash
-PYTHONPATH=. pytest tests/test_flashattack.py
+PYTHONPATH=. pytest                 # QUICK CI: fast unit tests only (seconds)
+PYTHONPATH=. pytest --runslow       # LONG: + engine scans + replay of captured vectors
 ```
-FIPS-197 vectors, schedule inversion, mode-mapping consistency, and synthetic
-recovery (clean + brute-force rescue) — no hardware required.
+- **Quick** (`test_flashattack.py`, default): FIPS-197 vectors (128/192/256),
+  key-schedule inversion, mode-mapping consistency — no hardware, no big data.
+- **Long** (`--runslow`): synthetic recovery (clean + brute-force rescue) and
+  **replay of real captured trace vectors** in `tests/vectors/*.npz`
+  (S-box + T-table, several key sizes/modes). Capture more with
+  `tests/make_vectors.py`. Vectors store only timing (uint16, seed-regenerated
+  material) so each is ~100–250 KB compressed and lives in git.
+

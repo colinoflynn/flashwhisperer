@@ -59,6 +59,7 @@ def _synth(direction, key, N, delta, noise, seed, weak=(), weak_delta=1.6):
     return known, t, target
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("direction", ["enc", "dec"])
 def test_recover_clean(direction):
     known, t, tk = _synth(direction, KEY128, 20000, 6.0, 22.0, seed=10)
@@ -67,6 +68,7 @@ def test_recover_clean(direction):
     assert r.master == KEY128
 
 
+@pytest.mark.slow
 def test_recover_bruteforce_rescue():
     # two starved byte positions -> assembler misses them -> verify+brute-force fixes
     known, t, tk = _synth("enc", KEY128, 25000, 6.0, 26.0, seed=5, weak={3, 9})
