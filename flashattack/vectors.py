@@ -26,6 +26,37 @@ def load(path):
     return {k: (d[k].item() if d[k].ndim == 0 else d[k]) for k in d.files}
 
 
+_IVCONST = bytes.fromhex("00112233445566778899aabbccddeeff")
+
+
+def to_capture(path):
+    """Build a key-agnostic Capture (capture.Capture) from a compact vector:
+    regenerate the material and derive the OBSERVED plaintext/ciphertext the
+    attacker would see. The key is used only to synthesise the observation and is
+    NOT stored in the Capture -- so the attack runs exactly as on real data."""
+    from .capture import Capture
+    v = load(path)
+    key = bytes.fromhex(v["key_hex"]); n = int(v["n"]); mode = v["mode"]
+    keysize = int(v["keysize"]); impl = str(v.get("impl", ""))
+    mat = transport.gen_pts(int(v["seed"]), n)
+    ls_last, ls_prev = 4, (2 if "ttable" in impl else 4)
+    pt = ct = None; iv = None
+    if mode == "ecb-enc":
+        pt = mat; ct = aesref.encrypt_blocks(key, mat)
+    elif mode == "cbc-enc":
+        iv = _IVCONST; ct = aesref.encrypt_blocks(key, mat ^ np.frombuffer(iv, np.uint8))
+    elif mode == "ctr":
+        pt = np.zeros_like(mat); ct = aesref.encrypt_blocks(key, mat)   # keystream=AES(counter)
+    elif mode == "ecb-dec":
+        pt = aesref.decrypt_blocks(key, mat); ct = mat
+    elif mode == "cbc-dec":
+        iv = _IVCONST
+        pt = aesref.decrypt_blocks(key, mat) ^ np.frombuffer(iv, np.uint8)
+    return Capture(timing=v["timing"].astype(float), mode=mode, keysize=keysize,
+                   plaintext=pt, ciphertext=ct, iv=iv,
+                   line_shift_last=ls_last, line_shift_prev=ls_prev, label=impl)
+
+
 def replay(path, verify=True):
     """Load a vector and run the engine. Returns the engine Result."""
     v = load(path)

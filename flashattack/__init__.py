@@ -10,7 +10,10 @@ Quick use:
     res = engine.recover(known, timing, direction=direction, verify=(pt, ct))
     print(res.summary())
 """
-from . import aesref, engine, modes         # noqa: F401
+from . import aesref, engine, modes, capture, attack, sources, stats, tvla, vectors  # noqa: F401
+from .capture import Capture                 # noqa: F401
+from .attack import attack as run_attack     # noqa: F401
 
-__all__ = ["aesref", "engine", "modes"]
-__version__ = "0.1.0"
+__all__ = ["aesref", "engine", "modes", "capture", "attack", "sources", "stats",
+           "tvla", "vectors", "Capture", "run_attack"]
+__version__ = "0.2.0"
