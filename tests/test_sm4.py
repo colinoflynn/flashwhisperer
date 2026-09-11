@@ -17,6 +17,8 @@ def test_sm4_key_schedule_inversion():
 
 
 @pytest.mark.slow
-def test_sm4_recovery_synthetic():
-    ok, correct = sm4._selftest(n=40000, delta=6.0, noise=20.0, seed=1)
-    assert ok and all(v == 4 for v in correct.values())
+def test_sm4_partial_leak_synthetic():
+    # SM4 (Feistel) leaks only top-nibble differences of the last round key rk31 --
+    # a partial keyspace reduction, NOT the full key (see EXPERIMENTAL.md).
+    correct, true, got = sm4._selftest(n=200000, delta=6.0, noise=15.0, seed=1)
+    assert correct == 3          # all 3 independent rk31 top-nibble diffs recovered

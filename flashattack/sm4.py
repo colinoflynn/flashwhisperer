@@ -96,63 +96,60 @@ def _T_arr(a):
     return s ^ rotl(s, 2) ^ rotl(s, 10) ^ rotl(s, 18) ^ rotl(s, 24)
 
 
-def _recover4(known4, y, line_shift):
-    """Recover the 4 round-key bytes from the 4 S-box collisions of one round."""
-    tbl = SBOX.astype(np.int64)
-    votes = np.zeros((4, 256))
-    for a in range(4):
-        for b in range(a + 1, 4):
-            ga, gb, mg = engine.col_attack_scored(known4[:, a], known4[:, b], y, tbl, line_shift)
-            if mg > 0:
-                votes[a, ga] += mg; votes[b, gb] += mg
-    return [int(np.argmax(votes[i])) for i in range(4)]
+_IDENTITY = np.arange(256, dtype=np.int64)   # SM4 collision is on the lookup INDEX
+                                             # (knownword ^ rk), not S[index]
 
+def recover_rk31_topnibble_diffs(ct, timing, *, line_shift=4, ref=0):
+    """Partial SM4 leak (HONEST ceiling on this channel). SM4 is a Feistel cipher:
+    the last-round S-box index is (X32^X33^X34 ^ rk31) with X32..X34 known from the
+    ciphertext, and the S-box OUTPUT is not observable (X31 is unknown). So the
+    collision on the lookup index gives only the TOP-NIBBLE DIFFERENCES of the four
+    rk31 bytes -- and you cannot peel further (peeling needs the full round key).
+    Contrast AES's SPN last round (ct = SBOX(state)^k10), whose nonlinear anchor
+    yields the full key. Requires a single-table / S-box SM4 build (a 4-table build
+    puts the 4 lookups in 4 different tables -> no collision at all).
 
-def recover(ct, timing, *, line_shift=4, key_for_truth=None):
-    """Recover the SM4 master key from ciphertext + timing (full, unmodified SM4).
-    Peels rounds 31..28 (byte-wise collisions, same reduction as AES) and inverts
-    the key schedule. `line_shift`=4 (S-box) / 2 (4-byte T-table)."""
+    Returns topbits(rk31[j] ^ rk31[ref]) for j=0..3 (partial; full SM4 key is NOT
+    recoverable via this channel)."""
     ct = np.asarray(ct, np.uint8).reshape(-1, 16)
     def word(k): return ((ct[:, 4*k].astype(np.uint32) << 24) | (ct[:, 4*k+1].astype(np.uint32) << 16)
                          | (ct[:, 4*k+2].astype(np.uint32) << 8) | ct[:, 4*k+3].astype(np.uint32))
-    X = {35: word(0), 34: word(1), 33: word(2), 32: word(3)}
+    kw = (word(3) ^ word(2) ^ word(1)) & 0xFFFFFFFF        # X32 ^ X33 ^ X34 (known)
+    kb = np.stack([((kw >> s) & 0xFF) >> line_shift for s in (24, 16, 8, 0)], axis=1)
     y = np.asarray(timing, float); y = y - y.mean()
-    rks, correct = {}, {}
-    truth_rk = key_schedule(key_for_truth) if key_for_truth else None
-    for r in (31, 30, 29, 28):
-        kw = (X[r+1] ^ X[r+2] ^ X[r+3]) & 0xFFFFFFFF
-        kb = np.stack([(kw >> 24) & 0xFF, (kw >> 16) & 0xFF, (kw >> 8) & 0xFF, kw & 0xFF], axis=1).astype(int)
-        rkb = _recover4(kb, y, line_shift)
-        rkw = (rkb[0] << 24) | (rkb[1] << 16) | (rkb[2] << 8) | rkb[3]
-        rks[r] = rkw
-        if truth_rk is not None:
-            tb = [(truth_rk[r] >> s) & 0xFF for s in (24, 16, 8, 0)]
-            correct[r] = sum(rkb[i] == tb[i] for i in range(4))
-        X[r] = (X[r+4] ^ _T_arr((kw ^ np.uint32(rkw)) & 0xFFFFFFFF)) & 0xFFFFFFFF
-    master = invert_key_schedule([rks[28], rks[29], rks[30], rks[31]])
-    return {"master": master, "round_keys": rks, "correct": correct}
+    nb = 1 << (8 - line_shift)
+    diffs = [0, 0, 0, 0]
+    for j in range(4):
+        if j == ref:
+            continue
+        v = kb[:, ref] ^ kb[:, j]
+        sums = np.zeros(nb); cnt = np.zeros(nb)
+        np.add.at(sums, v, y); np.add.at(cnt, v, 1.0)
+        means = np.where(cnt > 0, sums / np.maximum(cnt, 1), np.inf)
+        diffs[j] = int(np.argmin(means))                  # topbits(rk31[j] ^ rk31[ref])
+    return diffs
 
 
-def _selftest(n=40000, delta=6.0, noise=20.0, seed=0):
-    """Synthetic validation: plant rounds-31..28 S-box collision timing, recover."""
+def _selftest(n=200000, delta=6.0, noise=15.0, seed=0):
+    """Synthetic validation of the PARTIAL leak: plant round-31 index collisions,
+    recover the top-nibble differences of rk31 (not the full key)."""
     rng = np.random.default_rng(seed)
     key = bytes(rng.integers(0, 256, 16, dtype=np.uint8))
     pt = rng.integers(0, 256, (n, 16), np.uint8)
     ct = encrypt_blocks(key, pt)
     rk = key_schedule(key)
-    # forward pass to get true intermediate words, plant collision timing
     def word(b, k): return ((b[:, 4*k].astype(np.uint32) << 24) | (b[:, 4*k+1].astype(np.uint32) << 16)
                            | (b[:, 4*k+2].astype(np.uint32) << 8) | b[:, 4*k+3].astype(np.uint32))
     X = [word(pt, i) for i in range(4)]
     for i in range(32):
         X.append((X[i] ^ _T_arr((X[i+1] ^ X[i+2] ^ X[i+3] ^ np.uint32(rk[i])) & 0xFFFFFFFF)) & 0xFFFFFFFF)
+    kw = (X[32] ^ X[33] ^ X[34] ^ np.uint32(rk[31])) & 0xFFFFFFFF   # round-31 S-box INPUT word
+    hi = np.stack([((kw >> s) & 0xFF) >> 4 for s in (24, 16, 8, 0)], axis=1)
     t = np.full(n, 5000.0) + rng.normal(0, noise, n)
-    for r in (31, 30, 29, 28):
-        kw = (X[r+1] ^ X[r+2] ^ X[r+3] ^ np.uint32(rk[r])) & 0xFFFFFFFF   # S-box input word
-        hi = np.stack([(SBOX[(kw >> s) & 0xFF] >> 4) for s in (24, 16, 8, 0)], axis=1)
-        for a in range(4):
-            for b in range(a + 1, 4):
-                t -= delta * (hi[:, a] == hi[:, b])
-    r = recover(ct, t, line_shift=4, key_for_truth=key)
-    return r["master"] == key, r["correct"]
-
+    for a in range(4):
+        for b in range(a + 1, 4):
+            t -= delta * (hi[:, a] == hi[:, b])
+    got = recover_rk31_topnibble_diffs(ct, t, line_shift=4)
+    tb = [(rk[31] >> s) & 0xFF for s in (24, 16, 8, 0)]
+    true = [((tb[j] >> 4) ^ (tb[0] >> 4)) for j in range(4)]
+    return sum(got[j] == true[j] for j in range(1, 4)), true, got
