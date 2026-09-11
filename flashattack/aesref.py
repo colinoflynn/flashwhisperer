@@ -145,3 +145,29 @@ def invert_key_schedule(final_words, keysize=128):
     for i in range(Nk):
         out += bytes([(W[i]>>24)&255, (W[i]>>16)&255, (W[i]>>8)&255, W[i]&255])
     return bytes(out)
+
+
+def invert_from_roundkeys(round_keys, keysize=128):
+    """Recover the master key from recovered round keys.
+
+    round_keys : dict {round_index: 16 bytes}. The master needs the LAST Nk words
+    of the schedule; for AES-128 that is the single last round key (Nk=4), for
+    192/256 it spans the last two round keys (Nk=6/8). Provide enough consecutive
+    round keys to cover the last Nk words, else ValueError.
+    """
+    Nk = keysize // 32
+    Nr = {4: 10, 6: 12, 8: 14}[Nk]
+    total = 4 * (Nr + 1)
+    words = {}
+    for ridx, rk in round_keys.items():
+        rk = [int(b) & 0xFF for b in rk]
+        for w in range(4):
+            words[4 * ridx + w] = rk[4 * w:4 * w + 4]
+    needed = range(total - Nk, total)
+    missing = [w for w in needed if w not in words]
+    if missing:
+        raise ValueError(f"AES-{keysize} master needs schedule words {list(needed)}; "
+                         f"missing {missing} -- supply the last {Nk//4 if Nk%4==0 else 2} round keys "
+                         f"(rounds {(total-Nk)//4}..{Nr})")
+    final = [b for w in needed for b in words[w]]
+    return invert_key_schedule(final, keysize)

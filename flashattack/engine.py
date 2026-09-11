@@ -71,6 +71,7 @@ class Result:
     keysize: int
     roundkey: bytes                      # recovered round key (last for enc, first for dec)
     which: str                           # 'last' or 'first'
+    roundkey_index: int                  # global round index of the recovered key
     confidence: list                     # per-byte vote margin (0..)
     candidates: list                     # per-byte ranked list of (byteval, weight)
     master: bytes | None = None
@@ -79,13 +80,25 @@ class Result:
     truth_correct: int | None = None     # bytes matching a supplied truth (validation only)
 
     def summary(self):
-        s = [f"{self.direction} AES-{self.keysize}: {self.which} round key = {self.roundkey.hex()}"]
+        s = [f"{self.direction} AES-{self.keysize}: round key rk[{self.roundkey_index}] "
+             f"({self.which}) = {self.roundkey.hex()}"]
         if self.master is not None:
             s.append(f"master = {self.master.hex()}  verified={self.verified}"
                      + (f"  brute-forced positions {self.bruteforced}" if self.bruteforced else ""))
+        elif self.keysize != 128:
+            s.append(f"(AES-{self.keysize}: master needs the last two round keys; this attack "
+                     f"gives rk[{self.roundkey_index}] only -- combine with a second round key "
+                     f"via master_from_results, or see docs on the second-round attack)")
         if self.truth_correct is not None:
             s.append(f"round-key bytes correct vs truth: {self.truth_correct}/16")
         return "\n".join(s)
+
+
+def master_from_results(results, keysize):
+    """Invert to the master key given several recover() Results whose recovered
+    round keys together cover the last Nk schedule words (AES-192/256)."""
+    rks = {r.roundkey_index: r.roundkey for r in results}
+    return aesref.invert_from_roundkeys(rks, keysize)
 
 
 def _roundkey_to_master(rkbytes, direction, keysize):
@@ -133,8 +146,10 @@ def recover(known_blocks, timing, *, direction="enc", keysize=128,
         conf.append(float(top - second))
         candidates.append([(int(order[i, j]), float(votes[i, order[i, j]])) for j in range(cand_per_pos)])
 
+    Nr = {128: 10, 192: 12, 256: 14}[keysize]
     res = Result(direction=direction, keysize=keysize, roundkey=roundkey,
                  which=("first" if direction == "dec" else "last"),
+                 roundkey_index=(0 if direction == "dec" else Nr),
                  confidence=conf, candidates=candidates)
     if truth is not None:
         res.truth_correct = sum(roundkey[i] == truth[i] for i in range(16))
