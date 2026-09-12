@@ -11,6 +11,7 @@ flashattack/
   aesref.py      reference AES-128/192/256 (enc/dec, key-schedule + inversion), FIPS-197 verified
   sm4.py         SM4 (GM/T 0002) reference + partial leak (Feistel -> top-nibble only; see EXPERIMENTAL.md)
   EXPERIMENTAL.md  partial results & their structural ceilings (known-plaintext-only; SM4)
+  bruteforce.py  batched multi-key AES: 2^24 candidate keys in ~26 s (finishes an uneven vote)
   engine.py      unified last-round cache-collision engine + robust assembler; recover_full (192/256)
   modes.py       AES mode -> block the attacker reconstructs (ECB/CBC/CTR/GCM/CMAC, enc+dec)
   capture.py     Capture: target-agnostic OBSERVED data (pt/ct + timing, NO key); save/load npz, from_csv
@@ -78,6 +79,30 @@ whose confidence gap flags them) until it matches. This turns near-misses
   `line_shift_prev` = the round Nr-1 table granularity (2 = 4-byte T-table,
   4 = S-box). CLI: `attack --full`.
 
+## bruteforce.py -- many keys, one block
+
+`aesref` runs one key over many blocks. `bruteforce` runs **many keys over one
+block**, which is the shape the endgame of an uneven attack needs: the vote
+leaves a few bytes undetermined, and finishing them key-by-key in Python is
+hours where a vectorised search is seconds. Round keys become an `(n, 11, 16)`
+array and everything else is the same table lookups and XORs.
+
+Measured at **0.44 M keys/s**, so 2^16 is instant and **2^24 about 26 s**;
+verified byte-for-byte against `aesref` for the key schedule, its inversion and
+the decryption. `search_positions()` filters candidates on CCM counter-block
+structure, which needs no known plaintext -- see `demos/oscore/verify.py`.
+It earns its place on the F746 OSCORE victim, where the leak is uneven enough
+that the vote stalls three bytes short of the key.
+
+`search_pairs()` is the cheaper and better-behaved endgame: all C(16,2) = 120
+position pairs at 2^16 each is 7.9 M candidates -- less than one 2^24 search --
+and it recovers **any** vote that is right on 14 of 16 bytes, wherever the wrong
+two sit. That matters because escalating to the *least confident* positions
+assumes the vote knows which bytes it got wrong, and it often does not: on the
+F429 OSCORE capture at 300 k traces the two wrong bytes rank 1st and 4th by
+confidence, so the ranked search misses one. Switching to the pair sweep halved
+that attack's capture, 600 k traces to 300 k.
+
 ## CLI
 
 ```bash
@@ -99,4 +124,9 @@ PYTHONPATH=. pytest --runslow       # LONG: + engine scans + replay of captured 
   (S-box + T-table, several key sizes/modes). Capture more with
   `tests/make_vectors.py`. Vectors store only timing (uint16, seed-regenerated
   material) so each is ~100–250 KB compressed and lives in git.
-
+- The same two tiers cover [`demos/oscore/`](../demos/oscore/)
+  (`demos/oscore/test_replay.py`), which replays the **over-Ethernet** captures
+  and re-derives the OSCORE key and its negative control. `--runslow` there is
+  the key recovery itself.
+- `conftest.py` lives at the repository root so both test directories share one
+  `--runslow` option.
