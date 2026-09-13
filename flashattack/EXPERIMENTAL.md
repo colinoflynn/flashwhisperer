@@ -27,18 +27,44 @@ relative to a reference.
 
 | Implementation | resolved | correct | residual keyspace |
 |---|---|---|---|
-| **S-box** (tiny-AES) | 16/16 | **16/16** | 128 → **~68 bits** |
+| **S-box** (tiny-AES) | 16/16 | **16/16** | 128 → **38 bits** |
 | **T-table** (Mbed-TLS, 4-table) | 16/16* | 4/16 | unreliable |
 
 *The 4-table layout interleaves the round-1 lookups across four separate tables,
 so few pairs truly collide; the method reports resolutions with false confidence.
 **Reliable only on S-box implementations.**
 
-**Ceiling (why it's partial):** pairwise collisions carry only **top-bit
-differences** — the low nibble of every byte and one reference offset are
-unrecoverable from timing (the cache line is 16 bytes). For AES-128 S-box that
-leaves ~68 bits: a real keyspace reduction, not a break. **Any** single output
-observation (the last-round attack) removes the limitation and gives the full key.
+**The ceiling is set by the channel's granularity, and it is finer than the cache
+line.** A 16-byte line holding 1-byte S-box entries should resolve only the top
+nibble of a lookup index, leaving ~68 bits. Sweeping `line_shift` over the
+tiny-AES capture says otherwise:
+
+| `line_shift` | 0 | 1 | **2** | 3 | 4 | 5 |
+|---|---:|---:|---:|---:|---:|---:|
+| bytes/line implied | 1 | 2 | **4** | 8 | 16 | 32 |
+| differences correct | 2/16 | 9/16 | **16/16** | 16/16 | 16/16 | 1/16 |
+| residual | — | — | **2^38** | 2^53 | 2^68 | — |
+
+The channel resolves **4-byte** granularity: `line_shift=2` recovers all fifteen
+6-bit key-byte differences exactly, `line_shift=1` degrades to 9/16 and
+`line_shift=0` fails. So there is sub-line structure — consistent with 32-bit
+flash data reads inside a 128-bit line — and the honest residual for an AES-128
+S-box is **2^38, not 2^68**. Verified: the true key satisfies all sixteen
+recovered constraints, and random keys satisfy them at the expected 2^-90 rate,
+so the constraints are not vacuous.
+
+**That changes the verdict.** 2^38 is about 2.7e11 candidates, each settled by one
+known (plaintext, ciphertext) pair — hours on a CPU with AES-NI, minutes on a GPU.
+A known-plaintext-*only* attacker with a single known block is therefore not
+merely reducing the keyspace on a single-table S-box target, they are **breaking
+it**. The one block is what turns the reduction into a key.
+
+This does not rescue the 4-table case, which fails at every granularity (4/16
+correct regardless of `line_shift`) because the round-1 lookups never share a
+region to collide in.
+
+**Any** single output observation (the last-round attack) is still the better
+route when available, and needs no search at all.
 `recover_round1_diffs` (naive all-vs-ref) and `recover_round1_keyspace` (robust,
 graph) are both **experimental**, not wired into `attack()`.
 
