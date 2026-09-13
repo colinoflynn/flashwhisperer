@@ -94,6 +94,12 @@ structure, which needs no known plaintext -- see `demos/oscore/verify.py`.
 It earns its place on the F746 OSCORE victim, where the leak is uneven enough
 that the vote stalls three bytes short of the key.
 
+`search_positions()` and `search_pairs()` both accept `known=(pt, ct)`: an exact
+single-block check that replaces the CCM structural test wherever the mode hands
+the attacker the cipher's *input* as well as its output. TLS-CBC does --
+`C_i = E(K, P_i ^ C_(i-1))`, both ends on the wire -- and there it settled a key
+on the very first position pair. See [`demos/tls_https/`](../demos/tls_https/).
+
 `search_pairs()` is the cheaper and better-behaved endgame: all C(16,2) = 120
 position pairs at 2^16 each is 7.9 M candidates -- less than one 2^24 search --
 and it recovers **any** vote that is right on 14 of 16 bytes, wherever the wrong
@@ -102,6 +108,20 @@ assumes the vote knows which bytes it got wrong, and it often does not: on the
 F429 OSCORE capture at 300 k traces the two wrong bytes rank 1st and 4th by
 confidence, so the ranked search misses one. Switching to the pair sweep halved
 that attack's capture, 600 k traces to 300 k.
+
+## engine.leaking_offsets -- which byte pairs leak, without the key
+
+Only some pairs of output bytes can collide in a cache line; the rest contribute
+nothing but noise to the vote, and they can outnumber the real ones seven to one.
+`leaking_offsets()` finds which offsets matter **with no key at all**: a single
+pair's peak is a max over 65536 cells and reads ~4.2 sigma on noise alone, but
+averaging over the 16 pairs that share an offset separates them cleanly.
+
+`recover(pair_offsets=...)` then restricts the vote. On the F429 OSCORE capture
+that took the vote from 11/16 to 15/16 at 250 k traces and made the scan 7x
+faster. It is target-dependent and worth checking rather than assuming: TinyCrypt
+leaks only on offset 3, while mbedTLS leaks *uniformly* across all 120 pairs, so
+there the restriction correctly finds nothing to discard.
 
 ## CLI
 
