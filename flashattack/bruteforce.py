@@ -78,7 +78,7 @@ def ccm_counter_filter(plain: np.ndarray) -> np.ndarray:
 
 
 def search_positions(rk_last, positions, keystreams, *, values=None,
-                     chunk=1 << 18, confirm=6, log=None):
+                     chunk=1 << 18, confirm=6, log=None, known=None):
     """Brute-force `positions` of a final round key against CCM structure.
 
     rk_last    : the vote's 16-byte final round key; the other bytes are trusted.
@@ -86,11 +86,21 @@ def search_positions(rk_last, positions, keystreams, *, values=None,
     keystreams : observed AES output blocks; the first is the filter, the rest
                  confirm (each adds 24 bits, so a wrong key does not survive).
     values     : per-position candidate lists, default the full 0..255.
+    known      : optional (plaintext, ciphertext) pair under the target key. If
+                 given it replaces the CCM structural test with an exact check,
+                 which is both stronger and cheaper -- a single block settles a
+                 candidate outright. Modes that hand the attacker the cipher's
+                 *input* as well as its output provide this for free: TLS-CBC
+                 does, because C_i = E(K, P_i ^ C_(i-1)) and both ends are on
+                 the wire.
 
     Returns the master key, or None.
     """
     rk_last = bytes(rk_last)
-    ks = np.asarray(keystreams, np.uint8).reshape(-1, 16)
+    # keystreams are only needed for the CCM structural test; a known
+    # plaintext/ciphertext pair replaces them entirely.
+    ks = (np.zeros((0, 16), np.uint8) if keystreams is None
+          else np.asarray(keystreams, np.uint8).reshape(-1, 16))
     if values is None:
         values = [range(256)] * len(positions)
     grid = np.array(list(product(*values)), dtype=np.uint8)
@@ -103,13 +113,21 @@ def search_positions(rk_last, positions, keystreams, *, values=None,
             cand[:, p] = g[:, j]
         master = invert_key_schedules(cand)
         rks = expand_keys(master)
-        hit = ccm_counter_filter(decrypt_block(rks, ks[0]))
+        if known is not None:
+            kp, kc = known
+            want = np.frombuffer(bytes(kp), np.uint8)
+            hit = (decrypt_block(rks, np.frombuffer(bytes(kc), np.uint8))
+                   == want[None, :]).all(axis=1)
+        else:
+            hit = ccm_counter_filter(decrypt_block(rks, ks[0]))
         if log and start % (chunk * 16) == 0:
             log(f"  {start + len(g)}/{total} searched")
         if not hit.any():
             continue
         for idx in np.flatnonzero(hit):
             mk = master[idx]
+            if known is not None:
+                return bytes(mk)
             rk2 = expand_keys(mk.reshape(1, 16))
             ok = True
             for b in ks[1:1 + confirm]:
@@ -122,7 +140,7 @@ def search_positions(rk_last, positions, keystreams, *, values=None,
 
 
 def search_pairs(rk_last, keystreams, *, positions=None, chunk=1 << 18,
-                 confirm=6, log=None):
+                 confirm=6, log=None, known=None):
     """Full 0..255 on **every pair** of final-round-key byte positions.
 
     The ranked-candidate escalation in a vote-based attack assumes the bytes it
@@ -145,7 +163,7 @@ def search_pairs(rk_last, keystreams, *, positions=None, chunk=1 << 18,
         if log and n % 20 == 0:
             log(f"  pair {n}/{len(pairs)} ({a},{b})")
         mk = search_positions(rk_last, [a, b], keystreams, chunk=chunk,
-                              confirm=confirm)
+                              confirm=confirm, known=known)
         if mk is not None:
             return mk, (a, b)
     return None, None
