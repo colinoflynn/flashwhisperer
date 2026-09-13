@@ -123,6 +123,26 @@ faster. It is target-dependent and worth checking rather than assuming: TinyCryp
 leaks only on offset 3, while mbedTLS leaks *uniformly* across all 120 pairs, so
 there the restriction correctly finds nothing to discard.
 
+**A false positive here fails the attack**, because the restriction throws away
+105 of 120 good pairs. A uniformly-leaking target produces a gently decreasing
+ramp of peaks whose top can clear a "median + margin" bar by a hair and mean
+nothing: on one SNMPv3 draw that took the vote from 15/16 to 8/16, and at 130 k
+traces all five draws misfired identically -- the spurious peak grows with n just
+as a real one does, so it was a deterministic ceiling rather than bad luck.
+
+So selection requires the kept offsets to be a *spike* rather than the top of a
+ramp: excess over the median at least `ratio` (default 3) times the best rejected
+offset's. Measured, that statistic reads 17-40 for a real single-family leak and
+1.2-1.7 for a uniform one, so the cut is not tuned. `engine.select_offsets` is
+the rule on its own, tested against eight recorded peak maps in
+[`tests/test_offsets.py`](../tests/test_offsets.py), because the scan that
+produces one costs ~50 s.
+
+Note the calibration needs more traces than the attack it accelerates (~450 k
+against 200 k on the OSCORE capture), so on a live target the offsets come from a
+device the attacker owns, not from the attack data -- `leaking_offsets` on a
+200 k subset correctly returns nothing.
+
 ## CLI
 
 ```bash
