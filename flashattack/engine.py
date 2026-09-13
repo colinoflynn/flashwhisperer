@@ -117,7 +117,7 @@ def _roundkey_to_master(rkbytes, direction, keysize):
 
 
 def leaking_offsets(known_blocks, timing, *, direction="enc", line_shift=4,
-                    margin=1.0):
+                    margin=1.0, ratio=3.0):
     """Which byte offsets carry the collision channel -- **without the key**.
 
     Only some pairs of output bytes can collide in a cache line; on AES-128 with
@@ -130,11 +130,41 @@ def leaking_offsets(known_blocks, timing, *, direction="enc", line_shift=4,
     peak over the 16 pairs that share an offset separates them cleanly: on the
     F429 OSCORE capture offset 3 reads 6.40 against 4.2-4.4 for all others.
 
-    Returns (offsets, peaks): the offsets standing `margin` sigma above the
-    median, and the full {offset: mean peak} map. Needs more traces than the
-    attack itself (about 450 k where the attack needs 200 k), which is why it is
-    normally done once on a device the attacker owns -- it is a property of the
-    library and the part, not of the key.
+    Returns (offsets, peaks): the offsets that stand *apart* from the rest, and
+    the full {offset: mean peak} map. Needs more traces than the attack itself
+    (about 450 k where the attack needs 200 k), which is why it is normally done
+    once on a device the attacker owns -- it is a property of the library and
+    the part, not of the key.
+
+    Two conditions, not one. Standing `margin` above the median is necessary but
+    not sufficient: a target that leaks *uniformly* (mbedTLS -- see the SNMPv3
+    and TLS demos) produces a gently decreasing ramp of peaks with offset, whose
+    largest member can clear a median-plus-margin bar by a hair without meaning
+    anything. Selecting it then restricts the vote to 15 of the 120 pairs and
+    throws away the other 105, which is fatal: measured on one SNMPv3 draw,
+    peaks ran 5.75 / 5.39 / 5.09 / 4.78 / ... , offset 1 cleared the bar by
+    0.14, and the vote fell from 15/16 to 8/16 -- a recovery turned into a
+    failure by the detector meant to accelerate it.
+
+    So the selected offset must also be a *spike* rather than the top of a ramp:
+    measuring each offset's excess over the median, the ones kept must carry at
+    least `ratio` times the excess of the best one rejected. That encodes the
+    actual physical claim -- one family carries the channel and the others sit
+    at the noise floor -- instead of merely ranking them. Measured:
+
+        capture                     top / next excess      ratio   selected
+        OSCORE F429 TinyCrypt 600k   6.40 / 4.38           ~80x    [3]
+        OSCORE F746 TinyCrypt 1.5M   5.31 / 4.33           ~30x    [3]
+        SNMPv3 mbedTLS 200k          6.58 / 6.01            1.6x   []
+        TLS mbedTLS 250k             5.05 / 4.86            2.2x   []
+
+    The two populations are three orders apart in this statistic, which is why
+    it is not a tuned threshold.
+
+    Found by the trace-count ladder, not by inspection: on the SNMPv3 capture
+    the old rule fired on offset 1 and the vote fell from 15/16 to 8/16. It got
+    *worse* with more traces -- at 130 k all five draws misfired identically --
+    so the effect was a deterministic ceiling on that target, not bad luck.
     """
     known = np.asarray(known_blocks, np.int64)
     y = np.asarray(timing, float); y = y - y.mean()
@@ -146,8 +176,33 @@ def leaking_offsets(known_blocks, timing, *, direction="enc", line_shift=4,
             by.setdefault(d, []).append(
                 col_attack_scored(known[:, a], known[:, b], y, tbl, line_shift)[2])
     peaks = {d: float(np.mean(v)) for d, v in by.items()}
+    return select_offsets(peaks, margin=margin, ratio=ratio), peaks
+
+
+def select_offsets(peaks, *, margin=1.0, ratio=3.0):
+    """Which offsets in a {offset: mean peak} map actually stand out.
+
+    Split out from `leaking_offsets` so the decision can be tested against
+    recorded peak maps without re-running the 120-pair scan that produces them
+    (see tests/test_offsets.py) -- the scan is a fixed ~50 s and the rule is
+    where the bug was.
+    """
     base = float(np.median(list(peaks.values())))
-    return sorted(d for d, v in peaks.items() if v > base + margin), peaks
+    sel = sorted((d for d, v in peaks.items() if v > base + margin),
+                 key=lambda d: -peaks[d])
+    rest = [v for d, v in peaks.items() if d not in sel]
+    # Shrink the selection until what is kept is a spike above what is not.
+    # Excess is measured over the median so the comparison is against the noise
+    # floor; without this an offset can be chosen for being marginally the
+    # largest of a smooth ramp, which is how a uniformly-leaking target is
+    # misread -- and restricting the vote to it discards 105 of 120 good pairs.
+    while sel:
+        worst_kept = min(peaks[d] for d in sel) - base
+        best_cut = (max(rest) - base) if rest else 0.0
+        if worst_kept > 0 and worst_kept >= ratio * max(best_cut, 0.0):
+            break
+        rest.append(peaks[sel.pop()])
+    return sorted(sel)
 
 
 def recover(known_blocks, timing, *, direction="enc", keysize=128, line_shift=4,
