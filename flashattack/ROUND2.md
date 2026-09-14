@@ -163,33 +163,98 @@ At matched sigma and matched trace counts the bench recovers every collidable
 pair and the network recovers four. **Whatever the network costs the input side,
 it is not additive noise** -- additive noise averages out, and this does not.
 
-### The hypothesis that fits, and how to kill it
+### Being the second block of a chained mode: tested, and it is not that
 
-Untested, stated so it can be attacked: **round 1 of CFB block 2 runs on a cache
-already warmed by block 1**, and the warming is independent of `C1`. A collision
-is only visible if the second access would otherwise have missed; if block 1 has
-already pulled that line in, the access hits whether or not `C1` collides, and
-the pair goes dark. Which lines are warm varies per exchange with data unrelated
-to `C1`, so this *masks* signal rather than adding noise -- exactly the
-saturating, non-averaging behaviour measured. The last round is much less
-exposed to it: by round 10 residency is dominated by the current block's own nine
-rounds of accesses.
+The hypothesis was that **round 1 of CFB block 2 runs on a cache already warmed
+by block 1**, with the warming independent of `C1`. A collision is only visible
+if the second access would otherwise have missed; if block 1 already pulled that
+line in, the access hits either way and the pair goes dark. That masks signal
+rather than adding noise, which matched the saturating behaviour.
 
-If that is right the effect is **not about the network at all** -- it is about
-being the second block of a chained mode, and it should reproduce on the bench
-with no Ethernet involved. The test: time two back-to-back AES calls on the
-bench, score round 1 on the second call's input and the last round on its output.
-The hypothesis predicts the same asymmetry over a serial cable. If instead the
-bench shows 24/24 on the second block's input, the hypothesis is dead and the
-network really is the variable.
+It is wrong. A `Z` command was added to
+[`../hardware/fw_f4_lib/main.c`](../hardware/fw_f4_lib/main.c) that runs the CFB
+chain on the bench -- `ks1 = E(iv)` with `iv` from the PRNG, `C1 = P1 ^ ks1`,
+`ks2 = E(C1)` -- so the attacked call is preceded by one whose table-access
+pattern varies per trace and is unrelated to `C1`. Three arms, one board, one
+ACR, 250 k traces each
+([`../research/round2/chain_warmup.py`](../research/round2/chain_warmup.py)):
+
+| arm | sigma | aligned 4 B | aligned 16 B | last round |
+|---|---:|---:|---:|---:|
+| A constant warm-up (the existing `X`) | 14.29 | 24/24 | 24/24 | 16/16 EXACT |
+| B CFB chain, 2nd call timed | 14.72 | 24/24 | 24/24 | 16/16 EXACT |
+| C CFB chain, both calls timed | 20.50 | 24/24 | 24/24 | 16/16 EXACT |
+
+Nothing moves. A varying warm-up does not mask the input side, and neither does
+carrying the first call's timing variance. (`Z 3` prints `C1` per trace so the
+host can prove it mirrors the chain; it does, 8/8 byte-exact. Without that check
+a host-side mirroring bug and a confirmed hypothesis would both read at chance.)
+
+### It is amplitude, and the number is 70x
+
+The noise-matched control assumed the two captures differ only in noise. That
+assumption was never checked, and it is false. Measuring the collision dip
+directly with the key known -- how much faster colliding traces run, in cycles
+([`../research/round2/dip_amplitude.py`](../research/round2/dip_amplitude.py)):
+
+| capture | side | sigma | median dip | dip/sigma |
+|---|---|---:|---:|---:|
+| bench mbedTLS 4-table | round-1 input | 19.13 | **-4.250** | 2.2e-1 |
+| bench mbedTLS 4-table | last round | 19.13 | -4.095 | 2.1e-1 |
+| remote SNMPv3, same build | round-1 input | 60.11 | **-0.060** | 1.0e-3 |
+| remote SNMPv3, same build | last round | 60.11 | -0.024 | 4.1e-4 |
+
+(bench scaled by 216/180 into attacker cycles first, since the F746 counts a
+180 MHz victim at 216 MHz.)
+
+The remote per-pair dip is about **70x smaller** than the bench's, which is a
+5000x penalty in traces -- roughly 1.6e7 for one pair at 4 sigma, against 2500
+on the bench. That, and not the network as such, is what the input side ran into.
+
+**And the remote's two sides have the same amplitude.** Both sit near 1e-3 of
+sigma. So the input/output asymmetry was never a difference in channel strength.
+
+### Why the output side survives the same amplitude: pooling
+
+What differs is how much evidence each analysis can pool behind one hypothesis.
+The last-round attack scores a single key-byte guess against **every pair that
+touches that byte** -- about 15 of them -- and sums margins, so consistent
+evidence compounds. `recover_round1_keyspace` takes a separate argmin per pair
+and only then propagates. Under a 4-table layout a byte's group holds just four
+bytes, so the input side has at most **6** pairs to pool, against the output
+side's 15 -- and its unknown is a difference rather than an absolute value.
+
+Solving each group jointly -- one hypothesis `(d1,d2,d3)` scored against all six
+of the group's histograms at once, rather than six independent argmins
+([`../research/round2/round1_joint.py`](../research/round2/round1_joint.py)) --
+confirms the mechanism works and is not enough:
+
+| | joint | per-pair |
+|---|---:|---:|
+| bench, 25 k traces | 12/12 unknowns | 20/24 pairs |
+| remote, 717 k, 16 B | 1/12 (chance 0.75) | 4/24 |
+| remote, 717 k, 4 B | 2/12 (chance 0.19) | 4/24 |
+
+Joint scoring recovers the bench group at 25 k where per-pair scoring needs
+50 k, so the aggregation is real. On the remote capture it moves 4/24 to 2 of 12
+unknowns. Pooling six pairs cannot cover a 70x amplitude deficit.
 
 **Status of the load-bearing claim: round-2 recovery is demonstrated locally and
-NOT demonstrated remotely.** The remote input side is measurably present
-(p = 5e-4) but saturates at 4 of 24 pairs, and the cause is neither the
-statistic, nor which call is observed, nor sigma. The next step is the
-two-block bench test above, not more capture.
+NOT demonstrated remotely** -- but the reason is now measured rather than
+guessed. It is not the statistic, not which call is observed, not sigma, and not
+chained-mode cache warming. The remote per-pair collision dip on this victim is
+~70x smaller than the same library build on the bench, both sides alike, and the
+last-round attack survives it only because a 4-table layout lets it pool 15 pairs
+per byte where round 1 gets 6.
 
-Still open: the two-block bench test above, the remote demonstration, and wiring the
+**The open question is now sharp and different: why is the dip 70x smaller on
+that victim?** Same part, same library build, same table placement. Candidates
+worth separating -- the victim's `FLASH_ACR` (fewer wait states means a smaller
+miss penalty), Ethernet DMA contending for the bus, and the possibility that the
+conditioning step absorbs part of the signal. That is a measurement on the victim
+board, not more capture and not more analysis.
+
+Still open: the victim-side amplitude question above, the remote demonstration, and wiring the
 solver into the package rather than
 [`../research/round2/round2_fullsolve.py`](../research/round2/round2_fullsolve.py)
 and its `_dec` sibling. This document is the
