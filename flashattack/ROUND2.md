@@ -247,14 +247,64 @@ chained-mode cache warming. The remote per-pair collision dip on this victim is
 last-round attack survives it only because a 4-table layout lets it pool 15 pairs
 per byte where round 1 gets 6.
 
-**The open question is now sharp and different: why is the dip 70x smaller on
-that victim?** Same part, same library build, same table placement. Candidates
-worth separating -- the victim's `FLASH_ACR` (fewer wait states means a smaller
-miss penalty), Ethernet DMA contending for the bus, and the possibility that the
-conditioning step absorbs part of the signal. That is a measurement on the victim
-board, not more capture and not more analysis.
+### Answered: the victim runs with the data cache OFF, and the bench did not
 
-Still open: the victim-side amplitude question above, the remote demonstration, and wiring the
+The SNMPv3 victim prints its own configuration at boot. Flashing it back and
+reading the banner:
+
+    === snmpv3-victim (NUCLEO-F429ZI) ===
+    SYSCLK  = 180000000 Hz
+    FLASH_ACR = 0x00000305
+
+`0x305` is LATENCY=5, PRFTEN=1, ICEN=1, **DCEN=0**. Every bench capture it was
+being compared against was taken at `0x705` -- same wait states, same prefetch,
+**data cache on**. The two were never the same channel. This is not news to the
+repo: [`../demos/oscore/README.md`](../demos/oscore/README.md) already documents
+that ST's own `stm32f4xx_hal_conf.h` for this board never defines
+`DATA_CACHE_ENABLE` while CubeMX does, and measures both. The error was using a
+`0x705` bench capture as the reference for a `0x305` victim.
+
+Rerunning the bench at both settings, 717 099 traces each, one runtime `C`
+command apart
+([`../research/round2/acr_amplitude.py`](../research/round2/acr_amplitude.py)):
+
+| | sigma | dip (4 B) | dip/sigma | input per-pair | output per-pair | pooled vote |
+|---|---:|---:|---:|---:|---:|---:|
+| bench `0x705` DCEN=1 | 14.31 | -3.700 | -2.6e-1 | 24/24 | 23/24 | 16/16 EXACT |
+| **bench `0x305` DCEN=0** | 5.98 | **-0.016** | **-2.8e-3** | **2/24** | **1/24** | **16/16 EXACT** |
+| remote SNMPv3 `0x305` | 60.11 | -0.060 | -1.0e-3 | 4/24 | 2/24 | 15/16 |
+
+**Every feature of the remote result reproduces on the bench over a serial
+cable.** Turning the data cache off drops the collision dip by ~230x, takes
+per-pair evidence to 1-2 of 24 on *both* sides, and leaves the pooled last-round
+vote at 16/16 EXACT. The remaining 2.7x between the bench `0x305` row and the
+remote one is the network; the other ~100x was a cache bit.
+
+So the input-side "null" was never about remoteness, and neither was the
+input/output asymmetry. Both are what a DCEN=0 victim looks like from either
+side, and the last round survives only because it pools ~15 pairs per byte where
+a 4-table round 1 gets 6.
+
+### What that implies, and it cuts both ways
+
+The two attacks want **opposite** settings of the same bit:
+
+* `DCEN=0` (ST's example headers): round-1/round-2 is out of reach -- at
+  dip/sigma 2.8e-3 a single pair needs order 1e8 traces -- while the last-round
+  attack still recovers a key.
+* `DCEN=1` (CubeMX default): round 1 resolves 24/24 at 717 k on the bench, but
+  the OSCORE demo measured the *remote last-round* attack going to 0/16 at 524 k
+  because sigma rises.
+
+So enabling the data cache is not a mitigation in general. It trades a
+last-round attack for a round-1 one. Whether the round-1 half of that trade
+actually carries over a network is the remaining question, and it is now a
+concrete prediction rather than a mystery: the bench dip at `0x705` is 3.70
+victim cycles (4.44 attacker cycles), so against a `0x705` network victim with
+the OSCORE demo's measured sigma of ~155, dip/sigma is ~0.029 and a per-pair
+resolution needs order 1.2e6 traces.
+
+Still open: the DCEN=1 remote prediction above, and wiring the
 solver into the package rather than
 [`../research/round2/round2_fullsolve.py`](../research/round2/round2_fullsolve.py)
 and its `_dec` sibling. This document is the
