@@ -52,9 +52,16 @@ tiny-AES capture says otherwise:
 | differences correct | 2/16 | 9/16 | **16/16** | 16/16 | 16/16 | 1/16 |
 | residual | — | — | **2^38** | 2^53 | 2^68 | — |
 
-The channel resolves **4-byte** granularity: `line_shift=2` recovers all fifteen
-6-bit key-byte differences exactly, `line_shift=1` degrades to 9/16 and
-`line_shift=0` fails. So there is sub-line structure — consistent with 32-bit
+The channel resolves **4-byte** granularity *here*: `line_shift=2` recovers all
+fifteen 6-bit key-byte differences exactly, `line_shift=1` degrades to 9/16 and
+`line_shift=0` fails.
+
+**This is a property of the implementation, not of the part.** The same sweep on
+a **TinyCrypt** capture from the same F429 resolves only the 16-byte line --
+16/16 differences at `line_shift=4`, but 6/16 at `line_shift=2` -- so its
+residual is 2^68, not 2^38. mbedTLS `FEWER_TABLES` behaves like tiny-AES and
+resolves 4 bytes. Sweep the width on your own target rather than assuming
+either. So there is sub-line structure — consistent with 32-bit
 flash data reads inside a 128-bit line — and the honest residual for an AES-128
 S-box is **2^38, not 2^68**. Verified: the true key satisfies all sixteen
 recovered constraints, and random keys satisfy them at the expected 2^-90 rate,
