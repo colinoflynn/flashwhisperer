@@ -67,7 +67,9 @@ keystream:
 |---|---:|---:|---:|
 | differences correct | 1/8 | 1/1 | 1/1 |
 
-Round 1 does not resolve, so round 2 has nothing to finish.
+Round 1 does not resolve far enough to hand round 2 anything to finish.
+(Read that table with the caveat below: under this victim's 4-table layout the
+propagated score cannot exceed 4/16 no matter how good the channel is.)
 
 **A noise-matched control predicted this was only a trace-count problem, and
 that prediction was wrong.** Adding Gaussian noise to the bench capture to bring
@@ -76,42 +78,118 @@ its sigma from 31.6 to the network's 101 reproduced the 250 k failure exactly
 to suffice.
 
 A 1 M-exchange capture was taken -- 45 minutes of traffic, 0 timeouts -- and it
-does **not** work:
+still does not reach a usable round-1 solution:
 
 | 1 M capture, 717 099 traces kept, sigma 60.1 | 4 B | 8 B | 16 B |
 |---|---:|---:|---:|
 | differences resolved | 1/16 | 1/16 | 1/16 |
 
 Note the conditioned sigma is **60.1**, not the 101 the extrapolation assumed, on
-4.3x as many kept traces. Quieter and larger, and still nothing.
+4.3x as many kept traces. Quieter and larger, and still short.
 
-**The reason is not trace count. There is no input-side signal to find.**
-Checking per-pair *with the key supplied*, which removes any question of the
-recovery method:
+**That was first read as "there is no input-side signal to find", and that
+reading was wrong.** The check behind it scored all 120 byte pairs with the key
+supplied and got 9 correct against a chance level of 7.5. But the SNMPv3 victim
+is stock mbedTLS, which uses **four** T-tables: only byte pairs at offsets
+0 mod 4 share a table, so only **24** of the 120 pairs can produce a round-1
+collision at all. Pooling buries those 24 in 96 pairs of noise. Scored on the 24
+alone, the same capture is not at chance:
 
-| | pairs correct | chance |
-|---|---:|---:|
-| 4-byte granularity | 5/120 | 1.9 |
-| 16-byte granularity | **9/120** | **7.5** |
+| SNMPv3 1 M, 717 099 kept, sigma 60.1 | aligned 24 pairs | p | other 96 |
+|---|---:|---:|---:|
+| 4-byte granularity | **4/24** (chance 0.4) | 4.9e-4 | 1/96 |
+| 16-byte granularity | 4/24 (chance 1.5) | 0.06 | 5/96 |
 
-Nine against a chance level of seven and a half is a null. The same capture's
-*output* side -- the CFB keystream, `E(K, IV)` -- yields the full key at 100 k
-traces. So on this victim the channel is strongly present from the output side
-and absent from the input side, at a trace count ten times larger.
+The same mistake inflated the propagated score's ceiling. `recover_round1_keyspace`
+walks differences out from byte 0, and under a 4-table layout byte 0 reaches only
+{0, 4, 8, 12} -- so **4/16 is a saturated result, not a weak one**. The bench
+capture of the same library build also stops at exactly 4/16, at every trace
+count from 25 k to 1 M, with 24/24 aligned pairs correct. The remote 1/16 was
+being read against a ceiling of 16 that the layout forbids. That ceiling was
+already written down in [`EXPERIMENTAL.md`](EXPERIMENTAL.md) -- the error here
+was failing to apply it to a capture from a 4-table victim.
 
-Two candidate explanations, neither tested: the input-side statistic buckets
-linearly into 16 or 64 bins while the last-round attack searches 2^16 guesses
-through a non-linear predictor, so they are not equally powerful instruments;
-and the AES whose input is observable here (CFB block 2, input `C1`) is not the
-same AES call whose output the working attack uses (block 1, input the IV).
+So the remote input side carries a real but weak signal. What it does **not** do
+is grow:
+
+| aligned pairs correct (shift=2) | 50 k | 100 k | 250 k | 500 k | 717 k |
+|---|---:|---:|---:|---:|---:|
+| remote SNMPv3 | 3/24 | 3/24 | 3/24 | 3/24 | 4/24 |
+| bench, same build | 15/24 @10k | 20/24 @25k | 23/24 @50k | 24/24 @100k | 24/24 |
+
+Three of the twenty-four pairs sit well above the detection floor at 50 k and the
+other twenty-one stay below it at 717 k. That is a saturating channel, not a
+noisy one.
+
+### It is not the statistic, not the call, and not the noise budget
+
+Three confounds were removed, all offline, on captures already taken.
+
+**Not the statistic.** The input side buckets linearly into 16 or 64 bins; the
+last-round attack searches 2^16 guesses through a non-linear predictor. Run both
+on the *same* bench traces over the *same* AES calls
+([`../research/round2/statistic_power.py`](../research/round2/statistic_power.py)),
+they track each other almost exactly -- tiny-AES decrypt, 1 M:
+
+| traces | input side | output side |
+|---:|---:|---:|
+| 25 k | 2/16 | 1/16 |
+| 50 k | 10/16 | 8/16 |
+| 100 k | 15/16 | 15/16 |
+| 250 k | 16/16 | 16/16, key EXACT |
+
+The linear bucketing is not the weaker instrument.
+
+**Not which call was observed.** The SNMPv3 capture stores both ends of CFB block
+2 -- `C1` is its input, `keystream2` its output, one AES call, one round-trip
+time ([`../research/round2/same_call_sides.py`](../research/round2/same_call_sides.py)).
+Pointed at that single call, the output side reads 15/16 from 50 k traces onward
+while the input side reads 1/16 at 717 k. The asymmetry survives the
+deconfounding.
+
+**Not the noise budget.** The obvious remaining story is that the network is
+simply noisier. It is testable: rescale the bench capture into the attacker's
+clock (216 MHz counting a 180 MHz victim) and add Gaussian noise until its sigma
+matches the remote 60.1
+([`../research/round2/noise_matched_bench.py`](../research/round2/noise_matched_bench.py)).
+If sigma were the whole story the two ladders would overlay. They do not:
+
+| aligned pairs correct (shift=2) | 50 k | 100 k | 250 k | 500 k | 717 k |
+|---|---:|---:|---:|---:|---:|
+| bench, noise-matched to sigma 60.1 | 11/24 | 20/24 | 20/24 | 24/24 | **24/24** |
+| remote, sigma 60.1 | 3/24 | 3/24 | 3/24 | 3/24 | **4/24** |
+
+At matched sigma and matched trace counts the bench recovers every collidable
+pair and the network recovers four. **Whatever the network costs the input side,
+it is not additive noise** -- additive noise averages out, and this does not.
+
+### The hypothesis that fits, and how to kill it
+
+Untested, stated so it can be attacked: **round 1 of CFB block 2 runs on a cache
+already warmed by block 1**, and the warming is independent of `C1`. A collision
+is only visible if the second access would otherwise have missed; if block 1 has
+already pulled that line in, the access hits whether or not `C1` collides, and
+the pair goes dark. Which lines are warm varies per exchange with data unrelated
+to `C1`, so this *masks* signal rather than adding noise -- exactly the
+saturating, non-averaging behaviour measured. The last round is much less
+exposed to it: by round 10 residency is dominated by the current block's own nine
+rounds of accesses.
+
+If that is right the effect is **not about the network at all** -- it is about
+being the second block of a chained mode, and it should reproduce on the bench
+with no Ethernet involved. The test: time two back-to-back AES calls on the
+bench, score round 1 on the second call's input and the last round on its output.
+The hypothesis predicts the same asymmetry over a serial cable. If instead the
+bench shows 24/24 on the second block's input, the hypothesis is dead and the
+network really is the variable.
 
 **Status of the load-bearing claim: round-2 recovery is demonstrated locally and
-NOT demonstrated remotely.** The obstacle is no longer believed to be trace
-count, so the next step is diagnostic rather than more capture -- establish
-whether the input-side channel exists at all on a network oracle, on a victim
-where the same AES call is observable from both sides.
+NOT demonstrated remotely.** The remote input side is measurably present
+(p = 5e-4) but saturates at 4 of 24 pairs, and the cause is neither the
+statistic, nor which call is observed, nor sigma. The next step is the
+two-block bench test above, not more capture.
 
-Still open: the 4-table layout, the remote demonstration aboveStill open: the 4-table layout, the remote demonstration above, and wiring the
+Still open: the two-block bench test above, the remote demonstration, and wiring the
 solver into the package rather than
 [`../research/round2/round2_fullsolve.py`](../research/round2/round2_fullsolve.py)
 and its `_dec` sibling. This document is the
