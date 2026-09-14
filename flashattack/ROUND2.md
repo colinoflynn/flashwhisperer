@@ -10,9 +10,25 @@ round 1: 16/16 byte differences resolved  ->  residual 2^38
 round 2 chose R=10                        ->  2b7e151628aed2a6abf7158809cf4f3c  EXACT
 ```
 
-Still open: the same demonstration on a *decrypt* capture (one is being taken),
-the 4-table layout, and wiring the solver into the package rather than
-[`../research/round2/round2_fullsolve.py`](../research/round2/round2_fullsolve.py). This document is the
+**The decrypt direction is now measured too, not argued.** A fresh 1 M-trace
+tiny-AES ECB-decrypt capture on the F429 (`fw_f4_lib` with the new `Y` batch
+command) reproduces every step:
+
+```
+round 1 granularity sweep:  4-byte granularity, 16/16 differences  -> 2^38
+round 2 low-bit test:       16/16, round-1 control spread 0.0e+00
+round 2 chose R=52, score -18.516 (best wrong -12.066)
+recovered rk10: d014f9a8c9ee2589e13f0cc8b6630ca6   EXACT
+master key    : 2b7e151628aed2a6abf7158809cf4f3c   EXACT
+```
+
+R=52 was predicted from `rk10[0]=0xd0` before the sweep reached it. So the CBC
+bootloader case is fully demonstrated: **supply ciphertext, time the decryption,
+never see a plaintext, recover the master key.**
+
+Still open: the 4-table layout, and wiring the solver into the package rather
+than [`../research/round2/round2_fullsolve.py`](../research/round2/round2_fullsolve.py)
+and its `_dec` sibling. This document is the
 design and the measured evidence behind it, so a later session can start from the
 open questions rather than re-deriving the closed ones.
 
