@@ -59,9 +59,29 @@ A known-plaintext-*only* attacker with a single known block is therefore not
 merely reducing the keyspace on a single-table S-box target, they are **breaking
 it**. The one block is what turns the reduction into a key.
 
-This does not rescue the 4-table case, which fails at every granularity (4/16
-correct regardless of `line_shift`) because the round-1 lookups never share a
-region to collide in.
+**The 4-table case is weaker but not dead, and the earlier reading of it was a
+tool artefact.** `recover_round1_keyspace` reports 4/16 on the mbedTLS
+ECB-decrypt capture, which looks like "the layout does not leak". Scoring every
+pair individually says otherwise — the pairs that resolve correctly are exactly
+the offset-4, -8 and -12 families, and *all* of them do:
+
+| pair offset | 1 | 2 | 3 | **4** | 5 | 6 | 7 | **8** | 9 | 10 | 11 | **12** |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| correct | 1/15 | 0/14 | 0/13 | **12/12** | 1/11 | 0/10 | 0/9 | **8/8** | 0/7 | 0/6 | 0/5 | **4/4** |
+
+Byte positions congruent mod 4 index the *same* `RT` table, so they can share a
+line; everything else cannot. The channel is therefore partitioned into four
+independent groups — `{0,4,8,12}`, `{1,5,9,13}`, `{2,6,10,14}`, `{3,7,11,15}` —
+and within each, all three differences come out correct (12/12 total). The 4/16
+was simply the single-reference propagation being unable to leave byte 0's group.
+
+That leaves 16 x 2 low bits + **four** 6-bit group references = **2^56**: far
+worse than the single-table 2^38, out of brute-force range, but a long way from
+nothing. Linking the four groups is what a round-2 attack would be for, since
+round-2 indices are nonlinear in the key — and round-2 collisions are measured to
+leak just as strongly as round-1 ones (mean dip -2.37 vs -2.31 cycles at 4-byte
+granularity, 101/120 vs 102/120 pairs below -1 on the tiny-AES capture), so the
+obstacle there is the search structure, not the signal.
 
 **Any** single output observation (the last-round attack) is still the better
 route when available, and needs no search at all.
