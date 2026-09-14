@@ -61,7 +61,7 @@ modelling. The rest tells you *what* the leak is and what it would cost.
 | which **side** of the cipher am I observing? | see below — this is the interesting one |
 | encryption or decryption? | which of the two output-side predictors (inverse S-box / forward S-box) fires |
 | **table layout** | which byte offsets carry signal: all of them = one shared table; only offsets 0 mod 4 = four separate tables; one family = a restricted access order |
-| effective line granularity | how many buckets are "fast" at each assumed width |
+| effective line granularity | an UPPER bound only, and biased coarse — see the caveat below |
 | how many traces to be sure | excess over the shuffled floor grows as sqrt(n) |
 
 ### Input side vs output side
@@ -81,21 +81,51 @@ diagonal the S-box does not spread collisions evenly), and the output-side 2^16
 search can find a partition that partly overlaps input-side leakage. What does
 separate them is *concentration*: input-side leakage is a function of
 `B[a] ^ B[b]` alone, so exactly one bucket is fast and stands well clear;
-anything else smears across buckets. Calibrated on captures whose answer is
-known:
+anything else smears across buckets.
 
-| | concentration |
-|---|---:|
-| input-side, F429 tiny-AES decrypt (observed ciphertext) | 1.35 |
-| input-side, F429 tiny-AES encrypt (observed plaintext) | 1.39 |
-| input-side, simulated | 6.17 |
-| output-side, F429 SNMPv3 CFB keystream | 0.45 |
-| output-side, simulated | 0.40 |
-| no channel, simulated | 0.40 |
+Two statistics are needed, not one. The median over all 120 pairs identifies an
+input side when every pair can collide, but reads ~0 when the layout
+**partitions** the channel — in a 4-table implementation only 24 pairs can
+collide and the other 96 drown them. The best-offset-family statistic rescues
+that case, but partitioning raises it on *either* side, so it needs a higher bar.
+
+| capture | truth | pooled | family |
+|---|---|---:|---:|
+| tiny-AES decrypt, observed ciphertext | input | 2.78 | 3.39 |
+| mbedTLS compact decrypt, observed ct | input | 7.73 | 8.93 |
+| mbedTLS 4-table decrypt, observed ct | input | 0.56 | **10.05** |
+| SNMPv3 CFB keystream | output | 0.38 | 0.53 |
+| simulated single-table, observe input | input | 10.45 | 11.34 |
+| simulated 4-table, observe input | input | 0.56 | 24.92 |
+| simulated single-table, observe output | output | 0.50 | 0.85 |
+| simulated 4-table, observe output | output | 0.45 | **2.11** |
+
+Input-side is called if **either** bar is cleared (pooled ≥ 1.0, family ≥ 5.0).
+The narrow case is a partitioned layout seen from the output side (2.11) against
+a partitioned input-side capture (10.05) — about 5×, where unpartitioned cases
+separate by 20×. A 4-table call is the least certain thing this tool says.
+
+The 4-table row was a **hold-out**: it set neither threshold, and the first
+version of this rule got it wrong. Calibration uses only captures with no
+runtime `FLASH_ACR` change.
 
 When neither identifies the side, the tool says **UNDETERMINED** rather than
 guessing. An early version fell through to an "input" verdict whenever the cheap
 test fired, which produced a confidently wrong headline on output-side targets.
+
+### The granularity figure is an upper bound
+
+`assess` reports the width at which the XOR bucketing concentrates most, and that
+is biased toward coarse widths because wider buckets hold more traces and dip
+harder. On the tiny-AES decrypt capture it peaks at 16 bytes, while the round-1
+difference sweep — which asks whether the recovered *differences* are correct at
+each assumed width — resolves 4 bytes on the same data. The difference matters,
+because the round-1 residual is `16*shift + (8-shift)` bits: 2^38 at 4 bytes
+against 2^68 at 16.
+
+Use this figure to bound the answer, then get the real one by sweeping
+`line_shift` against recovered differences
+([`research/round2/round2_decrypt.py`](../research/round2/round2_decrypt.py)).
 
 ## Mode does not matter for detection (mostly)
 

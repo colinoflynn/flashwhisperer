@@ -58,7 +58,38 @@ from . import probe
 #: cost, never a lower one.
 RECOVERY_EXCESS = 0.25
 
+#: Two thresholds, because neither statistic settles it alone.
+#:
+#: `concentration` (median over all 120 pairs) identifies the input side when
+#: every pair can collide, and reads ~0 when the layout PARTITIONS the channel.
+#: `concentration_family` (best offset family) rescues the partitioned case --
+#: but partitioning raises it on EITHER side, so it needs a higher bar.
+#: Measured, real captures first:
+#:
+#:                                             truth    pooled  family
+#:   tiny-AES decrypt, observed ciphertext     input      2.78    3.39
+#:   mbedTLS compact decrypt, observed ct      input      7.73    8.93
+#:   mbedTLS 4-table decrypt, observed ct      input      0.56   10.05
+#:   SNMPv3 CFB keystream                      output     0.38    0.53
+#:   simulated single-table, observe input     input     10.45   11.34
+#:   simulated 4-table,      observe input     input      0.56   24.92
+#:   simulated single-table, observe output    output     0.50    0.85
+#:   simulated 4-table,      observe output    output     0.45    2.11
+#:
+#: A target is called input-side if EITHER bar is cleared; every row above is
+#: then classified correctly. The narrow case is a partitioned layout seen from
+#: the output side (2.11) against a partitioned input-side capture (10.05) --
+#: about 5x, where unpartitioned cases separate by 20x. Treat a 4-table call as
+#: the least certain thing this tool says.
+#:
+#: The 4-table row was a hold-out: it was not used to set either threshold, and
+#: on the first version of this rule it was misclassified. Calibration uses only
+#: captures with NO runtime FLASH_ACR change; the encrypt vector used earlier
+#: went through a defective ACR handler and is excluded.
 CONCENTRATION_FIRES = 1.0
+
+#: Bar for the best-offset-family statistic, which only partitioned layouts clear.
+CONCENTRATION_FAMILY_FIRES = 5.0
 
 
 @dataclass
@@ -175,16 +206,25 @@ def assess(blocks, timing, *, quick=False, seed=0) -> Assessment:
     # clear; anything else smears. It peaks at the true line width, which is
     # therefore also the granularity estimate.
     conc = {s: r.detail.get("concentration", 0.0) for s, r in sweep.items()}
+    fam = {s: r.detail.get("concentration_family", 0.0) for s, r in sweep.items()}
     a.tests["xor_concentration"] = conc
-    best_shift = max(conc, key=conc.get)
-    input_side = conc[best_shift] >= CONCENTRATION_FIRES
+    a.tests["xor_concentration_family"] = fam
+    partitioned = (max(conc.values()) < CONCENTRATION_FIRES
+                   and max(fam.values()) >= CONCENTRATION_FAMILY_FIRES)
+    best_shift = max(fam, key=fam.get) if partitioned else max(conc, key=conc.get)
+    input_side = (max(conc.values()) >= CONCENTRATION_FIRES) or partitioned
     shift = best_shift if input_side else 2
 
     if input_side:
         a.add("what the observed block is", "consistent with the cipher INPUT",
               "strong",
-              f"the XOR bucketing concentrates ({conc[best_shift]:.2f} at "
-              f"{1 << best_shift} bytes, threshold {CONCENTRATION_FIRES:.1f}); "
+              f"the XOR bucketing concentrates (pooled {max(conc.values()):.2f} "
+              f"vs {CONCENTRATION_FIRES:.1f}, best offset family "
+              f"{max(fam.values()):.2f} vs {CONCENTRATION_FAMILY_FIRES:.1f}, at "
+              f"{1 << best_shift} bytes"
+              + ("; only the family bar cleared, so the layout partitions the "
+                 "channel and this call is the less certain kind" if partitioned else "")
+              + "); "
               "only a lookup indexed by block^key makes one bucket stand out "
               "like that")
         a.add("recoverable key material",
@@ -193,9 +233,16 @@ def assess(blocks, timing, *, quick=False, seed=0) -> Assessment:
               "the key enters before the lookup and linearly; a round-2 pass "
               "can finish it on a single-table implementation "
               "(see flashattack/ROUND2.md)")
-        a.add("effective line granularity", f"{1 << shift} bytes", "strong",
-              "the XOR bucketing concentrates at this width and nowhere else: "
-              + ", ".join(f"{1<<s}B:{c:.2f}" for s, c in conc.items()))
+        a.add("effective line granularity",
+              f"no finer than {1 << shift} bytes", "weak",
+              "the width where the XOR bucketing concentrates most: "
+              + ", ".join(f"{1<<s}B:{c:.2f}" for s, c in conc.items())
+              + ". This is an UPPER bound and biased coarse -- wider buckets "
+              "hold more traces and so dip harder. On a capture where the "
+              "round-1 difference sweep resolves 4-byte granularity, this "
+              "statistic still peaks at 16. For the real number, sweep "
+              "line_shift against recovered differences instead "
+              "(research/round2/round2_decrypt.py)")
     else:
         a.notes.append("line granularity not estimated: that reading comes from "
                        "the input-side model, which does not fit here")
@@ -268,8 +315,10 @@ def _conclude(a: Assessment, inp, enc, dec, shift, input_side_already=False,
     # The 2^16 search is not specific either: given 65536 guesses it can find a
     # partition that partly overlaps genuine input-side leakage. So when the XOR
     # bucketing has already concentrated, the input-side reading wins.
-    if a.tests.get("xor_concentration") and max(
-            a.tests["xor_concentration"].values()) >= CONCENTRATION_FIRES:
+    if (a.tests.get("xor_concentration")
+            and (max(a.tests["xor_concentration"].values()) >= CONCENTRATION_FIRES
+                 or max(a.tests.get("xor_concentration_family", {0: 0}).values())
+                 >= CONCENTRATION_FAMILY_FIRES)):
         out_fired = []
 
     if input_side_already:

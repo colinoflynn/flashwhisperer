@@ -277,12 +277,17 @@ def pair_input_test(blocks, timing, line_shift=2, n_shuffle=64, seed=0) -> TestR
                 # input-side read at the wrong width.
                 zs = np.sort(z)
                 if zs.size >= 4:
-                    conc.append(float((zs[1] - zs[0]) / (zs[1:].std() + 1e-9)))
+                    c = float((zs[1] - zs[0]) / (zs[1:].std() + 1e-9))
+                    conc.append(c)
+                    conc_by_off.setdefault(
+                        min((pairs[k][1] - pairs[k][0]) % 16,
+                            (pairs[k][0] - pairs[k][1]) % 16), []).append(c)
         return tot / len(vs)
 
     per_pair: dict = {}
     fast: list = []
     conc: list = []
+    conc_by_off: dict = {}
     obs = stat(y, per_pair, fast)
     rng = np.random.default_rng(seed)
     null = np.array([stat(rng.permutation(y)) for _ in range(n_shuffle)])
@@ -291,7 +296,24 @@ def pair_input_test(blocks, timing, line_shift=2, n_shuffle=64, seed=0) -> TestR
     return TestResult("pair_input", -obs, -float(null.mean()), float(null.std()),
                       n, {"per_pair": per_pair, "line_shift": line_shift,
                           "fast_buckets": nf,
+                          # Two statistics, because one does not do the job.
+                          # "concentration" is the median over all 120 pairs. It
+                          # identifies an input side cleanly when every pair can
+                          # collide, and reads ~0 when the layout PARTITIONS the
+                          # channel -- in a 4-table implementation only 24 pairs
+                          # can collide and the other 96 drown them. Hold-out
+                          # validation caught exactly that: a genuinely
+                          # input-side mbedTLS 4-table capture scored 0.56.
+                          # "concentration_family" is the best offset family,
+                          # which rescues the partitioned case -- but it is
+                          # raised by partitioning on EITHER side, so it cannot
+                          # be used alone. See hypotheses.py for how they combine.
                           "concentration": float(np.median(conc)) if conc else 0.0,
+                          "concentration_family": (max(float(np.median(v))
+                                                       for v in conc_by_off.values())
+                                                   if conc_by_off else 0.0),
+                          "concentration_by_offset": {k: float(np.median(v))
+                                                      for k, v in sorted(conc_by_off.items())},
                           "implied_shift": (line_shift + np.log2(nf)) if nf >= 1 else None})
 
 
