@@ -10,7 +10,8 @@ part worth keeping and generalising.
 flashattack/
   aesref.py      reference AES-128/192/256 (enc/dec, key-schedule + inversion), FIPS-197 verified
   sm4.py         SM4 (GM/T 0002) reference + partial leak (Feistel -> top-nibble only; see EXPERIMENTAL.md)
-  EXPERIMENTAL.md  partial results & their structural ceilings (known-plaintext-only; SM4)
+  EXPERIMENTAL.md  partial results & their structural ceilings (SM4, ARIA/Camellia)
+  ROUND2.md        round-2 collisions: full key from ONE side of the cipher
   bruteforce.py  batched multi-key AES: 2^24 candidate keys in ~26 s (finishes an uneven vote)
   engine.py      unified last-round cache-collision engine + robust assembler; recover_full (192/256)
   modes.py       AES mode -> block the attacker reconstructs (ECB/CBC/CTR/GCM/CMAC, enc+dec)
