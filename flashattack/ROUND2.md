@@ -50,8 +50,49 @@ configuration of the most widely deployed embedded TLS stack gives up its key
 from **ciphertext and timing alone**, with no plaintext ever observed and no
 verification pair.
 
-Still open: the 4-table layout, and wiring the solver into the package rather
-than [`../research/round2/round2_fullsolve.py`](../research/round2/round2_fullsolve.py)
+## Everything above is a LOCAL result. Remote is not demonstrated yet.
+
+Worth stating plainly, because the claim this work leans on -- that round-2
+analysis does not need chosen input, against three papers that concluded it does
+-- is about the **remote** setting, and every recovery above used an on-chip
+SysTick over a serial link.
+
+Tested on a real network capture and it does not yet work. The SNMPv3 demo is
+the right vehicle: under CFB the second keystream block is `E(K, C1)`, so
+ciphertext block 1 is the block cipher's *input* and it travels in clear.
+Running round 1 on `(C1, network round-trip time)` and never touching the stored
+keystream:
+
+| assumed line width | 4 B | 8 B | 16 B |
+|---|---:|---:|---:|
+| differences correct | 1/8 | 1/1 | 1/1 |
+
+Round 1 does not resolve, so round 2 has nothing to finish.
+
+**But the cause is noise, not the remote setting.** Take the bench capture that
+resolves cleanly, add Gaussian noise to bring its sigma from 31.6 to the
+network's 101, and it reproduces the failure exactly -- then recovers when given
+more traces:
+
+| sigma | 250 k | 500 k | 1 M |
+|---|---:|---:|---:|
+| 31.6 (bench) | 16/16 | 16/16 | 16/16 |
+| 101 (network-equivalent) | **1/16** | 1/16 | **15/15** |
+
+The synthetic capture at 250 k gives 1/16, which is what the real network
+capture gives. So nothing structural about observing over Ethernet blocks this;
+the crossover is between 500 k and 1 M traces.
+
+**The experiment that would settle it** is a 1 M-exchange SNMPv3 capture -- about
+45 minutes at the measured 379 exchanges/s -- with the prediction above
+registered in advance. Until that runs, the honest statement is that remote
+round-2 recovery is *predicted* to work at ~1 M traces and *demonstrated* only
+locally. [`../research/round2/round2_network.py`](../research/round2/round2_network.py)
+is the harness.
+
+Still open: the 4-table layout, the remote demonstration above, and wiring the
+solver into the package rather than
+[`../research/round2/round2_fullsolve.py`](../research/round2/round2_fullsolve.py)
 and its `_dec` sibling. This document is the
 design and the measured evidence behind it, so a later session can start from the
 open questions rather than re-deriving the closed ones.
