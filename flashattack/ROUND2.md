@@ -26,6 +26,30 @@ R=52 was predicted from `rk10[0]=0xd0` before the sweep reached it. So the CBC
 bootloader case is fully demonstrated: **supply ciphertext, time the decryption,
 never see a plaintext, recover the master key.**
 
+**It is not confined to toy implementations.** The same solver, unchanged, on a
+1 M-trace decrypt capture of **mbedTLS built with `MBEDTLS_AES_FEWER_TABLES`** --
+a documented flash-saving option, not an exotic configuration:
+
+```
+round 1: 16/16 differences resolved            -> residual 2^38
+round 2 chose R=52, score -43.470              (best wrong -12.010)
+recovered rk10: d014f9a8c9ee2589e13f0cc8b6630ca6   EXACT
+master key    : 2b7e151628aed2a6abf7158809cf4f3c   EXACT
+```
+
+R=52 was predicted from `rk10[0]=0xd0` before the sweep reached it, as on the
+tiny-AES run.
+
+The margin is **31.5 against tiny-AES's 6.5** -- about five times stronger. That
+is the T-table geometry rather than luck: 4-byte entries put 4 per 16-byte line
+where a byte S-box puts 16, so each collision constrains more. It matches the
+older finding that a compact T-table "leaks more richly than the S-box".
+
+So the claim is not "a toy AES falls to this". It is that a shipped
+configuration of the most widely deployed embedded TLS stack gives up its key
+from **ciphertext and timing alone**, with no plaintext ever observed and no
+verification pair.
+
 Still open: the 4-table layout, and wiring the solver into the package rather
 than [`../research/round2/round2_fullsolve.py`](../research/round2/round2_fullsolve.py)
 and its `_dec` sibling. This document is the
