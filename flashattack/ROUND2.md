@@ -69,28 +69,49 @@ keystream:
 
 Round 1 does not resolve, so round 2 has nothing to finish.
 
-**But the cause is noise, not the remote setting.** Take the bench capture that
-resolves cleanly, add Gaussian noise to bring its sigma from 31.6 to the
-network's 101, and it reproduces the failure exactly -- then recovers when given
-more traces:
+**A noise-matched control predicted this was only a trace-count problem, and
+that prediction was wrong.** Adding Gaussian noise to the bench capture to bring
+its sigma from 31.6 to the network's 101 reproduced the 250 k failure exactly
+(1/16) and then recovered at 1 M (15/15), so ~1 M network traces were predicted
+to suffice.
 
-| sigma | 250 k | 500 k | 1 M |
+A 1 M-exchange capture was taken -- 45 minutes of traffic, 0 timeouts -- and it
+does **not** work:
+
+| 1 M capture, 717 099 traces kept, sigma 60.1 | 4 B | 8 B | 16 B |
 |---|---:|---:|---:|
-| 31.6 (bench) | 16/16 | 16/16 | 16/16 |
-| 101 (network-equivalent) | **1/16** | 1/16 | **15/15** |
+| differences resolved | 1/16 | 1/16 | 1/16 |
 
-The synthetic capture at 250 k gives 1/16, which is what the real network
-capture gives. So nothing structural about observing over Ethernet blocks this;
-the crossover is between 500 k and 1 M traces.
+Note the conditioned sigma is **60.1**, not the 101 the extrapolation assumed, on
+4.3x as many kept traces. Quieter and larger, and still nothing.
 
-**The experiment that would settle it** is a 1 M-exchange SNMPv3 capture -- about
-45 minutes at the measured 379 exchanges/s -- with the prediction above
-registered in advance. Until that runs, the honest statement is that remote
-round-2 recovery is *predicted* to work at ~1 M traces and *demonstrated* only
-locally. [`../research/round2/round2_network.py`](../research/round2/round2_network.py)
-is the harness.
+**The reason is not trace count. There is no input-side signal to find.**
+Checking per-pair *with the key supplied*, which removes any question of the
+recovery method:
 
-Still open: the 4-table layout, the remote demonstration above, and wiring the
+| | pairs correct | chance |
+|---|---:|---:|
+| 4-byte granularity | 5/120 | 1.9 |
+| 16-byte granularity | **9/120** | **7.5** |
+
+Nine against a chance level of seven and a half is a null. The same capture's
+*output* side -- the CFB keystream, `E(K, IV)` -- yields the full key at 100 k
+traces. So on this victim the channel is strongly present from the output side
+and absent from the input side, at a trace count ten times larger.
+
+Two candidate explanations, neither tested: the input-side statistic buckets
+linearly into 16 or 64 bins while the last-round attack searches 2^16 guesses
+through a non-linear predictor, so they are not equally powerful instruments;
+and the AES whose input is observable here (CFB block 2, input `C1`) is not the
+same AES call whose output the working attack uses (block 1, input the IV).
+
+**Status of the load-bearing claim: round-2 recovery is demonstrated locally and
+NOT demonstrated remotely.** The obstacle is no longer believed to be trace
+count, so the next step is diagnostic rather than more capture -- establish
+whether the input-side channel exists at all on a network oracle, on a victim
+where the same AES call is observable from both sides.
+
+Still open: the 4-table layout, the remote demonstration aboveStill open: the 4-table layout, the remote demonstration above, and wiring the
 solver into the package rather than
 [`../research/round2/round2_fullsolve.py`](../research/round2/round2_fullsolve.py)
 and its `_dec` sibling. This document is the
