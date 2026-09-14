@@ -14,7 +14,14 @@ structures fail one or the other.
 
 **Scenario:** the attacker sees the *inputs* (plaintext) and timing but **not the
 ciphertext** (e.g. a device that encrypts chosen/known plaintexts without exposing
-output, or the first block of a CMAC).
+output, or the first block of a CMAC). The mirror image is a decryption with
+chosen ciphertext, where the input is likewise known and the output is not.
+
+> **Outcome, updated:** on a **single-table** implementation this is a full key
+> recovery, not a partial one — round 1 reduces to 2^38 and round 2 finishes the
+> job from timing alone. What remains genuinely partial is the **4-table** case
+> (2^56, and round 2 does not decompose there). The rest of this section is the
+> round-1 analysis that gets you to the residual.
 
 **Method:** round-1 S-box index = `pt ^ k0`, and `topbits(pt^k0) = topbits(pt) ^
 topbits(k0)`, so two positions collide iff `topbits(pt[a])^topbits(pt[b]) ==
@@ -53,11 +60,32 @@ S-box is **2^38, not 2^68**. Verified: the true key satisfies all sixteen
 recovered constraints, and random keys satisfy them at the expected 2^-90 rate,
 so the constraints are not vacuous.
 
-**That changes the verdict.** 2^38 is about 2.7e11 candidates, each settled by one
-known (plaintext, ciphertext) pair — hours on a CPU with AES-NI, minutes on a GPU.
-A known-plaintext-*only* attacker with a single known block is therefore not
-merely reducing the keyspace on a single-table S-box target, they are **breaking
-it**. The one block is what turns the reduction into a key.
+**That changes the verdict, and round 2 changes it again — the single-table case
+is now a full break with no known block at all.** 2^38 is about 2.7e11
+candidates, each settled by one known (plaintext, ciphertext) pair, so a single
+known block already turns the reduction into a key. But the residual does not
+have to be enumerated: round-2 collision indices are nonlinear in the key and
+resolve the remaining bits directly. Measured end to end on this capture
+(250 k traces, tiny-AES on the F429, ART on):
+
+```
+round 1: 16/16 byte differences resolved, 16 correct
+  residual after round 1: 2^38
+round 2 chose R=10, score -19.494  (734s)
+recovered round-0 key: 2b7e151628aed2a6abf7158809cf4f3c
+truth                : 2b7e151628aed2a6abf7158809cf4f3c
+16/16 bytes correct -> EXACT
+```
+
+The attacker here sees **plaintexts and a per-operation time, and nothing else**
+— no ciphertext, no known (P,C) pair, no verification oracle. The key falls in
+12 minutes of CPU. So for a **single-table** implementation, "known-plaintext
+only" is not a keyspace reduction at all; it is a break, and this section's
+original framing was too pessimistic by the whole 2^38.
+
+See [`ROUND2.md`](ROUND2.md) for the decomposition that makes it cheap (four
+independent per-column searches) and [`../research/round2/round2_fullsolve.py`](../research/round2/round2_fullsolve.py)
+for the run above.
 
 **The 4-table case is weaker but not dead, and the earlier reading of it was a
 tool artefact.** `recover_round1_keyspace` reports 4/16 on the mbedTLS

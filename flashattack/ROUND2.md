@@ -1,10 +1,18 @@
 # Round-2 collisions: finishing the key when only the *input* is known
 
-**Status: feasibility established on recorded hardware, not implemented.** The
-signal exists, the decomposition works, the full per-column search recovers the
-true candidate out of 16 384 at 100 k traces in about a minute, and the trace
-requirement is modest. What is missing is the solver wired into the pipeline, the
-decrypt-direction derivation, and a hardware validation run. This document is the
+**Status: demonstrated end to end on recorded hardware.** Round 1 + round 2
+recovers the **complete AES-128 key** from plaintexts and timing alone — no
+ciphertext, no known (P,C) pair, no verification oracle — on the 250 k tiny-AES
+F429 capture, in 734 s of CPU:
+
+```
+round 1: 16/16 byte differences resolved  ->  residual 2^38
+round 2 chose R=10                        ->  2b7e151628aed2a6abf7158809cf4f3c  EXACT
+```
+
+Still open: the same demonstration on a *decrypt* capture (one is being taken),
+the 4-table layout, and wiring the solver into the package rather than
+[`../research/round2/round2_fullsolve.py`](../research/round2/round2_fullsolve.py). This document is the
 design and the measured evidence behind it, so a later session can start from the
 open questions rather than re-deriving the closed ones.
 
@@ -189,12 +197,28 @@ schedule risk is item 5, not the cryptanalysis.
 ## Open problems
 
 **The 4-table layout does not decompose this way, and this is the real open
-question.** In a T-table round the four lookups of a column go to `RT0..RT3` —
-*different* tables — so same-column round-2 pairs can never collide. The pairs
-that can are same-row-across-columns, and those draw on **two** diagonals: 8 key
-bytes, which with round-1's four group references is 24 + 16 + 6 = **46 bits**
-per relation. Too big for a direct sweep; would need a meet-in-the-middle or an
-incremental scheme. Low priority, because a 4-table target with any known
+question — but it is a search problem, not a signal problem.** Measured on the
+mbedTLS ECB-decrypt capture (120 k traces), predicting round-2 state with the
+true key:
+
+| | same-table pairs (offset ≡ 0 mod 4) | cross-table pairs |
+|---|---:|---:|
+| round 1 | −3.335 cyc (24 pairs) | −0.044 (96 pairs) |
+| **round 2** | **−2.555 cyc** | −0.055 |
+
+So round-2 collisions are there, on the same four families round 1 uses, at about
+three quarters of round 1's strength; cross-table pairs are flat in both rounds,
+as the separate-flash-region argument requires.
+
+What does not carry over is the decomposition. In a T-table round the four
+lookups of a column go to `RT0..RT3` — *different* tables — so same-column
+round-2 pairs can never collide, and the pairs that can are
+same-row-across-columns, drawing on **two** diagonals: 8 key bytes, which with
+round-1's four group references is 24 + 16 + 6 = **46 bits** per relation. A
+round-1 x round-2 cross-round pair in the same table is cheaper (1 + 4 key bytes)
+but still carries all four group references, ~40 bits. Both are too big for a
+direct numpy sweep and would want a GPU or a meet-in-the-middle; neither is
+attempted here. Low priority, because a 4-table target with any known
 plaintext falls to the ordinary last-round attack (its final round uses the single
 256-byte `RSb`, which is exactly why the SNMPv3 and TLS demos work on mbedTLS).
 
