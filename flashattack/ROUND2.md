@@ -342,6 +342,41 @@ at sigma 97.3, and round 1 resolves **globally**:
 global reference round 2 requires. Whether the round-2 search completes from it
 is running at the time of writing and is the one thing still unreported.
 
+## Demonstrated remotely: the full key, input side only
+
+The claim this document exists to support is now measured rather than argued.
+On a 1 M-exchange SNMPv3 capture against a single-table `DCEN=1` victim, using
+only `C1` off the wire and never reading the keystream:
+
+| step | result |
+|---|---|
+| round 1 | 16/16 key-byte differences correct at 8-byte granularity |
+| round 2 | R=23, score -13.845 vs runner-up -11.822 (margin 2.023); 13/16 bytes exact |
+| residual | every error confined to the low 3 bits round 2 owns -- round 1's top 5 bits were correct for all 16 |
+| finish | 38,498 candidate tests against `E(K,C1)==ks2`, a pair free off the wire |
+| key | `befa18829b1376e8d5d0d232ce6ecf5b` **EXACT** |
+
+[`../research/round2/round2_complete.py`](../research/round2/round2_complete.py)
+does the last step; it needs no new traces and no statistics, so 13/16 was never
+a failure but a 2^9-shaped residual in a known structure.
+[`../research/round2/round2_parallel.py`](../research/round2/round2_parallel.py)
+runs the search across processes with per-offset checkpointing: 3,376 s against
+the serial version's 5.4 h, after a machine crash destroyed 2.8 h of the latter.
+
+### It also survives an Ethernet switch -- but not a 10 Mbit link
+
+Three switches and a direct cable, each a full seam-free 1 M verified byte-exact
+at start, middle and end. At 100 Mbit a switch is free: round 1 resolves 16/16
+on the direct cable and on both 100 Mbit switches, with sigma ~97-104 and the
+dip within 10% across all three. On a 10 Mbit link the arrival time is quantised
+ten times more coarsely, sigma collapses to 13.7, the dip goes to -0.016 and
+nothing resolves.
+
+An earlier draft of this section blamed a particular switch for re-timing frames
+and costing ~1e8 traces. That was wrong: the variable is link speed, invisible
+from the host, and the same two switches produced both outcomes on different
+sessions. See [`../demos/snmpv3/README.md`](../demos/snmpv3/README.md).
+
 Still open: the round-2 search on that single-table capture, linking the four
 groups of a 4-table victim, and wiring the
 solver into the package rather than
