@@ -110,6 +110,21 @@ independent groups — `{0,4,8,12}`, `{1,5,9,13}`, `{2,6,10,14}`, `{3,7,11,15}` 
 and within each, all three differences come out correct (12/12 total). The 4/16
 was simply the single-reference propagation being unable to leave byte 0's group.
 
+**Solve the group jointly rather than pair by pair.** The per-pair argmin above
+treats each of a group's six histograms separately. Scoring one hypothesis
+`(d1,d2,d3)` against all six at once
+([`../research/round2/round1_joint.py`](../research/round2/round1_joint.py))
+shares evidence across the group and is measurably stronger: on the bench capture
+it recovers all 12 within-group unknowns at **25 k** traces where per-pair
+scoring still reads 20/24 and needs 50 k. On the SNMPv3 network capture with the
+data cache on it gives 12/12 at both 4-byte and 16-byte granularity.
+
+It is not a cure-all. Against a weak channel the gain is bounded by how much
+there is to pool -- six pairs per group here, against ~15 per byte on the output
+side -- and on a `DCEN=0` network capture joint scoring moves 4/24 pairs to only
+2 of 12 unknowns. Pooling six pairs cannot cover a 70x amplitude deficit.
+
+
 That leaves 16 x 2 low bits + **four** 6-bit group references = **2^56**: far
 worse than the single-table 2^38, out of brute-force range, but a long way from
 nothing. Linking the four groups is what a round-2 attack would be for, since

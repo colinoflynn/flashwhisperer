@@ -285,26 +285,68 @@ input/output asymmetry. Both are what a DCEN=0 victim looks like from either
 side, and the last round survives only because it pools ~15 pairs per byte where
 a 4-table round 1 gets 6.
 
-### What that implies, and it cuts both ways
+### Confirmed over Ethernet: DCEN=1 brings round 1 alive
 
-The two attacks want **opposite** settings of the same bit:
+The prediction above was tested. The SNMPv3 victim gained a `DCACHE=1` build
+(`make ROMTABLES=1 DCACHE=1`, banner verified at `0x705`) and a clean 1 M capture
+was taken over the same link -- 717 896 kept, sigma 71.4, zero timeouts, zero
+batch failures.
 
-* `DCEN=0` (ST's example headers): round-1/round-2 is out of reach -- at
-  dip/sigma 2.8e-3 a single pair needs order 1e8 traces -- while the last-round
-  attack still recovers a key.
-* `DCEN=1` (CubeMX default): round 1 resolves 24/24 at 717 k on the bench, but
-  the OSCORE demo measured the *remote last-round* attack going to 0/16 at 524 k
-  because sigma rises.
+| victim, over Ethernet, ~717 k kept | sigma | dip (4 B) | dip/sigma | round-1 pairs | joint unknowns | last round |
+|---|---:|---:|---:|---:|---:|---:|
+| `0x305` DCEN=0 | 60.1 | -0.060 | -1.0e-3 | 4/24 | 2/12 | 15/16 |
+| **`0x705` DCEN=1** | 71.4 | **-3.627** | -5.1e-2 | **22/24** | **12/12** | 16/16, key EXACT |
 
-So enabling the data cache is not a mitigation in general. It trades a
-last-round attack for a round-1 one. Whether the round-1 half of that trade
-actually carries over a network is the remaining question, and it is now a
-concrete prediction rather than a mystery: the bench dip at `0x705` is 3.70
-victim cycles (4.44 attacker cycles), so against a `0x705` network victim with
-the OSCORE demo's measured sigma of ~155, dip/sigma is ~0.029 and a per-pair
-resolution needs order 1.2e6 traces.
+The measured dip of -3.627 attacker cycles sits against -3.700 on the bench and
+-3.634 on an earlier 250 k run: **bench amplitude carries over the network,
+reproducibly.** Round 1 resolves 12/12 within-group unknowns at both 4-byte and
+16-byte granularity.
 
-Still open: the DCEN=1 remote prediction above, and wiring the
+**A trade-off framing written here earlier is withdrawn.** From a 250 k capture
+(sigma 107.3) whose last-round vote read 2/16, this section said the bit trades a
+last-round attack for a round-1 one. At sigma 71.4 the last round recovers the
+key outright, so at this trace count `DCEN=1` gives the attacker *both*. That
+250 k capture was taken immediately before the attacker board hung and its sigma
+is suspect. What survives is the solid half: `DCEN=0` leaves round 1 dead,
+`DCEN=1` brings it fully alive, and the data cache is not a mitigation. The
+OSCORE demo's `DCEN=1` last-round null (0/16 at 524 k) is a different victim
+(TinyCrypt, sigma 154.6) and its round-1 behaviour there is untested.
+
+### Four tables give four references, not one
+
+Round 1 resolving is necessary but not sufficient. The round-2 search needs a
+**single global reference** `R`: it assumes every byte's top bits are known
+relative to byte 0. A 4-table layout splits the 16 bytes into four sets that
+never collide with each other, so round 1 yields **four independent** reference
+offsets. Linking them is a separate problem and more traces do not touch it.
+
+`round2_network.py` used to gate on `recover_round1_keyspace` reaching 16/16 and
+so printed "round 1 does not resolve -- round 2 has nothing to finish" on the
+capture above, whose round 1 is fully solved. That is the propagation ceiling
+once more: byte 0 reaches only {0,4,8,12}, so 4/16 is the most that gate can ever
+see. It now runs the joint group solve, reports 12/12, and names the real
+obstacle rather than blaming the channel.
+
+The capture that settles the remote round-2 claim is therefore a **single-table**
+victim, where all 120 pairs collide and round 1 gives one reference across all 16
+bytes: `make ROMTABLES=1 DCACHE=1 COMPACT=1`. Taken, 1 M exchanges, 724 646 kept
+at sigma 97.3, and round 1 resolves **globally**:
+
+| assumed line width | resolved | correct |
+|---|---:|---:|
+| 4 B | 16/16 | 11/16 |
+| **8 B** | **16/16** | **16/16** |
+| 16 B | 14/16 | 14/14 |
+
+16/16 correct at 8-byte granularity, input side only, residual 2^53 -- the single
+global reference round 2 requires. Whether the round-2 search completes from it
+is running at the time of writing and is the one thing still unreported.
+
+Still open: the round-2 search on that single-table capture, linking the four
+groups of a 4-table victim, and wiring the
+solver into the package rather than
+[`../research/round2/round2_fullsolve.py`](../research/round2/round2_fullsolve.py)
+and its `_dec` sibling. This document is the
 solver into the package rather than
 [`../research/round2/round2_fullsolve.py`](../research/round2/round2_fullsolve.py)
 and its `_dec` sibling. This document is the
