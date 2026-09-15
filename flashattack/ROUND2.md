@@ -388,6 +388,47 @@ and its `_dec` sibling. This document is the
 design and the measured evidence behind it, so a later session can start from the
 open questions rather than re-deriving the closed ones.
 
+### A partial round-2 result is not a failure: rank the columns
+
+The switch #2 capture first reported **8/16 bytes correct -- MISMATCH**, against
+13/16 on the direct cable. Round 1 was identical on both (16/16 at 8-byte
+granularity) and both chose the same, correct, R=23, so the top 5 bits of every
+byte were right and all eight errors sat in the low 3 bits round 2 owns.
+
+Searching those blindly is 2^36. But round 2 scores all 4096 low-bit
+combinations per column and reports only the best one, so the real question is
+where the TRUE combination ranks
+([`../research/round2/round2_rank.py`](../research/round2/round2_rank.py)):
+
+| column | bytes | rank of truth |
+|---|---|---:|
+| 0 | 0, 5, 10, 15 | 775/4096 |
+| 1 | 4, 9, 14, 3 | **0** |
+| 2 | 8, 13, 2, 7 | **0** |
+| 3 | 12, 1, 6, 11 | 75/4096 |
+
+Two columns were already exact. Only two needed a deeper look, and because the
+columns are independent and their scores add, the cost is the product of those
+ranks rather than the worst one raised to the fourth power -- about 6e4 against
+3.6e11, seven orders of magnitude apart.
+
+[`../research/round2/round2_finish.py`](../research/round2/round2_finish.py)
+walks the four ranked lists best-first against the free `E(K,C1)==ks2` oracle:
+
+```
+EXACT after 295,791 verifications   column ranks used: [775, 0, 0, 75]
+key = befa18829b1376e8d5d0d232ce6ecf5b
+```
+
+**So the key is recovered over Ethernet through a switch, input side only.** The
+product of ranks (about 6e4) is a lower bound on the search, not the count: a
+best-first walk of the score lattice visits nodes outside the strict rank
+rectangle, which is where the remaining factor of five went.
+
+The lesson for reading these results: a round-2 byte count is the rank-0
+projection of a four-column search, and quoting it alone understates what the
+capture contains. Rank the columns before calling a capture short.
+
 ## What it buys, and when it is worth anything
 
 The last-round attack needs the block cipher's **output**. Two important cases do
