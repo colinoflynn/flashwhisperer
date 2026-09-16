@@ -14,8 +14,29 @@ nothing else, so it is easy to lift out.
 ```bash
 python -m flashleak analyse capture.npz          # recorded blocks + timings
 python -m flashleak probe  mymod:MyTarget()      # drive a live device
+python -m flashleak fwscan firmware.bin          # static triage before any hardware
 python -m flashleak selftest                     # check it against known truth
 ```
+
+## Before the hardware: `fwscan`
+
+Cheapest question first — is this target even in scope? Given a firmware image
+(a vendor's download, or a dump), `fwscan` reports whether the head parses as a
+Cortex-M vector table (so it executes in place from flash, rather than being a
+Linux image running from SDRAM), and then which AES table layout is present:
+
+| what it finds | what it means |
+|---|---|
+| four T-tables (`Te0..Te3`) | round 2 resists; the last round still falls |
+| one T-table + S-box | leaks, and is round-2 recoverable from one side |
+| decryption T-tables (`Td0..Td3`) | 1 KB+ of inverse tables — exceeds the F2/F4 128 B **and** the G4/L4 256 B cache, so it leaks on every measured band. A bootloader is often decrypt-only and carries `Td` with no `Te` at all |
+| Gladman `sbox`+`gfm2_sb`+`gfm3_sb` | the LoRaMac-node `soft-se` layout, broken here at 16/16 |
+| byte S-box only | leaks wherever the data cache is smaller than 256 B |
+| nothing | constant-time/bitsliced, or tables built into RAM — not exposed |
+
+It is checked against the four firmware builds in `hardware/fw_f4_lib/` whose
+keys were actually recovered on the F429, so the layouts it reports are known
+truth rather than a guess (`tests/test_fwscan.py`).
 
 ## The two situations
 

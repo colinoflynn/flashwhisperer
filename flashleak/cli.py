@@ -4,6 +4,8 @@
   probe   TARGET       drive a live target, then assess what it gave back
   selftest             run the detector against simulated targets whose answers
                        are known, including the negative controls
+  fwscan  PATH         static triage of a firmware image, directory or archive:
+                       XIP MCU? AES tables in flash, and in which layout?
 
 A recorded file is an .npz or .csv. For .npz the block array is found by trying
 the usual names (blocks, window, ciphertext, keystream, plaintext, data, pts)
@@ -150,6 +152,12 @@ def cmd_selftest(a):
     return 1 if bad else 0
 
 
+def cmd_fwscan(a):
+    from . import fwscan as fw
+    return fw.run(a.image, base=a.base, decompress=a.decompress,
+                  only_hits=a.only_hits)
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="flashleak", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -179,6 +187,16 @@ def main(argv=None):
     st.add_argument("--n", type=int, default=0)
     st.add_argument("--quick", action="store_true")
     st.set_defaults(fn=cmd_selftest)
+
+    fs = sub.add_parser("fwscan", help="triage a firmware image before touching hardware")
+    fs.add_argument("image")
+    fs.add_argument("--base", type=lambda s: int(s, 0), default=None,
+                    help="flash base address, if the vector table is not at offset 0")
+    fs.add_argument("--decompress", action="store_true",
+                    help="also scan decompressible streams inside the image")
+    fs.add_argument("--only-hits", action="store_true",
+                    help="for archives/directories, print only members with findings")
+    fs.set_defaults(fn=cmd_fwscan)
 
     a = p.parse_args(argv)
     return a.fn(a) or 0
