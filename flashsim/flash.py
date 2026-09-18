@@ -7,16 +7,45 @@ Microcontroller flash is wider than the CPU word (commonly 64 or 128 bits) and
 slower than the core at speed, so it needs wait states. Three *different* things
 reduce that cost, and they are not the same:
 
-1. FLASH DATA WIDTH  +  ROW LATCH  (the fundamental one; universal)
+1. FLASH DATA WIDTH  +  ROW LATCH  (fundamental where it exists -- NOT universal)
    The flash array physically reads a whole row at once -- e.g. 128 bits = 16
    bytes -- into a single output register. A subsequent access whose address
    falls in that *same row* is returned straight from the register with no new
    array read, so it is fast; an access to a different row triggers a fresh
-   flash read and pays wait states. This needs no "accelerator": every wide
-   flash has one current-row register (TI literally calls it a "read buffer").
-   It holds exactly ONE row -- only reuse of the *immediately preceding* row is
-   caught. In this model: `FlashModel.row_latch(...)`  == ways=1, sets=1.
-   -> This alone is enough for the S-box adjacent-collision channel.
+   flash read and pays wait states. It holds exactly ONE row -- only reuse of
+   the *immediately preceding* row is caught. In this model:
+   `FlashModel.row_latch(...)` == ways=1, sets=1.
+   -> Where it exists, this alone is enough for the S-box adjacent-collision
+      channel, and it CANNOT BE TURNED OFF.
+
+   !! CORRECTED 2026-09-17 -- this block used to say "universal", and that
+   "every wide flash has one current-row register". Both halves were wrong, and
+   they were wrong in opposite directions on two parts measured on this bench
+   (see hardware/G4_ART_GEOMETRY.md and hardware/fw_f3_cache/):
+
+     * STM32G474 HAS it, and no FLASH_ACR bit removes it. With prefetch,
+       I-cache and D-cache ALL disabled, a re-read is still free iff the
+       intervening access hit the same 64-bit word. The differential is
+       *exactly* LATENCY cycles at every wait-state setting (1..15 measured).
+       So "accelerator disabled" is NOT "no channel", and the per-collision
+       signal is LATENCY cycles -- the number that sets trace counts.
+
+     * STM32F303 does NOT have it, on the data path. Reading the SAME address
+       64 times costs exactly what 64 distinct addresses cost (2.00 cyc/access
+       at LATENCY=2); a re-read of the address just fetched pays full latency.
+       Its flash IS 64-bit wide -- a model fit on the *instruction* path gives
+       W=8 bytes with PRFTBE=1 -- so the row register exists but the D-Code
+       path is not wired to it. That is a design choice, not a consequence of
+       width. Positive control: the same PRFTBE bit speeds instruction fetch
+       33-89% in the same session it moves the data side by exactly zero.
+
+   CONSEQUENCE FOR USING THIS MODEL: whether a given part gets `row_latch(...)`
+   or no data-side reuse at all is an EMPIRICAL question per family, and the
+   probe is one command -- read A, read B, re-read A, sweep B-A across the word
+   boundary. Do not infer it from flash width, from the presence of a prefetch
+   buffer, or from the absence of ICEN/DCEN bits. `experiments/real_parts.py`
+   still assigns `row_latch` to several parts on datasheet wording alone; those
+   rows are predictions, and the one that has been tested (STM32F3) was wrong.
 
 2. PREFETCH BUFFER  (sequential, instruction-side)
    Speculatively reads the *next* sequential row (row+1) while the CPU works on
@@ -190,7 +219,8 @@ class FlashModel:
 # So the data-side geometry (`ways`) and the instruction-contention setting are
 # two independent knobs; a given silicon part is a *pairing* of the two.
 PRESETS = {
-    # Data path only: a single 128-bit line latch (universal minimum).
+    # Data path only: a single 128-bit line latch. NOT a universal minimum --
+    # STM32F303 measured with no data-side reuse at all (see module docstring).
     "latch": FlashModel(ways=1, hit_cycles=1, miss_cycles=7, prefetch=False),
     # ART literal/data cache: small, ~4 or ~8 128-bit lines. Too small to hold a
     # 4 KB T-table; only partially holds a 256 B S-box.

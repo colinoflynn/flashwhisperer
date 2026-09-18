@@ -31,7 +31,7 @@ Linux image running from SDRAM), and then which AES table layout is present:
 | one T-table + S-box | leaks, and is round-2 recoverable from one side |
 | decryption T-tables (`Td0..Td3`) | 1 KB+ of inverse tables — exceeds the F2/F4 128 B **and** the G4/L4 256 B cache, so it leaks on every measured band. A bootloader is often decrypt-only and carries `Td` with no `Te` at all |
 | Gladman `sbox`+`gfm2_sb`+`gfm3_sb` | the LoRaMac-node `soft-se` layout, broken here at 16/16 |
-| byte S-box only | leaks wherever the data cache is smaller than 256 B |
+| byte S-box only | leaks wherever the data cache is smaller than 256 B — **and also where there is no data cache at all, if the part has a flash read latch**: a G474 with the whole accelerator disabled still gives up the full key. Cache size is necessary, not sufficient (see `../hardware/G4_ART_GEOMETRY.md`) |
 | nothing | constant-time/bitsliced, or tables built into RAM — not exposed |
 
 It is checked against the four firmware builds in `hardware/fw_f4_lib/` whose
