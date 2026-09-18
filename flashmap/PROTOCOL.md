@@ -151,9 +151,9 @@ Reply `ok` or `fail <what>`. MUST check: the timer advances; a `nop` costs less
 than a `walk`; the flash and twin checksums are what the shim expects; and if
 `ramfunc` is claimed, that the copied code's first word is not zero.
 
-## Two things the host does that a shim must not be surprised by
+## Three things the host does that a shim must not be surprised by
 
-Neither changes the wire format; both are stated here because a shim author
+None of them changes the wire format; they are stated here because a shim author
 reading a transcript will otherwise think the host has lost its place.
 
 ### A wait-state calibration before the plan
@@ -197,6 +197,35 @@ it.
 The second pass uses no command the first does not; a shim needs to do nothing
 for it beyond honouring `evict`'s optional third argument, and a shim that does
 not honour it gets the cyclic chase alone and an honest `LRU or FIFO`.
+
+### A replay control after the measurement programme
+
+Last of all, the host re-measures a handful of `evict` rows -- the ones nearest
+the capacity it has just measured -- **in the opposite order**, and compares.
+It uses no new command and asks nothing of the shim.
+
+It exists because rule 2 below is an assumption about the *part*, not something
+a shim can guarantee. "A fixed warm-up access precedes every timed access, so
+each probe enters from the same state" holds on a 128-byte ART and does not
+hold on a Cortex-M7 with a 32 KB L1 data cache: one warm-up access cannot
+restore 32 KB of state, and on the H723 the *first* reading of `evict n 8192`
+depends on which `evict` ran before it. Repeating one row cannot reveal that --
+repeats of a single command leave the same residue behind each time, so they
+agree while the surface as a whole does not. Only replaying a row after
+different neighbours can.
+
+Where a replayed row disagrees, the probe's result is not a function of its
+arguments, and the host reports no cache geometry rather than fitting a surface
+that is partly a record of its own measurement order.
+
+> A related request to shim and host authors, from the same part: `Bench`
+> discards a warm-up repetition before taking the median and records any
+> disagreement as a *warning string*. That reading is data -- on the H723 it
+> disagrees with the kept ones on 16 distinct `(n, spacing)` pairs, in both
+> directions, all of them in the threshold region a geometry is fitted from --
+> and it should be carried in `obs[]` beside the repeats, not in prose. Until
+> it is, `min == max` over the stored repeats is a statement about a filtered
+> sample and the host refuses to reason from it.
 
 ## Rules the host relies on
 

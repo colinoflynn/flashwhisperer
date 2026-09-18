@@ -181,6 +181,7 @@
     "  sub-cycle cross-check: `alt` off=16 over 200 reps gives 7.985 cyc/iteration against off=0, at 1/200-cycle resolution (single-shot `reread` sits on the counter's floor)"
    ],
    "caveats": [
+    "2 configuration(s) are SILENT on this claim rather than evidence for or against it: waitstates=0 icache=0 dcache=0 prefetch=0, waitstates=0 icache=1 dcache=1 prefetch=1. In each the positive control fails -- a hit and a miss differ by 0 cycles here (the same walk at `waitstates = 0`, where a flash access is known to cost no more than an SRAM one), below the 1-cycle resolution of an integer counter, so this configuration could not have shown a structure whether or not one is present -- at LATENCY 0 in particular every flash structure reads flat by construction (MEASURING_CHANNELS B3) -- so the flat column they produced is the resolution floor, not a register. A configuration that could not have shown the opposite does not get a vote.",
     "14 knob setting(s) re-read fast at every offset. That is consistent with both the latch and a cache holding both probe addresses, so those settings do not discriminate; the latch is inferred there, not measured."
    ],
    "data": {
@@ -229,15 +230,17 @@
     "ways_candidates": [
      8
     ],
+    "geometry_candidates": [],
     "conflict_period_bytes": 16,
     "capacity_bytes": 128,
-    "capacity_bytes_min": 512,
+    "capacity_bytes_min": 124,
     "line_bytes": 16,
     "sets": 1,
     "capacity_entries": 8,
-    "capacity_entries_min": 32,
+    "capacity_entries_min": 7,
     "fully_associative": true,
     "geometry_unique": true,
+    "threshold_model_holds": true,
     "index_bits": null,
     "capacity_unit": "not applicable",
     "enabled_in": "waitstates=5 icache=0 dcache=1 prefetch=0"
@@ -256,7 +259,8 @@
     "  waitstates=5 icache=1 dcache=0 prefetch=1: N_evict 4:4 8:2 16:1 32:1 64:1 128:1 256:1 512:1 1024:1 2048:1 4096:1 8192:1  -> 1-way, conflict period 16 B, 16 B (10/10 exact)",
     "  fully associative: the conflict period (16 B) equals the fetch granularity, so one line IS the whole index space -- N_evict is flat at 8 for every spacing from 16 B upward and no address bits select a set",
     "  tags vs bytes: with a 16 B fetch and a 16 B conflict period the two models predict the same number (8), so the test cannot discriminate and no claim is made",
-    "  4 configuration(s) hold nothing above the latch at all (waitstates=5 icache=0 dcache=0 prefetch=0, waitstates=5 icache=0 dcache=0 prefetch=1, waitstates=5 icache=1 dcache=0 prefetch=0 ...): there the cache is switched off, which is a knob working rather than a geometry disagreeing"
+    "  4 configuration(s) hold nothing above the latch at all (waitstates=5 icache=0 dcache=0 prefetch=0, waitstates=5 icache=0 dcache=0 prefetch=1, waitstates=5 icache=1 dcache=0 prefetch=0 ...): there the cache is switched off, which is a knob working rather than a geometry disagreeing",
+    "  capacity floor: the target is first lost at a working-set span of 128 B (spacing 4 B, n = 32) and is never lost below that in 57 further rows, the largest of which spans 124 B. For a uniform walk the loss span is `ways x sets x line` for every spacing that divides the conflict period, so that smallest loss span IS the capacity, whatever the (ways, sets) split"
    ],
    "caveats": [],
    "data": {
@@ -276,6 +280,7 @@
      "ways_unique": true,
      "capacity_unique": true,
      "exact": 10,
+     "pinned": 9,
      "total": 10,
      "score": 1.0,
      "err": 0.0
@@ -298,6 +303,7 @@
       "ways_unique": true,
       "capacity_unique": true,
       "exact": 10,
+      "pinned": 9,
       "total": 10,
       "score": 1.0,
       "err": 0.0
@@ -318,6 +324,7 @@
       "ways_unique": true,
       "capacity_unique": true,
       "exact": 10,
+      "pinned": 9,
       "total": 10,
       "score": 1.0,
       "err": 0.0
@@ -338,6 +345,7 @@
       "ways_unique": true,
       "capacity_unique": true,
       "exact": 10,
+      "pinned": 9,
       "total": 10,
       "score": 1.0,
       "err": 0.0
@@ -358,6 +366,93 @@
       "ways_unique": true,
       "capacity_unique": true,
       "exact": 10,
+      "pinned": 9,
+      "total": 10,
+      "score": 1.0,
+      "err": 0.0
+     }
+    },
+    "per_config_sizing": {
+     "waitstates=5 icache=0 dcache=1 prefetch=0": {
+      "ways": 8,
+      "sets": 1,
+      "line": 16,
+      "period": 16,
+      "capacity_bytes": 128,
+      "capacity_entries": 8,
+      "alternatives": [
+       [
+        8,
+        1
+       ]
+      ],
+      "ways_unique": true,
+      "capacity_unique": true,
+      "exact": 10,
+      "pinned": 9,
+      "total": 10,
+      "score": 1.0,
+      "err": 0.0
+     },
+     "waitstates=5 icache=0 dcache=1 prefetch=1": {
+      "ways": 8,
+      "sets": 1,
+      "line": 16,
+      "period": 16,
+      "capacity_bytes": 128,
+      "capacity_entries": 8,
+      "alternatives": [
+       [
+        8,
+        1
+       ]
+      ],
+      "ways_unique": true,
+      "capacity_unique": true,
+      "exact": 10,
+      "pinned": 9,
+      "total": 10,
+      "score": 1.0,
+      "err": 0.0
+     },
+     "waitstates=5 icache=1 dcache=1 prefetch=0": {
+      "ways": 8,
+      "sets": 1,
+      "line": 16,
+      "period": 16,
+      "capacity_bytes": 128,
+      "capacity_entries": 8,
+      "alternatives": [
+       [
+        8,
+        1
+       ]
+      ],
+      "ways_unique": true,
+      "capacity_unique": true,
+      "exact": 10,
+      "pinned": 9,
+      "total": 10,
+      "score": 1.0,
+      "err": 0.0
+     },
+     "waitstates=5 icache=1 dcache=1 prefetch=1": {
+      "ways": 8,
+      "sets": 1,
+      "line": 16,
+      "period": 16,
+      "capacity_bytes": 128,
+      "capacity_entries": 8,
+      "alternatives": [
+       [
+        8,
+        1
+       ]
+      ],
+      "ways_unique": true,
+      "capacity_unique": true,
+      "exact": 10,
+      "pinned": 9,
       "total": 10,
       "score": 1.0,
       "err": 0.0
@@ -378,6 +473,7 @@
       "ways_unique": true,
       "capacity_unique": true,
       "exact": 10,
+      "pinned": 10,
       "total": 10,
       "score": 1.0,
       "err": 0.0
@@ -398,6 +494,7 @@
       "ways_unique": true,
       "capacity_unique": true,
       "exact": 10,
+      "pinned": 10,
       "total": 10,
       "score": 1.0,
       "err": 0.0
@@ -418,6 +515,7 @@
       "ways_unique": true,
       "capacity_unique": true,
       "exact": 10,
+      "pinned": 10,
       "total": 10,
       "score": 1.0,
       "err": 0.0
@@ -438,11 +536,13 @@
       "ways_unique": true,
       "capacity_unique": true,
       "exact": 10,
+      "pinned": 10,
       "total": 10,
       "score": 1.0,
       "err": 0.0
      }
-    }
+    },
+    "per_config_broken": []
    }
   },
   "replacement_policy": {
@@ -878,6 +978,7 @@
   }
  },
  "notes": [
-  "Cross-check: the latch granularity equals the flash read width (16 B), as it does on every part in this repository."
+  "Cross-check: the latch granularity equals the flash read width (16 B), as it does on every part in this repository.",
+  "SCOPE: every `evict` and `chase` row in this capture was taken at `waitstates = 5`, so the cache claim is a claim about that one setting. Nothing here suggests the geometry moves with the latency, and nothing here tests it either."
  ]
 }

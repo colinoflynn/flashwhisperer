@@ -460,7 +460,9 @@ def test_h723_associativity_is_unknown_when_the_region_is_too_small():
     joined = " ".join(st.get("cache").caveats)
     assert "Associativity is NOT determined" in joined
     assert "probe region of at least" in joined
-    assert "the cache holds at least" in joined
+    assert "bounded only below" in joined
+    # and the floor must be a floor: never above the true capacity
+    assert c["capacity_bytes_min"] <= 32768
 
 
 def test_nrf52_latch_but_no_data_cache():
@@ -1051,3 +1053,194 @@ def test_real_captures_never_claim_more_than_they_measured():
             # only ever from an ISOLATED configuration at a conflicting stride
             assert any("isolated configuration at a conflicting stride" in e
                        for e in pol.evidence), name
+
+
+def test_real_h723_capture():
+    """NUCLEO-H723ZG against hardware/H7_GEOMETRY.md and the CCSIDR read over
+    SWD: L1-D is 32 B lines x 4 ways x 256 sets = 32768 B.
+
+    Three of this repository's four "confident and wrong" claims were on this
+    part, and each has an assertion here.
+    """
+    st = _capture("flashmap/h723.raw.json")
+    assert st.value("read_width") == 32
+
+    # 1. the latch is one 32-byte entry, and NO knob reaches it.  The three
+    #    wait-state cells that used to say otherwise are the twin's +3 cycle
+    #    `reread` offset, not a register: at LATENCY 1 the flash column reads
+    #    13/13/13/13/14/14 and resolves perfectly once it is read against
+    #    itself instead of against an absolute threshold.
+    latch = st.value("latch")
+    assert (latch["granularity_bytes"], latch["entries"]) == (32, 1)
+    assert latch["depth"] == 1
+    assert latch["knob_reaches_it"] is False, "no register reaches the H7 latch"
+    assert latch["model_determined"] is True
+    assert latch["equivalent_models"] == ["32Bx1"]
+    assert st.get("latch").confidence == "high"
+
+    c = st.value("cache")
+    assert c["present"]
+    assert c["line_bytes"] == 32
+    # 2. the capacity is MEASURED, and it is the CCSIDR number.
+    assert c["capacity_bytes"] == 32768, "L1-D is 32 KB (CCSIDR 0xF01FE019)"
+    assert c["capacity_bytes_min"] <= 32768, "a floor must be a floor"
+    # ... and the (ways, sets) split is NOT, so it is a family -- which must
+    # contain the register truth rather than sit beside it.
+    assert c["ways"] is None and c["sets"] is None
+    assert "4-way x 256 sets x 32 B line" in c["geometry_candidates"]
+    assert 4 in c["ways_candidates"]
+    joined = " ".join(st.get("cache").caveats)
+    assert "probe region of at least" in joined
+    assert "NOT a step function" in joined
+
+    # 3. `not_applicable` ("every configuration is direct-mapped") was read off
+    #    four dcache=0 cells -- the cache switched OFF, where the only thing
+    #    left is the 1-entry latch, which of course fits 1-way.  A claim about
+    #    a victim may not be taken from a configuration that has no victim.
+    pol = st.get("replacement_policy")
+    assert pol.value is UNKNOWN
+    assert pol.confidence == "none"
+
+    # the knob map still attributes reuse to `dcache`, without pretending to a
+    # geometry the surface does not support
+    km = st.value("knob_map")
+    assert km["dcache"]["data_reuse"]["verdict"] == "controls"
+    assert km["dcache"]["latch"]["verdict"] == "masks"
+    assert km["icache"]["latch"]["verdict"] == "no effect"
+
+
+def test_real_nrf52840_capture():
+    """nRF52840-DK against hardware/NRF52_GEOMETRY.md: one 16-byte latch
+    tracking the aligned word, and no data-side cache."""
+    st = _capture("flashmap/nrf52840.raw.json")
+    assert st.value("read_width") == 16
+    latch = st.value("latch")
+    assert (latch["granularity_bytes"], latch["entries"]) == (16, 1)
+    assert latch["depth"] == 1
+    assert latch["knob_reaches_it"] is False
+    # the defect: `model_determined: False` beside an EMPTY family, which
+    # asserts both that the answer is undecided and that nothing is a
+    # candidate.  Whatever the verdict, the two must agree.
+    assert latch["model_determined"] is True
+    assert latch["equivalent_models"] == ["16Bx1"]
+    assert st.value("cache")["present"] is False
+    assert st.get("replacement_policy").value is UNKNOWN
+
+
+@pytest.mark.parametrize("name", ["flashmap/f429.raw.json",
+                                  "hardware/map_g4.raw.json",
+                                  "hardware/map_l5.raw.json",
+                                  "flashmap/h723.raw.json",
+                                  "flashmap/nrf52840.raw.json"])
+def test_every_real_capture_keeps_its_claims_self_consistent(name):
+    """Invariants that must hold on every part, for any future fix.
+
+    Each one is a defect that shipped: a family that is empty while the model
+    is undetermined, a capacity floor above the capacity it bounds, a
+    `not_applicable` policy taken from a `ways` the tool did not determine,
+    and a configuration voting on a structure it could not have resolved.
+    """
+    st = _capture(name)
+
+    latch = st.get("latch")
+    if latch.known and latch.value.get("present"):
+        fam = latch.value.get("equivalent_models") or []
+        assert fam, "an undetermined model family may be large, never empty"
+        assert latch.value["model_determined"] == (len(fam) == 1)
+        if len(fam) > 1:
+            assert latch.confidence == "low"
+
+    cache = st.get("cache")
+    if cache.known and cache.value.get("present"):
+        cv = cache.value
+        lo, cap = cv.get("capacity_bytes_min"), cv.get("capacity_bytes")
+        if lo is not None and cap is not None:
+            assert lo <= cap, "a floor that exceeds the capacity is not a floor"
+        if cv.get("ways") is None:
+            # undetermined associativity must come with the family and with
+            # what would settle it, not with a bare `null`
+            assert cv.get("ways_candidates"), cv
+            assert any("probe region of at least" in c or
+                       "not determined" in c.lower()
+                       for c in cache.caveats), cache.caveats
+
+    pol = st.get("replacement_policy")
+    if pol.value == "not_applicable":
+        # only from a determined associativity, in a configuration that HAS a
+        # cache to have a policy for
+        assert st.value("cache") is not UNKNOWN
+        assert st.value("cache").get("ways") == 1, pol.evidence
+
+
+@pytest.mark.parametrize("name", ["flashmap/f429.raw.json",
+                                  "hardware/map_g4.raw.json",
+                                  "hardware/map_l5.raw.json",
+                                  "flashmap/h723.raw.json",
+                                  "flashmap/nrf52840.raw.json"])
+def test_no_claim_rests_on_a_cell_that_could_not_discriminate(name):
+    """The general rule, checked against every capture.
+
+    A configuration may only contribute a NEGATIVE finding -- "no structure
+    here" -- once it is established that it could have shown a positive one.
+    Every `waitstates = 0` cell fails that test by construction, so none of
+    them may appear in the evidence or the caveats as a knob setting that
+    removed something.
+    """
+    from flashmap.infer import _discriminating_power
+    from flashmap.experiments import cfgname
+    ms = MeasurementSet.from_json(str(_ROOT / name))
+    st = infer_all(ms)
+    blind = [cfgname(c) for c in ms.configs()
+             if not _discriminating_power(ms, c).ok]
+    if "waitstates" in ms.knob_names() and 0 in ms.knob_values("waitstates"):
+        assert blind, "a waitstates=0 cell cannot resolve a hit from a miss"
+        assert any("waitstates=0" in b for b in blind)
+    latch = st.get("latch")
+    for cav in latch.caveats:
+        if "show no data-side reuse" in cav:
+            for b in blind:
+                assert b not in cav, (name, cav)
+
+
+def test_replay_control_refuses_a_geometry_when_a_row_does_not_reproduce():
+    """A probe whose result depends on what ran before it is not a measurement
+    of a structure, and the tool must say so instead of fitting the surface.
+
+    The plan's third pass re-measures the `evict` rows nearest the measured
+    capacity in the opposite order; this builds that disagreement by hand.
+    """
+    grid = [{"icache": 0, "dcache": 1, "prefetch": 0, "waitstates": 5}]
+    ms = build("STM32F429ZI", f429_factory, grid)
+    clean = infer_all(ms)
+    assert clean.value("cache")["capacity_bytes"] == 128
+    assert clean.value("cache")["threshold_model_holds"] is True
+
+    # replay one row with a different answer -- the same (config, mode, args)
+    row = [o for o in ms.rows("evict", "flash")
+           if len(o.args) == 2 and o.args[1] == 16][3]
+    ms.add(row.config, "flash", "evict", row.args, row.cycles + 6.0,
+           lo=row.cycles + 6.0, hi=row.cycles + 6.0, n=7)
+    st = infer_all(ms)
+    c = st.value("cache")
+    assert c["present"], "reuse is still there; what is gone is the geometry"
+    assert c["threshold_model_holds"] is False
+    assert c["ways"] is None
+    joined = " ".join(st.get("cache").caveats)
+    assert "REPLAY CONTROL failed" in joined
+    assert "not a function of its arguments" in joined
+
+
+def test_kept_repeats_are_not_evidence_when_the_capture_reported_outliers():
+    """`Bench` discards a warm-up repetition before taking the median, and the
+    discarded value is not in `obs[].raw`.  So `min == max` over the kept
+    sample is not a statement about reproducibility on a row the instrument
+    itself flagged, and nothing may be inferred from it."""
+    from flashmap.infer import _repeats_agree
+    grid = [{"icache": 0, "dcache": 1, "prefetch": 0, "waitstates": 5}]
+    ms = build("STM32F429ZI", f429_factory, grid)
+    for o in ms.obs:
+        o.n = 7
+    assert _repeats_agree(ms) is True
+    ms.meta["warnings"] = ["warm-up outlier: evict(4, 16) on flash "
+                           "first=18 median-of-rest=11"]
+    assert _repeats_agree(ms) is None, "a filtered sample proves nothing"

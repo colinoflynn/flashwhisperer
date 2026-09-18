@@ -105,27 +105,28 @@
     "depth": 1,
     "indexed_on": null,
     "knob_reaches_it": false,
-    "model_determined": false,
-    "equivalent_models": [],
+    "model_determined": true,
+    "equivalent_models": [
+     "16Bx1"
+    ],
     "differential_cycles": 3.0,
     "differential_at": "icache=0 cacheprof=0"
    },
    "known": true,
-   "confidence": "low",
+   "confidence": "high",
    "basis": "reread sweep (read A, read A+off, re-read A) fitted against a model family {granularity g, entries k, index = (A>>log2 g) mod k, target alignment a}; depth from `evict` at a spacing that maps to the same entry; reachability by repeating the sweep at every knob combination",
    "evidence": [
-    "  icache=0 cacheprof=0: 86/88 offsets fit granularity 16 B x 1 entry, differential 3 cyc  [no model in the family fits it exactly]",
-    "  icache=0 cacheprof=1: 86/88 offsets fit granularity 16 B x 1 entry, differential 3 cyc  [no model in the family fits it exactly]",
-    "  icache=1 cacheprof=0: 86/88 offsets fit granularity 16 B x 1 entry, differential 3 cyc  [no model in the family fits it exactly]",
-    "  icache=1 cacheprof=1: 86/88 offsets fit granularity 16 B x 1 entry, differential 3 cyc  [no model in the family fits it exactly]",
-    "  aligned-block model 98% vs proximity model 94% over 88 offsets (41 of them negative) -- it is a latch holding one aligned 16-byte flash word, not a +/-16 byte neighbourhood",
+    "  icache=0 cacheprof=0: 88/88 offsets fit granularity 16 B x 1 entry (align 1), differential 3 cyc  [discriminating: this sweep admits only 16Bx1]",
+    "  icache=0 cacheprof=1: 88/88 offsets fit granularity 16 B x 1 entry (align 1), differential 3 cyc  [discriminating: this sweep admits only 16Bx1]",
+    "  icache=1 cacheprof=0: 88/88 offsets fit granularity 16 B x 1 entry (align 1), differential 3 cyc  [discriminating: this sweep admits only 16Bx1]",
+    "  icache=1 cacheprof=1: 88/88 offsets fit granularity 16 B x 1 entry (align 1), differential 3 cyc  [discriminating: this sweep admits only 16Bx1]",
+    "  -> intersecting what each configuration is consistent with leaves 16 B x 1 entry; the fit is taken from the 4 configuration(s) that admit it, not from a majority of per-configuration best fits",
+    "  aligned-block model 100% vs proximity model 94% over 88 offsets (41 of them negative) -- it is a latch holding one aligned 16-byte flash word, not a +/-16 byte neighbourhood",
     "  depth: 1 -- at spacing 16 B (which maps to the same entry) the target is lost after 1 intervening distinct word(s), in 4 config(s)",
     "  no knob setting removed it: the latch resolved in 4 setting(s) and in the remaining 0 the probe read uniformly *fast*, which is a larger structure masking it, not its absence",
     "  sub-cycle cross-check: `alt` off=16 over 200 reps gives 5.975 cyc/iteration against off=0, at 1/200-cycle resolution (single-shot `reread` sits on the counter's floor)"
    ],
-   "caveats": [
-    "No single model in the family explains every configuration's sweep: 4 configuration(s) resolved and their consistent-model sets do not intersect, and 4 admitted no exact model at all. The claim below is the most discriminating single sweep (icache=0 cacheprof=0), and the disagreement itself is the finding -- either a knob changes the latch or one sweep is contaminated."
-   ],
+   "caveats": [],
    "data": {
     "per_config": {
      "icache=0 cacheprof=0": "resolved",
@@ -133,9 +134,9 @@
      "icache=1 cacheprof=0": "resolved",
      "icache=1 cacheprof=1": "resolved"
     },
-    "fit_score": 0.9772727272727273,
+    "fit_score": 1.0,
     "rival_distance_score": 0.9431818181818182,
-    "align": 0
+    "align": 1
    }
   },
   "cache": {
@@ -173,6 +174,7 @@
       "ways_unique": true,
       "capacity_unique": true,
       "exact": 8,
+      "pinned": 8,
       "total": 8,
       "score": 1.0,
       "err": 0.0
@@ -193,6 +195,7 @@
       "ways_unique": true,
       "capacity_unique": true,
       "exact": 8,
+      "pinned": 8,
       "total": 8,
       "score": 1.0,
       "err": 0.0
@@ -213,6 +216,7 @@
       "ways_unique": true,
       "capacity_unique": true,
       "exact": 8,
+      "pinned": 8,
       "total": 8,
       "score": 1.0,
       "err": 0.0
@@ -233,6 +237,7 @@
       "ways_unique": true,
       "capacity_unique": true,
       "exact": 8,
+      "pinned": 8,
       "total": 8,
       "score": 1.0,
       "err": 0.0
@@ -347,6 +352,7 @@
   }
  },
  "notes": [
-  "Cross-check: the latch granularity equals the flash read width (16 B), as it does on every part in this repository."
+  "Cross-check: the latch granularity equals the flash read width (16 B), as it does on every part in this repository.",
+  "GAP: this part advertises `counters` -- hardware hit/miss registers that `PROTOCOL.md` calls an independent instrument -- and the capture contains no counter reading. Every claim here rests on timing alone, with a cross-check available and unused."
  ]
 }

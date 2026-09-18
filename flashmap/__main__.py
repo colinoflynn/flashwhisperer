@@ -48,6 +48,16 @@ def _policy_config(st, ms):
     return best[1], best[2], best[3]
 
 
+def _reuse_config(st, ms):
+    """The configuration the cache claim was measured in, for the replay pass."""
+    cache = st.get("cache")
+    want = (cache.value or {}).get("enabled_in") if (cache and cache.known) else None
+    for c in ms.configs():
+        if cfgname(c) == want:
+            return c
+    return ms.configs()[0]
+
+
 def _structure_from_json(path: str) -> Structure:
     """Load either a raw MeasurementSet or an already-inferred Structure."""
     with open(path, "r", encoding="utf-8") as fh:
@@ -150,6 +160,29 @@ def cmd_map(a) -> int:
                              "only the cyclic chase runs"))
                 if extra:
                     bench.run(extra, into=ms)
+
+            # Third phase, and it runs whether or not phase 2 did: the REPLAY
+            # CONTROL.  Re-measure the `evict` rows nearest the measured
+            # capacity, in the opposite order, so a probe whose result depends
+            # on what ran before it is visible in the capture rather than
+            # indistinguishable from a structure.  It is sized from the first
+            # pass because where retention is marginal is not known until the
+            # capacity has been measured -- and on the H723, where no geometry
+            # is fitted at all, this is the only control that fires.
+            cv = first.value("cache")
+            cap = (cv or {}).get("capacity_bytes") or (cv or {}).get("capacity_bytes_min")
+            if cap:
+                rcfg = _reuse_config(first, ms)
+                sps = sorted({int(o.args[1]) for o in ms.rows("evict", "flash")
+                              if len(o.args) == 2})
+                replay = bench.replay_plan(rcfg, int(cap), sps)
+                if not a.quiet:
+                    print("")
+                    print(f"-- phase 3: {len(replay)} replay-control steps "
+                          f"around the measured {int(cap)} B capacity, in "
+                          f"reverse order")
+                if replay:
+                    bench.run(replay, into=ms)
         if not a.quiet:
             sys.stderr.write("\n")
         print(f"-- captured {len(ms)} observations in {time.time()-t0:.0f}s")

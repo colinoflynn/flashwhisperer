@@ -52,8 +52,11 @@ def _fmt_value(name: str, v: Any) -> str:
             assoc = ("%d-way, conflict period %d B (sets x line not separable)"
                      % (v["ways"], v["conflict_period_bytes"]))
         if v.get("capacity_bytes") is None:
-            return (">= %d B (capacity not determined), %s; %d B fetch unit"
-                    % (v.get("capacity_bytes_min", 0), assoc, v["line_bytes"]))
+            floor = v.get("capacity_bytes_min")
+            return ("%s, %s; %d B fetch unit"
+                    % ("capacity not determined" if floor is None
+                       else ">= %d B (capacity not determined)" % floor,
+                       assoc, v["line_bytes"]))
         return ("%d B, %s; %d entries of %d B fetched; capacity counted in %s"
                 % (v["capacity_bytes"], assoc, v["capacity_entries"],
                    v["line_bytes"], v.get("capacity_unit", "unknown")))

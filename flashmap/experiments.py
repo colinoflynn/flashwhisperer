@@ -586,6 +586,39 @@ class Bench:
             return False
         return a[1] != b[1]
 
+    def replay_plan(self, cfg: Config, capacity_bytes: int,
+                    spacings: Sequence[int], width: int = 2) -> List[Step]:
+        """Re-measure the rows nearest the capacity threshold, in REVERSE order.
+
+        The replay control, and it has to be sized from the first pass for the
+        same reason the policy probes do: the rows where retention is marginal
+        are the ones at a working-set span near the capacity, and where that is
+        is not known until the capacity has been measured.
+
+        What it tests is whether the probe's result is a function of its
+        arguments at all.  `PROTOCOL.md` rule 2 says a fixed warm-up access
+        precedes every timed access so that each probe enters from the same
+        state -- and one warm-up access cannot restore tens of kilobytes of L1
+        data cache.  On the H723, `evict n 8192` measured twice in the same
+        order is bit-identical and measured in the opposite order moves, which
+        no number of repeats of a single row can reveal: repeats of one command
+        leave the same residue behind each time, so they agree while the
+        surface as a whole does not.
+
+        Emitted whether or not a geometry was fitted -- on the part that needs
+        it most, no geometry is.
+        """
+        steps: List[Step] = []
+        span = max(4096, (self.flash.size * 7) // 8 - 4096)
+        for sp in sorted(set(spacings), reverse=True):
+            if sp <= 0:
+                continue
+            n0 = max(1, capacity_bytes // sp)
+            for n in range(max(1, n0 - width), n0 + width + 1):
+                if n * sp + sp <= span:
+                    steps.append(Step(cfg, "evict", (n, sp), "replay control"))
+        return list(reversed(steps))
+
     def policy_plan(self, cfg: Config, ways: int, spacing: int,
                     margin: int = 4, retouch: bool = True) -> List[Step]:
         """The replacement-policy probes, sized ENTIRELY from measured geometry.

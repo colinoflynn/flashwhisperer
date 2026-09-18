@@ -381,3 +381,380 @@ alongside, so the same real-capture regression test can cover them.
 * Long captures must be launched with an explicit tool timeout. A foreground
   command that overran its own 120 s budget took two running background captures
   down with it.
+
+---
+
+# Part 2 — the discriminating-power rule, and the defects it closed
+
+A second pass, on the two boards the first one could not reach (**NUCLEO-H723ZG**
+and **nRF52840-DK**) plus a re-derivation of all five committed captures. Three
+defects were named going in; a fourth turned up on the way, and an independent
+re-derivation of the same raw JSON — written without reading `infer.py` — found
+a fifth and corrected one of my own fixes for being a step too pessimistic. All
+of them are the same disease as Part 1's four.
+
+Everything below is reproducible offline: `flashmap map --raw <capture>` over
+`flashmap/{f429,h723,nrf52840}.raw.json` and `hardware/map_{g4,l5}.raw.json`.
+One hardware run was taken, on the H723 (COM21), to settle a question the
+committed capture could not.
+
+---
+
+## 8. The rule
+
+> **Before a configuration is allowed to contribute evidence for or against a
+> claim, it must be established that the configuration could have shown the
+> opposite. A cell with no discriminating power is silent; it is not a vote for
+> the thing it happened to display.**
+
+This is a positive control, and it now lives in one place —
+`_discriminating_power(ms, cfg)` in `infer.py` — that every claim consults,
+rather than in five per-claim patches. Three properties make it work:
+
+**It is asymmetric, because the two directions are not equally demanding.** A
+configuration that *showed* a difference has demonstrated its own discriminating
+power and needs no control. A configuration that showed *no* difference is
+claiming an absence, and an absence is only a measurement if the presence would
+have been visible. So the control is consulted for flat cells and nowhere else.
+Getting this backwards costs a real result: the STM32F303's published "no
+data-side reuse of any kind" is a flat cell, and a symmetric rule silences it.
+
+**The control is measured inside the flash column, never against the twin.** It
+is `flash(LATENCY) - flash(0)` at the same stride with every other knob equal —
+both halves flash, so the twin and every instrument offset it carries cancel
+exactly. Where a capture has no `waitstates = 0` cell to reference against, it
+falls back to the twin and says so in the reason.
+
+**It is not the obvious control.** The natural-looking one — compare a stride-0
+walk against a saturated walk in the same cell — is *circular* for the latch: a
+part with no latch reads zero there for exactly the reason the claim is trying to
+establish. That is the F303 again, and it is why the control asks the narrower
+question "does this cell resolve the flash array's own access cost at all?".
+
+The resolution floor is one cycle: these counters are integer-valued, SysTick
+runs at the core clock on every part here, and (outside the H723) every repeat in
+every capture has `min == max`. That is a property of the instrument, not of a
+part.
+
+---
+
+## 9. The defects
+
+### 9a. `knob_reaches_it: True` on the H723's latch, which no register reaches
+
+The caveat said it outright: three settings — `waitstates = 0, 1, 2` — showed "no
+data-side reuse at any offset, including offset 0". Only one of those three is
+actually blind, and the premise I was given for the other two was wrong in a way
+worth recording, because it points at the real fix.
+
+At `waitstates = 1` the flash `reread` column reads **13, 13, 13, 13, 14, 14**
+over offsets 0/4/8/16/32/64 — identical in all seven repeats, `hi == lo`. At
+`waitstates = 2` it reads 13 against 15. That is a one- and two-cycle split with
+zero variance on a counter whose tick is a core cycle: a measurement, and one
+that resolves the latch perfectly at granularity 32. The `waitstate_scaling`
+claim was already reading exactly those rows and getting 1 and 2 cycles out of
+them.
+
+What made them vanish was **the twin**. Classification compared `flash - twin`
+against half the miss cost, and on this part the DTCM twin sits **+3 cycles**
+under the flash `reread` body at every offset. A 1-cycle differential rides on a
+3-cycle pedestal and lands on the wrong side of the cut. So the fix is not to
+silence those cells — it is to stop classifying against an absolute threshold at
+all:
+
+> `_classify_reread` now splits each configuration's column **at its own largest
+> gap**, and falls back to the twin-referenced test only when the column shows
+> one level. A within-column split needs no calibration, because the pedestal is
+> common to both levels and cancels.
+
+Only `waitstates = 0` is genuinely blind, and there the control fails by
+construction: `flash(0) - flash(0) = 0`. It is now silent, and the claim says
+which cells were silenced and why.
+
+**Result:** `knob_reaches_it: False`, `32 B x 1 entry`, depth 1, confidence
+`high` — the published H7 result, with `dcache` correctly filed as `masks`.
+
+### 9b. The H723 cache geometry
+
+Reported `1-way / 2048 sets / 65536 B`, against a CCSIDR read over SWD of 4-way /
+256 sets / 32768 B. Not merely unsupported: **refuted**. A 64 KB way size makes
+eviction impossible inside a 64 KB probe region, and nine rows in that capture
+evict.
+
+Three things were wrong, and they compound.
+
+1. **`_n_evict` smoothed away a falsification.** It returned "the smallest `n`
+   that is slow *and stays slow*". At spacing 512 the target is lost at `n=64`
+   and present again at `n=65`, so 64 was discarded and 96 reported; at spacing
+   2048, 17 was discarded and 25 reported. The surface is **not a step function**
+   — and a threshold is precisely what `N_evict` means. `_evict_shape` now
+   classifies each series as `threshold`, `uncorroborated` (the only slow reading
+   is the largest `n` tested — a bound, not a value), `survived`, or
+   `non_monotone`, and a `non_monotone` series is not fitted at all. This is the
+   same rule applied to a *model* instead of a configuration: before the fit
+   reads `N_evict` off a series, the series has to be the kind of thing
+   `N_evict` describes.
+
+2. **The capacity was recoverable and I was a step too pessimistic.** My first
+   fix reported no geometry and no capacity. The independent re-derivation
+   pointed out what the rows do support, sharply: for a uniform walk at any
+   spacing that divides the conflict period, the target is lost after exactly
+   `ways x sets x line` **bytes of span**, independent of how the capacity splits
+   into sets and ways. So the *smallest loss span anywhere on the surface is the
+   capacity*, read off directly with no fit — and it uses only the bottom edge of
+   the surface, where every measurement agrees, so the non-monotonicity above it
+   cannot touch it. `_span_capacity` implements it:
+
+   | part | smallest loss span | published capacity |
+   |---|---|---|
+   | F429 | **128 B** | 128 B |
+   | G474 | **256 B** | 256 B |
+   | L552 | **8192 B** | 8192 B |
+   | H723 | **32768 B** (417 rows below it, none lost) | 32768 B (CCSIDR) |
+
+   Exact on every part, and it replaced the `(ways, sets)` fit as the capacity
+   instrument rather than sitting beside it.
+
+3. **`capacity_bytes_min` was not a floor.** It read 512 B on a part whose
+   capacity it also reported as 128 B, and 49184 B on the H723's 32768. It
+   counted *accesses* rather than lines (at a sub-line spacing four accesses
+   share a line, and the first few are the target's own) and it took the *largest
+   survival* at any spacing, which bounds nothing once retention is non-monotone.
+   It is now the largest span below the first loss.
+
+**Result:** `capacity 32768 B, 32 B line`, with the `(ways, sets)` split reported
+as a family — `1-way x 1024 sets`, `2-way x 512 sets`, **`4-way x 256 sets`**,
+`8-way x 128 sets`, … — that *contains* the register truth, where the old answer
+sat outside it. Confidence `low`, and the caveat names what would settle it.
+
+**What probe size would settle it.** Every spacing this capture used is at or
+below the smallest candidate way size, and in that regime all the candidates
+predict the same loss span. Separating them needs a spacing **above** the largest
+candidate period (32768 B), where the loss lands at `n = ways` directly:
+`evict n 65536` with `n` reaching 8 is a probe region of **589824 B**, and the
+H723 has 1 MB of flash against the **51200 B** this shim's `evict` reaches. So
+this one is closable, and by a shim change rather than by more traces. (Reaching
+every member of the family, up to 64-way, would need 4259840 B; the tool quotes
+both and names `<= 8-way` as the architectural prior it is.) The old answer's
+64 KB way size was refuted precisely because it exceeded the window: no two
+addresses in a 64 KB probe region can share a set under it, and nine rows evict.
+
+### 9c. The nRF latch claim was internally inconsistent
+
+`model_determined: False` beside an **empty** `equivalent_models: []` — which
+asserts both that the answer is undecided and that nothing is a candidate.
+
+The assembly bug was real and is fixed (the family now always contains at least
+the model being reported, and `model_determined` is derived from its size rather
+than computed alongside it, so the two cannot disagree). But the *cause* was
+somewhere else entirely, and it is the most interesting thing in this pass.
+
+`_latch_models()` searched the target's alignment within its block **in steps of
+4**, on the reasoning that the probe reads 4-byte words. A 4-byte read at offset
+`off` touches bytes `off … off+3`, so the boundary the sweep sees is set by the
+**last byte read** — which puts the effective alignment at 3 modulo the
+granularity on any part that latches the block of the last access. The H723 and
+the nRF52840 both do: their fast window runs from `-1`, not from 0.
+
+Every sweep whose offsets are all multiples of 4 cannot tell `a = 0` from `a = 3`
+and never noticed. The two parts whose plans include *odd* offsets did notice,
+and the consequence was not a slightly worse fit — it was that **no model in the
+family fitted their densest sweep exactly**, so the 89-offset sweep was dropped
+from the intersection entirely and the answer fell to the six-offset wait-state
+cells. On the H723 that produced a family of six; on the nRF, which has only four
+configurations and no wait-state knob, it left the intersection empty.
+
+> The most informative measurement on each part was discarded for being two
+> offsets short of a model family that was two offsets too narrow, and the
+> conclusion was taken from the least informative cells. That is the Part 1
+> disease exactly, arriving through the model grid instead of through the
+> aggregation.
+
+With alignment searched at byte resolution, exactly one `(granularity, entries)`
+survives on **every** part: F429 `16B x 1`, G474 `8B x 1`, L552 `8B x 2`, H723
+`32B x 1`, nRF `16B x 1`. Two boards moved from `low` to `high` confidence and
+nothing else moved at all.
+
+### 9d. A fourth defect: `replacement_policy = not_applicable` at `high`
+
+Not in the brief, and the worst of the four. The whole evidence line was *"every
+configuration fits 1-way"* — from four configurations that all have
+**`dcache = 0`**, where the cache is switched off and the only structure left is
+the 1-entry latch, which of course fits 1-way. A `high`-confidence positive claim
+about the part, carried by cells with nothing to say, on top of a `ways = 1` the
+same data refutes. It is also self-contradictory: a direct-mapped cache cannot
+produce a victim that changes between repetitions of the same row.
+
+Three gates now stand in front of it: configurations where the cache is off are
+excluded from the exported geometry table; the `not_applicable` shortcut requires
+an associativity that was actually determined; and a falsified threshold model
+blocks it outright. The H723 now reports `unknown`.
+
+That verdict is also unreachable on this part for a second, independent reason
+worth stating: the LRU/FIFO discriminator needs `evict n spacing -k*spacing` at a
+multiple of the conflict period, the second pass is sized from a measured
+geometry, and there is none. Through a 64 KB window the H723's replacement policy
+is out of reach.
+
+---
+
+## 10. What the capture itself says, and one thing it cannot
+
+The H723's eviction surface is non-monotone, and there are two very different
+explanations: a **non-deterministic victim** (the target survives past capacity
+some of the time — the documented Cortex-M7 L1 default), or an
+**address-dependent effect the `(ways, sets, line)` family cannot express**. They
+are separable by reproducibility, and my first attempt separated them the wrong
+way.
+
+**What I got wrong.** I wrote a check that read `min == max` off the stored
+repeats and concluded "reproducible, therefore not a random victim". The kept
+repeats are a **filtered sample**: `Bench` discards a warm-up repetition before
+taking the median, and `meta.warnings` records that discarded reading disagreeing
+with the seven kept ones for **16 distinct `(n, spacing)` pairs**, in both
+directions — exactly the threshold region the geometry is fitted from. The
+disagreeing sample is the one that was thrown away, and it is not in
+`obs[].raw`. `_repeats_agree` now returns "unknown" whenever the capture's own
+warnings report an `evict` outlier, and the cache claim carries the fact as a
+caveat. **Recommendation for the shim/host: carry the warm-up reading in `obs[]`
+rather than in prose.**
+
+**What two hardware runs settled, and it is not what I first wrote.** I
+re-measured `evict` at spacings 512, 2048, 4096 and 8192 on the H723 (COM21) in
+three passes: two forward and one with the plan order reversed. The two forward
+passes are bit-identical to each other; the reversed pass differs at `sp = 8192`
+`n = 10/11`, at `sp = 4096` `n = 9/15`, and at `sp = 512` `n = 67-73`. I read
+that as order dependence, and it is - but of a specific reading. That probe took
+**single-shot** measurements, which is exactly the repetition `Bench` discards.
+So what moves with the order is the **warm-up** reading, and it moves on
+precisely the rows the capture's own warm-up warnings name.
+
+A second full `map` run then settled the other half. It carried the new replay
+pass (32 `evict` rows re-measured at the end, in reverse order, around the
+measured 32768 B capacity) and **every replayed row came back identical**. So at
+median-of-seven the H723's eviction surface *is* reproducible, order and all -
+and its non-monotonicity is therefore a real, repeatable response, not
+measurement noise. The whole structure re-derived identically from that fresh
+capture: 32 B read width, `32B x 1` latch that no knob reaches, 32768 B capacity,
+policy unknown.
+
+Put together: `PROTOCOL.md` rule 2 ("a fixed warm-up access precedes every timed
+access, so each probe enters from the same state") does **not** hold on this part
+- one warm-up access cannot restore 32 KB of L1 data cache, and the first reading
+after a different predecessor differs. What the median protocol does is hide
+that, by measuring a state the probe has warmed itself into. That is defensible,
+but it means the discarded reading is data and belongs in `obs[]`.
+
+**So the tool now has a replay control.** A third pass, emitted after the others
+and sized from the first pass's measured capacity, re-measures the `evict` rows
+nearest the capacity threshold **in the opposite order**. Where a replayed row
+disagrees, the eviction surface is not a measurement of a geometry and none is
+reported (`_replay_disagreements`, with a synthetic regression test). It is sized
+from the first pass for the same reason the policy probes are: where retention is
+marginal is not known until the capacity has been measured.
+
+Honest accounting of what it has proved: on the H723 it is **armed and has not
+fired**, and the run above is why that is the right answer rather than a failure.
+It would fire on a part whose median readings move with the plan order, and it is
+cheap. Catching the warm-up-level instability instead needs the discarded
+repetition carried in `obs[]`, which is a shim-and-host change this pass did not
+make.
+
+---
+
+## 11. Coverage gaps, recorded rather than closed
+
+The tool now prints each of these as a note on any capture that has them.
+
+* **Both parts with hardware hit/miss counters never used them.** The nRF52840
+  (`NVMC.IHIT`/`IMISS`) and the L552 (`ICACHE_HMONR`/`MMONR`) advertise
+  `counters`, and neither capture contains a single reading. `PROTOCOL.md` calls
+  these an independent instrument; on the nRF a counter read would settle the one
+  claim the timing cannot touch at all (does the I-cache exist, and what is its
+  geometry), and on the L552 it would give the `waysel` re-indexing — which rests
+  on two spacings — a second witness.
+* **Geometry is probed at exactly one wait-state setting on every part.** All
+  four parts with a `waitstates` knob have **zero** `evict` and `chase` rows
+  outside `waitstates = 5`. Nothing suggests the geometry moves with the latency;
+  nothing here tests it either, and `hardware/G4_LATENCY0.md` exists because
+  `LATENCY = 0` is a case where behaviour does change.
+* **The H723's twin is DTCM, and that is the right choice with a price.**
+  `FINDINGS_h7_nrf.md` section 3.1 shows why the shim picks it: the only other
+  same-size region, `axisram`, sits *behind* the L1 D-cache, so using it as the
+  twin would put the structure under test on both sides of the subtraction. But
+  a zero-wait tightly-coupled memory is not on the same fabric as the flash
+  either, so the subtraction leaves a constant `+3` to `+4` behind instead of
+  cancelling — and section 9a is that constant swallowing a real signal. There
+  is no third option on this part; the answer is not a better twin but not
+  classifying against the twin at all, which is what section 9a now does. The
+  twin claim's sign explanation is also written for the sign actually measured
+  and names the twin's declared kind, instead of reciting the L552's
+  SRAM-contention mechanism next to a positive number on a board with no SRAM
+  twin.
+
+* **The H723 L1-I (32 B / 2-way / 512 sets) and the nRF's 2 KB I-cache are
+  entirely out of reach.** Every primitive in `memmap/1` is a data access and the
+  probe loop runs from ITCM/RAM, so `icache` changes nothing in any measurement
+  on either part. This is the same wall as Part 1 section 4 item 5: it needs an
+  `exec` mode.
+
+---
+
+## 12. What changed, per part
+
+Nothing moved on the F429, the G474 or the L552 except three capacity floors that
+were above the capacity they bounded. (The floor is now the largest measured
+working set below the first loss, so it sits one probe step under the capacity
+rather than on it -- a floor, which is what it claims to be.) **No previously-correct answer became
+`unknown`** — the one candidate for that, the F303's "no data-side reuse at all",
+is what made the rule asymmetric.
+
+| | F429 | G474 | L552 | **H723** | **nRF52840** |
+|---|---|---|---|---|---|
+| read width | 16 B | 8 B | 8 B | 32 B | 16 B |
+| fill unit | unknown | unknown | 16 B | unknown | unknown |
+| latch | 1 x 16 B, d1 | 1 x 8 B, d1 | 2 x 8 B on A[3], d1 | **1 x 32 B, d1** *(was: family of 6, depth unknown)* | **1 x 16 B, d1** *(was: empty family)* |
+| latch model determined | yes | yes | yes | **yes** *(was no)* | **yes** *(was no)* |
+| latch confidence | high | high | high | **high** *(was low)* | **high** *(was low)* |
+| a knob reaches the latch | no | no | no | **no** *(was **yes**)* | no |
+| cache capacity | 128 B | 256 B | 8192 B | **32768 B** *(was 65536 B)* | none |
+| ways / sets | 8 / 1 | 8 / 4 | 1 / 512 (2 / 256 at `waysel=1`) | **family of 7, contains 4 x 256** *(was 1 / 2048)* | — |
+| capacity floor | **124 B** *(was 512 B)* | **252 B** *(was 512 B)* | **8188 B** *(was 32768 B)* | **32736 B** *(was 49184 B)* | — |
+| replacement policy | LRU | LRU | LRU | **unknown** *(was `not_applicable`, **high**)* | — (no cache) |
+| wait-state scaling | 1.000 | 1.000 | 1.000 | 1.000 | no knob |
+| twin calibration | +0.000 | +0.000 | -1.000 | +4.000 (`walk`), **+3.000** (`reread`) *(was +2.000 — a median over two configurations, the one thing this claim exists to forbid)* | no knob |
+
+Every cell in the H723 and nRF columns now matches `hardware/H7_GEOMETRY.md` and
+`hardware/NRF52_GEOMETRY.md`, or says `unknown` with the measurement that would
+close it.
+
+---
+
+## 13. Regression tests
+
+`tests/test_flashmap.py` gains a real-capture test for each of the two parts that
+had none (`test_real_h723_capture`, `test_real_nrf52840_capture`) and two
+invariant suites parametrised over **all five** committed captures:
+
+* `test_every_real_capture_keeps_its_claims_self_consistent` — one assertion per
+  defect that shipped: a model family may be large but never empty while the
+  model is undetermined; a capacity floor may never exceed the capacity it
+  bounds; an undetermined associativity must come with its family and with what
+  would settle it; and `not_applicable` may only be claimed from a determined
+  `ways`.
+* `test_no_claim_rests_on_a_cell_that_could_not_discriminate` — the general rule
+  itself: every `waitstates = 0` cell must fail the control, and no cell that
+  fails it may appear as a knob setting that removed something.
+
+Plus `test_replay_control_refuses_a_geometry_when_a_row_does_not_reproduce` and
+`test_kept_repeats_are_not_evidence_when_the_capture_reported_outliers`, which
+are synthetic because neither can be provoked on demand from hardware.
+
+One existing assertion changed wording rather than substance
+(`test_h723_associativity_is_unknown_when_the_region_is_too_small`), and it
+gained the assertion that was missing: that the floor is **at or below** the true
+capacity.
+
+`python -m pytest tests/ -q` is **181 passed, 16 skipped** (197 collected),
+against 167 passed / 16 skipped before this pass: fourteen new tests, no
+regressions, and the same sixteen skips.

@@ -23,6 +23,10 @@
 CROSS-CHECKS
   - Cross-check: the latch granularity equals the flash read width (16 B), as
     it does on every part in this repository.
+  - SCOPE: every `evict` and `chase` row in this capture was taken at
+    `waitstates = 5`, so the cache claim is a claim about that one setting.
+    Nothing here suggests the geometry moves with the latency, and nothing
+    here tests it either.
 
 ==============================================================================
 READ_WIDTH  =  16 bytes   [high]
@@ -92,6 +96,17 @@ evidence
   no knob setting removed it: the latch resolved in 14 setting(s) and in the remaining 14 the probe read uniformly *fast*, which is a larger structure masking it, not its absence
   sub-cycle cross-check: `alt` off=16 over 200 reps gives 7.985 cyc/iteration against off=0, at 1/200-cycle resolution (single-shot `reread` sits on the counter's floor)
 caveats
+  ! 2 configuration(s) are SILENT on this claim rather than evidence for or
+    against it: waitstates=0 icache=0 dcache=0 prefetch=0, waitstates=0
+    icache=1 dcache=1 prefetch=1. In each the positive control fails -- a hit
+    and a miss differ by 0 cycles here (the same walk at `waitstates = 0`,
+    where a flash access is known to cost no more than an SRAM one), below the
+    1-cycle resolution of an integer counter, so this configuration could not
+    have shown a structure whether or not one is present -- at LATENCY 0 in
+    particular every flash structure reads flat by construction
+    (MEASURING_CHANNELS B3) -- so the flat column they produced is the
+    resolution floor, not a register. A configuration that could not have
+    shown the opposite does not get a vote.
   ! 14 knob setting(s) re-read fast at every offset. That is consistent with
     both the latch and a cache holding both probe addresses, so those settings
     do not discriminate; the latch is inferred there, not measured.
@@ -118,6 +133,7 @@ evidence
   fully associative: the conflict period (16 B) equals the fetch granularity, so one line IS the whole index space -- N_evict is flat at 8 for every spacing from 16 B upward and no address bits select a set
   tags vs bytes: with a 16 B fetch and a 16 B conflict period the two models predict the same number (8), so the test cannot discriminate and no claim is made
   4 configuration(s) hold nothing above the latch at all (waitstates=5 icache=0 dcache=0 prefetch=0, waitstates=5 icache=0 dcache=0 prefetch=1, waitstates=5 icache=1 dcache=0 prefetch=0 ...): there the cache is switched off, which is a knob working rather than a geometry disagreeing
+  capacity floor: the target is first lost at a working-set span of 128 B (spacing 4 B, n = 32) and is never lost below that in 57 further rows, the largest of which spans 124 B. For a uniform walk the loss span is `ways x sets x line` for every spacing that divides the conflict period, so that smallest loss span IS the capacity, whatever the (ways, sets) split
 
 ==============================================================================
 REPLACEMENT_POLICY  =  LRU (measured against FIFO, not assumed)   [high]
@@ -213,5 +229,3 @@ evidence
   -> multi-line data reuse is controlled by dcache and by nothing else
   -> `icache` moved none of the three metrics. Every primitive here is a data access, so an instruction cache that does not share a structure with the data path is invisible to this probe by construction -- this is the expected reading for a separate I-cache, and it is not evidence that the register is inert. The instruction side is not measured: see the cache claim's caveats.
 
--- structure -> flashmap/f429.json
--- markdown -> flashmap/f429.md
