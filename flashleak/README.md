@@ -15,6 +15,7 @@ nothing else, so it is easy to lift out.
 python -m flashleak analyse capture.npz          # recorded blocks + timings
 python -m flashleak probe  mymod:MyTarget()      # drive a live device
 python -m flashleak fwscan firmware.bin          # static triage before any hardware
+python -m flashleak placement firmware.bin --part f4   # ... and will the tables be in FLASH?
 python -m flashleak selftest                     # check it against known truth
 ```
 
@@ -37,6 +38,50 @@ Linux image running from SDRAM), and then which AES table layout is present:
 It is checked against the four firmware builds in `hardware/fw_f4_lib/` whose
 keys were actually recovered on the F429, so the layouts it reports are known
 truth rather than a guess (`tests/test_fwscan.py`).
+
+## The question `fwscan` cannot answer: `placement`
+
+`fwscan` reports a property of the **library**. Every break in this repo rests
+on a property of the **build** — the tables are read *from flash*. ST's own
+X-CUBE-CRYPTOLIB, the same vendor binary, one linker line apart, is either a
+full AES-128 key in 20 000 timings or `sd = 0.00` and 0/16. `fwscan` prints
+**word-for-word identical verdicts** for those two images, correctly — same
+tables, same shapes — and its `@` column prints the table's *load* address, so
+on the fixed build it reports a table "in flash" that lives in SRAM.
+`placement` is the module that separates them.
+
+```bash
+python -m flashleak placement fw.elf --part g4          # exact: from section headers
+python -m flashleak placement fw.bin --part f4          # inferred: copy loop + literal pool
+python -m flashleak placement fw.hex --part l0          # same, with the base from the records
+python -m flashleak placement lib.a --ld project.ld     # conditional: + check the rule
+python -m flashleak placement x --list-parts            # the memory maps it uses
+python -m flashleak placement build/ --part g4 --fail-on exposed --json p.json   # CI gate
+```
+
+| artefact | verdict | how |
+|---|---|---|
+| linked `.elf` | exact | `sh_addr` is the *run-time* address, even for `.data` |
+| raw `.bin` | inferred | the start-up copy loop `(src,dst,len)`, the PC-relative literal pool, group relocation, and `LDRB.W` anchors |
+| `.o` / `.a` | conditional | the section name says which linker rule is required; `--ld` checks a script for it |
+
+Verdicts are `EXPOSED` / `SAFE` / `CACHED_RAM` / `CONDITIONAL` / `UNDETERMINED`
+/ `NO-TABLES`. `CACHED_RAM` exists because "not flash" is not "safe": on an H7,
+`0x2000_0000` is DTCM and `0x2400_0000` is cached AXI-SRAM, and on an F7 the
+DTCM/SRAM1 boundary moves *within the family*. **Without `--part` the tool
+returns `UNDETERMINED` for anything in the SRAM region rather than guessing.**
+
+`--fail-on exposed` turns it from a report into a build gate: it exits non-zero
+for a build whose tables resolve to flash, **and for an archive whose supplied
+linker script does not place the section it asks for** — the check that 2 277 of
+ST's own scripts would fail.
+
+Scored over 38 artefacts, most with leak/no-leak status measured on real
+silicon: **25 TP / 0 FP / 13 TN / 0 FN**, from the `.elf` and from the raw
+`.bin` alike.
+Full method, the failure modes found along the way, the exploitability
+confusion matrix (18/5/4/**0**) and what static analysis can never see:
+[`../STATIC_ANALYSIS.md`](../STATIC_ANALYSIS.md).
 
 ## The two situations
 

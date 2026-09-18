@@ -6,6 +6,12 @@
                        are known, including the negative controls
   fwscan  PATH         static triage of a firmware image, directory or archive:
                        XIP MCU? AES tables in flash, and in which layout?
+  placement PATH       the *build* question rather than the library question:
+                       will those tables be READ FROM FLASH at run time? Works
+                       from a linked .elf (exact), a raw .bin (inferred from the
+                       start-up copy loop and the literal pool), or an unlinked
+                       .o/.a (conditional on the linker script, which it can
+                       also check)
 
 A recorded file is an .npz or .csv. For .npz the block array is found by trying
 the usual names (blocks, window, ciphertext, keystream, plaintext, data, pts)
@@ -158,6 +164,28 @@ def cmd_fwscan(a):
                   only_hits=a.only_hits)
 
 
+def cmd_placement(a):
+    from . import placement as pl
+    argv = [a.artefact]
+    if a.part:
+        argv += ["--part", a.part]
+    if a.base is not None:
+        argv += ["--base", hex(a.base)]
+    for ld in a.ld:
+        argv += ["--ld", ld]
+    if a.section:
+        argv += ["--section", a.section]
+    if a.quiet:
+        argv += ["--quiet"]
+    if a.list_parts:
+        argv += ["--list-parts"]
+    if a.json:
+        argv += ["--json", a.json]
+    if a.fail_on:
+        argv += ["--fail-on", a.fail_on]
+    return pl.main(argv)
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="flashleak", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -197,6 +225,28 @@ def main(argv=None):
     fs.add_argument("--only-hits", action="store_true",
                     help="for archives/directories, print only members with findings")
     fs.set_defaults(fn=cmd_fwscan)
+
+    pc = sub.add_parser("placement",
+                        help="will the AES tables be in flash at run time?")
+    pc.add_argument("artefact", help=".elf, .bin, .o, .a, or a directory of them")
+    pc.add_argument("--part", default=None,
+                    help="part family for the memory map (f4, g4, f7, h7, l5, ...); "
+                         "without it the SRAM region cannot be classified")
+    pc.add_argument("--base", type=lambda s: int(s, 0), default=None,
+                    help="flash base for a raw .bin with no vector table")
+    pc.add_argument("--ld", action="append", default=[],
+                    help="linker script(s) to check for the required placement rule")
+    pc.add_argument("--section", default=None,
+                    help="section name to look for in --ld")
+    pc.add_argument("--quiet", action="store_true", help="verdict lines only")
+    pc.add_argument("--list-parts", action="store_true",
+                    help="print the memory map this tool uses for each part")
+    pc.add_argument("--json", metavar="FILE", help="write the findings as JSON")
+    pc.add_argument("--fail-on", choices=["exposed", "unknown", "never"],
+                    default=None,
+                    help="exit non-zero on this verdict or worse (CI gate); "
+                         "the default always exits 0")
+    pc.set_defaults(fn=cmd_placement)
 
     a = p.parse_args(argv)
     return a.fn(a) or 0
