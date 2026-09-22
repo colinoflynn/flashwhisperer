@@ -91,7 +91,7 @@ array and everything else is the same table lookups and XORs.
 Measured at **0.44 M keys/s**, so 2^16 is instant and **2^24 about 26 s**;
 verified byte-for-byte against `aesref` for the key schedule, its inversion and
 the decryption. `search_positions()` filters candidates on CCM counter-block
-structure, which needs no known plaintext -- see `demos/oscore/verify.py`.
+structure, which needs no known plaintext -- see `demo/oscore/verify.py`.
 It earns its place on the F746 OSCORE victim, where the leak is uneven enough
 that the vote stalls three bytes short of the key.
 
@@ -99,7 +99,7 @@ that the vote stalls three bytes short of the key.
 single-block check that replaces the CCM structural test wherever the mode hands
 the attacker the cipher's *input* as well as its output. TLS-CBC does --
 `C_i = E(K, P_i ^ C_(i-1))`, both ends on the wire -- and there it settled a key
-on the very first position pair. See [`demos/tls_https/`](../demos/tls_https/).
+on the very first position pair. See [`demo/tls_https/`](../demo/tls_https/).
 
 `search_pairs()` is the cheaper and better-behaved endgame: all C(16,2) = 120
 position pairs at 2^16 each is 7.9 M candidates -- less than one 2^24 search --
@@ -165,8 +165,8 @@ PYTHONPATH=. pytest --runslow       # LONG: + engine scans + replay of captured 
   (S-box + T-table, several key sizes/modes). Capture more with
   `tests/make_vectors.py`. Vectors store only timing (uint16, seed-regenerated
   material) so each is ~100–250 KB compressed and lives in git.
-- The same two tiers cover [`demos/oscore/`](../demos/oscore/)
-  (`demos/oscore/test_replay.py`), which replays the **over-Ethernet** captures
+- The same two tiers cover [`demo/oscore/`](../demo/oscore/)
+  (`demo/oscore/test_replay.py`), which replays the **over-Ethernet** captures
   and re-derives the OSCORE key and its negative control. `--runslow` there is
   the key recovery itself.
 - `conftest.py` lives at the repository root so both test directories share one

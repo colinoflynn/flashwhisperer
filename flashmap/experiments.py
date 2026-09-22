@@ -297,7 +297,7 @@ def default_plan(knobs: Sequence[Knob], region_size: int,
     grid = _grid(binary, ws_ref)
     steps: List[Step] = []
 
-    # Shim address map (see hardware/fw_map_f4/main.c):
+    # Shim address map (see rigs/fw_map_f4/main.c):
     #   scratch  = base + size - 16   (the fixed warm-up access)
     #   walk     = base + 0           (walks upward)
     #   target   = base + size/8      (room below it for negative reread offsets)

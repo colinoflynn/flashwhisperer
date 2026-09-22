@@ -1,7 +1,7 @@
 """Compile and run the ctguard host test (hardware-free).
 
 ctguard's job is to refuse to pass a build it cannot vouch for. Four of its six
-verdicts are measured on the F429 (hardware/fw_f4_ctguard/README.md); the two
+verdicts are measured on the F429 (rigs/fw_f4_ctguard/README.md); the two
 that matter most -- a dead cycle counter and one ticking at the wrong rate --
 cannot be produced on demand on real silicon, and they are precisely the
 failures that would make every build look constant-time. They are covered here
@@ -16,7 +16,7 @@ import shutil
 import subprocess
 import pytest
 
-FW = os.path.join(os.path.dirname(__file__), "..", "hardware", "fw_f4_ctguard")
+FW = os.path.join(os.path.dirname(__file__), "..", "rigs", "fw_f4_ctguard")
 FW = os.path.abspath(FW)
 SRC = ["test_ctguard_host.c", "ctguard.c", "hosttest/mock_cmsis.c"]
 

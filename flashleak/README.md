@@ -35,7 +35,7 @@ Linux image running from SDRAM), and then which AES table layout is present:
 | byte S-box only | leaks wherever the data cache is smaller than 256 B — **and also where there is no data cache at all, if the part has a flash read latch**: a G474 with the whole accelerator disabled still gives up the full key. Cache size is necessary, not sufficient (see `../hardware/G4_ART_GEOMETRY.md`) |
 | nothing | constant-time/bitsliced, or tables built into RAM — not exposed |
 
-It is checked against the four firmware builds in `hardware/fw_f4_lib/` whose
+It is checked against the four firmware builds in `rigs/fw_f4_lib/` whose
 keys were actually recovered on the F429, so the layouts it reports are known
 truth rather than a guess (`tests/test_fwscan.py`).
 

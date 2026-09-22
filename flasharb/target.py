@@ -15,7 +15,7 @@ class Target:
     name: str
     port: str
     board: str                       # key into hardware/boards.py
-    fw_dir: str                      # relative to hardware/
+    fw_dir: str                      # relative to rigs/
     banner: str                      # must appear in the V reply, or we are talking to
                                      # some other firmware on the same bench
 
@@ -105,7 +105,7 @@ G4_CONFIGS = (
 )
 
 # L552 has no PRFTEN/ICEN/DCEN at all: FLASH_ACR is LATENCY + LVEN, and acceleration is the
-# separate ICACHE peripheral. hardware/fw_l5_arb/board.c packs them as
+# separate ICACHE peripheral. rigs/fw_l5_arb/board.c packs them as
 #     bits 3:0 LATENCY | bit 8 ICACHE_CR.EN | bit 9 WAYSEL
 L5_CONFIGS = (
     (0x000, "LAT0 icache off"),
@@ -116,7 +116,7 @@ L5_CONFIGS = (
 
 # STM32F4 carries LATENCY|PRFTEN|ICEN|DCEN in FLASH_ACR with the SAME bit positions as the
 # G4, so a config word means the same thing on both boards and the two maps are directly
-# comparable. hardware/fw_f4_arb/board.c passes the word to FLASH_ACR unchanged (after
+# comparable. rigs/fw_f4_arb/board.c passes the word to FLASH_ACR unchanged (after
 # pulsing ICRST/DCRST, which is not part of the word).
 #
 # DCEN gets its own row here, which the G4 list does not have. On this part the data cache is

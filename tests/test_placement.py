@@ -26,8 +26,8 @@ import pytest
 from flashleak import placement as P
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-HW = ROOT / "hardware"
-LIB = HW / "fw_f4_lib"
+RIGS = ROOT / "rigs"
+LIB = RIGS / "fw_f4_lib"
 
 SBOX = bytes(P.fwscan._SBOX)
 BASE = 0x0800_0000
@@ -205,7 +205,7 @@ def test_copy_region_is_recovered_from_the_literal_pool():
 
 def test_copy_chain_rejects_a_bss_shaped_phantom():
     """The bss-clear loop is (_sbss,_ebss) + any flash word, and it once ate an
-    S-box on hardware/fw_f7. A region that does not reach the end of the image
+    S-box on rigs/fw_f7. A region that does not reach the end of the image
     must not be accepted as a .data initialiser."""
     img = bytearray(_build_image(True))
     # splice in a plausible-looking (flash, ram, ram) triple that ends nowhere
@@ -221,13 +221,13 @@ def test_copy_chain_rejects_a_bss_shaped_phantom():
 # --------------------------------------------------------------------------
 
 def test_stock_script_does_not_place_the_cta_section():
-    ld = (HW / "fw_g4_st" / "link.ld").read_text()
+    ld = (RIGS / "fw_g4_st" / "link.ld").read_text()
     r = P.check_linker_script(ld, "CMOX_CTA_PROTECTED_DATA")
     assert not r.found
 
 
 def test_cta_script_places_it_in_data_with_a_load_region():
-    ld = (HW / "fw_g4_st" / "link_cta.ld").read_text()
+    ld = (RIGS / "fw_g4_st" / "link_cta.ld").read_text()
     r = P.check_linker_script(ld, "CMOX_CTA_PROTECTED_DATA")
     assert r.found
     assert r.output_section == ".data"
@@ -322,7 +322,7 @@ def test_constant_time_negative_controls_stay_clean(name):
 
 
 def test_own_aes_elf_is_exposed_and_names_the_symbols():
-    rep = P.analyse(str(_need(HW / "fw_f4" / "fw.elf")), "f4")
+    rep = P.analyse(str(_need(RIGS / "fw_f4" / "fw.elf")), "f4")
     assert rep.verdict == "EXPOSED"
     syms = {p.symbol for p in rep.placements}
     assert "SBOX" in syms and "Te0" in syms
@@ -330,16 +330,16 @@ def test_own_aes_elf_is_exposed_and_names_the_symbols():
 
 
 def test_own_aes_elf_hedges_about_the_runtime_pointer_flip():
-    """hardware/fw_f4 and fw_f4_ctguard share aes.c, which swaps between a flash
+    """rigs/fw_f4 and fw_f4_ctguard share aes.c, which swaps between a flash
     table and a .bss copy at run time. The tool cannot decide that -- but it
     must not be quietly confident about it either."""
-    rep = P.analyse(str(_need(HW / "fw_f4" / "fw.elf")), "f4")
+    rep = P.analyse(str(_need(RIGS / "fw_f4" / "fw.elf")), "f4")
     assert any("RUNTIME decision" in n for n in rep.notes)
 
 
 def test_elf_and_bin_paths_agree_on_the_same_build():
-    elf = _need(HW / "fw_f4" / "fw.elf")
-    raw = _need(HW / "fw_f4" / "fw.bin")
+    elf = _need(RIGS / "fw_f4" / "fw.elf")
+    raw = _need(RIGS / "fw_f4" / "fw.bin")
     a = P.analyse(str(elf), "f4")
     b = P.analyse(str(raw), "f4")
     assert a.verdict == b.verdict
@@ -349,11 +349,11 @@ def test_elf_and_bin_paths_agree_on_the_same_build():
 
 
 def test_shadow_ram_tables_do_not_masquerade_as_a_group_relocation():
-    """hardware/fw_f4 keeps te0_ram..te3_ram in .bss at exactly the same 1 KB
+    """rigs/fw_f4 keeps te0_ram..te3_ram in .bss at exactly the same 1 KB
     spacing as Te0..Te3 in flash, so those four .bss addresses fit a "the whole
     group moved to RAM" hypothesis perfectly. They must not win: SBOX's own
     flash address is in a literal, which proves the group did not move."""
-    rep = P.analyse(str(_need(HW / "fw_f4" / "fw.bin")), "f4")
+    rep = P.analyse(str(_need(RIGS / "fw_f4" / "fw.bin")), "f4")
     assert rep.verdict == "EXPOSED"
     assert all(p.runtime_addr >= BASE for p in rep.placements), \
         sorted(hex(p.runtime_addr) for p in rep.placements)
@@ -381,8 +381,8 @@ def test_intel_hex_agrees_with_the_same_build_as_a_bin():
     """MCU firmware ships as .hex at least as often as .bin, and the record
     stream carries the real flash base -- the thing the raw-.bin path most often
     lacks."""
-    hexf = _need(HW / "fw_f3_aes" / "fw.hex")
-    raw = _need(HW / "fw_f3_aes" / "fw.bin")
+    hexf = _need(RIGS / "fw_f3_aes" / "fw.hex")
+    raw = _need(RIGS / "fw_f3_aes" / "fw.bin")
     a = P.analyse(str(hexf), "f3")
     b = P.analyse(str(raw), "f3")
     assert a.kind == "ihex"

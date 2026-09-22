@@ -1,6 +1,6 @@
 """fwscan against firmware whose AES layout we already know.
 
-The four binaries checked into hardware/fw_f4_lib/ are the same images whose
+The four binaries checked into rigs/fw_f4_lib/ are the same images whose
 keys were recovered on the F429, so their table layout is ground truth, not an
 assumption. If the scanner ever stops reproducing it, it is the scanner that
 is wrong.
@@ -13,7 +13,7 @@ import pytest
 
 from flashleak import fwscan
 
-FW = pathlib.Path(__file__).resolve().parents[1] / "hardware" / "fw_f4_lib"
+FW = pathlib.Path(__file__).resolve().parents[1] / "rigs" / "fw_f4_lib"
 
 CASES = [
     # image,                        expected Te tables, S-box, inverse S-box

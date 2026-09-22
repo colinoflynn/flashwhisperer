@@ -2,8 +2,8 @@
 
 Measured through the generic [`memmap/1`](PROTOCOL.md) protocol — the host knew nothing
 about either part beyond what `V`, `R` and `K` reported. Shims
-[`../hardware/fw_map_g4/`](../hardware/fw_map_g4/) and
-[`../hardware/fw_map_l5/`](../hardware/fw_map_l5/); captures `map_g4_geometry.npz`,
+[`../rigs/fw_map_g4/`](../rigs/fw_map_g4/) and
+[`../rigs/fw_map_l5/`](../rigs/fw_map_l5/); captures `map_g4_geometry.npz`,
 `map_l5_geometry.npz`, `map_l5_counters.npz`.
 
 Ground truth: [`../hardware/G4_ART_GEOMETRY.md`](../hardware/G4_ART_GEOMETRY.md) and

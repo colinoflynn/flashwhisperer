@@ -934,7 +934,7 @@ def _capture(name):
 
 def test_real_f429_capture():
     """NUCLEO-F429ZI against hardware/F4_LATCH.md."""
-    st = _capture("flashmap/f429.raw.json")
+    st = _capture("results/flashmap/f429.raw.json")
     assert st.value("read_width") == 16
     latch = st.value("latch")
     assert (latch["granularity_bytes"], latch["entries"]) == (16, 1)
@@ -1039,7 +1039,7 @@ def test_real_captures_never_claim_more_than_they_measured():
     """Whatever each capture resolves, no claim may be `high` confidence and
     wrong-by-construction: an ambiguous model family or a contradiction between
     configurations must cost confidence, not be hidden."""
-    for name in ("flashmap/f429.raw.json", "hardware/map_g4.raw.json",
+    for name in ("results/flashmap/f429.raw.json", "hardware/map_g4.raw.json",
                  "hardware/map_l5.raw.json"):
         st = _capture(name)
         latch = st.get("latch")
@@ -1062,7 +1062,7 @@ def test_real_h723_capture():
     Three of this repository's four "confident and wrong" claims were on this
     part, and each has an assertion here.
     """
-    st = _capture("flashmap/h723.raw.json")
+    st = _capture("results/flashmap/h723.raw.json")
     assert st.value("read_width") == 32
 
     # 1. the latch is one 32-byte entry, and NO knob reaches it.  The three
@@ -1112,7 +1112,7 @@ def test_real_h723_capture():
 def test_real_nrf52840_capture():
     """nRF52840-DK against hardware/NRF52_GEOMETRY.md: one 16-byte latch
     tracking the aligned word, and no data-side cache."""
-    st = _capture("flashmap/nrf52840.raw.json")
+    st = _capture("results/flashmap/nrf52840.raw.json")
     assert st.value("read_width") == 16
     latch = st.value("latch")
     assert (latch["granularity_bytes"], latch["entries"]) == (16, 1)
@@ -1127,11 +1127,11 @@ def test_real_nrf52840_capture():
     assert st.get("replacement_policy").value is UNKNOWN
 
 
-@pytest.mark.parametrize("name", ["flashmap/f429.raw.json",
+@pytest.mark.parametrize("name", ["results/flashmap/f429.raw.json",
                                   "hardware/map_g4.raw.json",
                                   "hardware/map_l5.raw.json",
-                                  "flashmap/h723.raw.json",
-                                  "flashmap/nrf52840.raw.json"])
+                                  "results/flashmap/h723.raw.json",
+                                  "results/flashmap/nrf52840.raw.json"])
 def test_every_real_capture_keeps_its_claims_self_consistent(name):
     """Invariants that must hold on every part, for any future fix.
 
@@ -1172,11 +1172,11 @@ def test_every_real_capture_keeps_its_claims_self_consistent(name):
         assert st.value("cache").get("ways") == 1, pol.evidence
 
 
-@pytest.mark.parametrize("name", ["flashmap/f429.raw.json",
+@pytest.mark.parametrize("name", ["results/flashmap/f429.raw.json",
                                   "hardware/map_g4.raw.json",
                                   "hardware/map_l5.raw.json",
-                                  "flashmap/h723.raw.json",
-                                  "flashmap/nrf52840.raw.json"])
+                                  "results/flashmap/h723.raw.json",
+                                  "results/flashmap/nrf52840.raw.json"])
 def test_no_claim_rests_on_a_cell_that_could_not_discriminate(name):
     """The general rule, checked against every capture.
 

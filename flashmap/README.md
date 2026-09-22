@@ -10,8 +10,8 @@ secrets. It is **not** a crypto tool and imports nothing from `flashsim`,
 
 ```
 python -m flashmap selftest --port COM9
-python -m flashmap map      --port COM9 --out f429.json --rawout f429.raw.json
-python -m flashmap map      --raw f429.raw.json          # re-infer, no hardware
+python -m flashmap map      --port COM9 --out flashmap/f429.json --rawout results/flashmap/f429.raw.json
+python -m flashmap map      --raw results/flashmap/f429.raw.json   # re-infer, no hardware
 python -m flashmap compare  f429.json g474.json
 ```
 
@@ -213,7 +213,7 @@ Each of these is a trap this bench already paid for once.
 
 ## Writing a shim for a new part
 
-1. Copy `hardware/fw_map_f4/` — it is the reference implementation and the
+1. Copy `rigs/fw_map_f4/` — it is the reference implementation and the
    template. Implement `V R K S T X`; `A` and `C` are optional.
 2. Keep the **address map** conventions below. `infer.py` reasons about what the
    probes did, so it has to know what they did.
@@ -221,7 +221,7 @@ Each of these is a trap this bench already paid for once.
    a frozen counter, an uncopied `.ramfunc`, an optimised-away loop, a missing or
    mis-sized twin, and a checksum that does not track the arguments — every one
    of which otherwise produces clean, plausible, meaningless numbers.
-4. `python -m flashmap map --port COMn --out <part>.json --rawout <part>.raw.json`
+4. `python -m flashmap map --port COMn --out flashmap/<part>.json --rawout results/flashmap/<part>.raw.json`
 
 ### Shim conventions the host relies on
 

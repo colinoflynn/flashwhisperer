@@ -1,6 +1,6 @@
 """Target-independent host side of the flash-arbitration probe.
 
-Pairs with `hardware/fw_arb_common` (shared kernels + command protocol) and one board file
+Pairs with `rigs/fw_arb_common` (shared kernels + command protocol) and one board file
 per part. A new target needs no changes here: describe it with a `Target` and the sweeps,
 differencing and reporting all work unmodified. See `hardware/ARB_PORTING.md`.
 

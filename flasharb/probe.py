@@ -1,6 +1,6 @@
 """Device driver and sweeps for the flash-arbitration probe. Target-independent.
 
-Speaks the one-line `key=value` protocol in hardware/fw_arb_common/arb_cmd.c, so it works
+Speaks the one-line `key=value` protocol in rigs/fw_arb_common/arb_cmd.c, so it works
 against any board that links that file.
 """
 from __future__ import annotations

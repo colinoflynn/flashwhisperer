@@ -2,7 +2,7 @@
 
 Measures *structure*, not secrets: flash read width, read latches, data and
 instruction caches, and the configuration knobs that move them.  One firmware
-shim per part (`hardware/fw_map_*`), one host tool; all inference happens here,
+shim per part (`rigs/fw_map_*`), one host tool; all inference happens here,
 so adding a part means writing a shim, not an analysis.
 
 This package is deliberately standalone.  It must not import `flashsim`,

@@ -1,7 +1,7 @@
 # What `flashmap` measured on the NUCLEO-F429ZI
 
 Board: NUCLEO-F429ZI, COM9, probe `0671FF353445503043081931`, SYSCLK = HSI16
-(16 MHz). Shim [`hardware/fw_map_f4/`](../hardware/fw_map_f4/), probe loop in
+(16 MHz). Shim [`rigs/fw_map_f4/`](../rigs/fw_map_f4/), probe loop in
 `.ramfunc`, `FLASH_ACR.LATENCY` over-programmed to **4** for the structural grid
 and swept 0-15 for the scaling. One run, 6 876 observations over 30
 configurations in 200 s, 7 repeats each, **zero capture warnings**.
@@ -19,7 +19,7 @@ Raw data and provenance, all in this directory:
 Reproduce, without hardware, from the raw file:
 
 ```
-python -m flashmap map --raw flashmap/f429.raw.json
+python -m flashmap map --raw results/flashmap/f429.raw.json
 ```
 
 ---
@@ -338,7 +338,7 @@ cannot see.
 
 What it needs is a seventh mode -- `exec n spacing`, executing n instruction
 lines `spacing` bytes apart over flash-resident stubs -- which both
-`hardware/fw_nrf_probe/` and `hardware/fw_l5_cache/` already implement as
+`rigs/fw_nrf_probe/` and `rigs/fw_l5_cache/` already implement as
 bespoke firmware. It is a protocol change, not a host change, and it is the
 single largest gap in `memmap/1` as frozen.
 
@@ -433,7 +433,7 @@ result.
 
 I did not edit [`PROTOCOL.md`](PROTOCOL.md) -- it is frozen and two other shims
 are being written against it. The addendum is implemented in
-`hardware/fw_map_f4/`, documented in [`README.md`](README.md) in the conventions
+`rigs/fw_map_f4/`, documented in [`README.md`](README.md) in the conventions
 table, probed for at run time by checksum, and skipped silently on a shim that
 does not have it (with a line saying so). **It is the one thing in this
 deliverable that needs a decision rather than a review:** without it the

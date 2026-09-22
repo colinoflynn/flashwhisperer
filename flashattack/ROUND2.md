@@ -172,7 +172,7 @@ line in, the access hits either way and the pair goes dark. That masks signal
 rather than adding noise, which matched the saturating behaviour.
 
 It is wrong. A `Z` command was added to
-[`../hardware/fw_f4_lib/main.c`](../hardware/fw_f4_lib/main.c) that runs the CFB
+[`../rigs/fw_f4_lib/main.c`](../rigs/fw_f4_lib/main.c) that runs the CFB
 chain on the bench -- `ks1 = E(iv)` with `iv` from the PRNG, `C1 = P1 ^ ks1`,
 `ks2 = E(C1)` -- so the attacked call is preceded by one whose table-access
 pattern varies per trace and is unrelated to `C1`. Three arms, one board, one
@@ -259,7 +259,7 @@ reading the banner:
 `0x305` is LATENCY=5, PRFTEN=1, ICEN=1, **DCEN=0**. Every bench capture it was
 being compared against was taken at `0x705` -- same wait states, same prefetch,
 **data cache on**. The two were never the same channel. This is not news to the
-repo: [`../demos/oscore/README.md`](../demos/oscore/README.md) already documents
+repo: [`../demo/oscore/README.md`](../demo/oscore/README.md) already documents
 that ST's own `stm32f4xx_hal_conf.h` for this board never defines
 `DATA_CACHE_ENABLE` while CubeMX does, and measures both. The error was using a
 `0x705` bench capture as the reference for a `0x305` victim.
@@ -375,7 +375,7 @@ nothing resolves.
 An earlier draft of this section blamed a particular switch for re-timing frames
 and costing ~1e8 traces. That was wrong: the variable is link speed, invisible
 from the host, and the same two switches produced both outcomes on different
-sessions. See [`../demos/snmpv3/README.md`](../demos/snmpv3/README.md).
+sessions. See [`../demo/snmpv3/README.md`](../demo/snmpv3/README.md).
 
 Still open: the round-2 search on that single-table capture, linking the four
 groups of a 4-table victim, and wiring the

@@ -19,7 +19,7 @@ import os, shutil, subprocess, sys, textwrap
 import pytest
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-HW = os.path.join(REPO, "hardware")
+RIGS = os.path.join(REPO, "rigs")
 
 # FIPS-197 C.1 (AES-128)
 KEY = "000102030405060708090a0b0c0d0e0f"
@@ -98,8 +98,8 @@ def _build_and_run(workdir):
 
 def _fw_dirs():
     out = []
-    for d in sorted(os.listdir(HW)):
-        p = os.path.join(HW, d)
+    for d in sorted(os.listdir(RIGS)):
+        p = os.path.join(RIGS, d)
         if os.path.isdir(p) and os.path.exists(os.path.join(p, "aes.c")) \
            and os.path.exists(os.path.join(p, "aes.h")):
             out.append(d)
@@ -110,7 +110,7 @@ def _fw_dirs():
 def test_firmware_aes_matches_fips197(fw, tmp_path):
     if _cc() is None and _wsl_gcc() is None:
         pytest.skip("no host C compiler (native or WSL)")
-    src = os.path.join(HW, fw)
+    src = os.path.join(RIGS, fw)
     for f in ("aes.c", "aes.h", "tables.h"):
         s = os.path.join(src, f)
         if os.path.exists(s):

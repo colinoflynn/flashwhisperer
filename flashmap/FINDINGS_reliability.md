@@ -13,9 +13,9 @@ Every measurement below is a fresh capture taken today through
 [`PROTOCOL.md`](PROTOCOL.md) on the three boards this work owns -- NUCLEO-F429ZI,
 NUCLEO-G474RE and NUCLEO-L552ZE-Q -- with the shims unchanged. **Every defect
 turned out to be in the host inference or in the plan. Not one was a shim bug**,
-and no firmware under `hardware/fw_map_*` was modified.
+and no firmware under `rigs/fw_map_*` was modified.
 
-The committed captures (`flashmap/f429.raw.json`, `hardware/map_g4.raw.json`,
+The committed captures (`results/flashmap/f429.raw.json`, `hardware/map_g4.raw.json`,
 `hardware/map_l5.raw.json`) were taken part-way through the work, and two plan
 details moved after them: the wait-state calibration's divisor was corrected, so
 those runs chose `LATENCY = 5` where a fresh run chooses 4, and the phase-2
@@ -339,7 +339,7 @@ honest `LRU or FIFO`.
 * **Published tables** (unchanged): the literal tables from the `hardware/*.md`
   write-ups.
 * **The real captures, re-inferred** (new): `infer.py` is run over the committed
-  `flashmap/f429.raw.json`, `hardware/map_g4.raw.json` and
+  `results/flashmap/f429.raw.json`, `hardware/map_g4.raw.json` and
   `hardware/map_l5.raw.json`, and the published structure is asserted. Every one
   of the L552's four wrong claims has an assertion, including the two that are
   about *how* the answer was reached: `does not discriminate` must appear in the

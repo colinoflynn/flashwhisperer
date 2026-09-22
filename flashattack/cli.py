@@ -127,7 +127,7 @@ def cmd_protosim(args):
 
 def cmd_oscore(args):
     """Live OSCORE-over-UDP attack against fw_f4_oscore (or the local harness in
-    demos/oscore/oscore_localhost.py). Uses the shared wire codecs; by default the
+    demo/oscore/oscore_localhost.py). Uses the shared wire codecs; by default the
     oracle is the device cycle field in the reply (a real board would feed a PTP /
     2nd-MCU timestamp via timing_fn instead). --host-rtt forces the host clock."""
     from .sources import OscoreNetworkSource

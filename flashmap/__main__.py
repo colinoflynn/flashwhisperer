@@ -2,7 +2,7 @@
 
     python -m flashmap selftest --port COM9
     python -m flashmap map      --port COM9 --out f429.json
-    python -m flashmap map      --raw f429.raw.json --out f429.json   # offline
+    python -m flashmap map      --raw results/flashmap/f429.raw.json --out flashmap/f429.json   # offline
     python -m flashmap compare  f429.json g474.json
 """
 from __future__ import annotations

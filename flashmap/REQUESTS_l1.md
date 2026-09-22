@@ -1,6 +1,6 @@
 # Requests from the L152RE shim
 
-What `hardware/fw_map_l1/` needs from the host package (`device.py`,
+What `rigs/fw_map_l1/` needs from the host package (`device.py`,
 `experiments.py`, `infer.py`, `report.py`, `__main__.py`) and from
 `PROTOCOL.md`, neither of which I own. Both items below are worked around in
 the shim, so nothing here blocks a `map` run — but **item 1 produced a wrong

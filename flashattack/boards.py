@@ -1,5 +1,5 @@
 """Board descriptors: everything board-specific in one place, so adding an MCU is
-a data change rather than new C. The firmware template (hardware/fw_template/)
+a data change rather than new C. The firmware template (rigs/fw_template/)
 reads these fields; the host uses `vcp`/`drive` to connect and flash.
 
 `acr` presets encode the FLASH_ACR value for a leaky vs a safe configuration

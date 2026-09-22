@@ -1,7 +1,7 @@
 # What `flashmap` infers on an STM32H723 and an nRF52840
 
-Two shims — [`hardware/fw_map_h7/`](../hardware/fw_map_h7/) and
-[`hardware/fw_map_nrf/`](../hardware/fw_map_nrf/) — and what the host package
+Two shims — [`rigs/fw_map_h7/`](../rigs/fw_map_h7/) and
+[`rigs/fw_map_nrf/`](../rigs/fw_map_nrf/) — and what the host package
 makes of them. These are the two parts that stress the `memmap/1` method hardest
 and in opposite directions: the H723 has a memory hierarchy and two L1 caches
 that the protocol's "twin" concept was not written for, and the nRF52840 has
@@ -47,11 +47,11 @@ tested rather than asserted.
 Toolchain is WSL-only; flashing and the hosts run on Windows.
 
 ```sh
-wsl.exe -e bash -lc "cd /mnt/c/dev/flash-accelerator-tests/hardware/fw_map_h7 && make"
-wsl.exe -e bash -lc "cd /mnt/c/dev/flash-accelerator-tests/hardware/fw_map_nrf && make"
+wsl.exe -e bash -lc "cd /mnt/c/dev/flash-accelerator-tests/rigs/fw_map_h7 && make"
+wsl.exe -e bash -lc "cd /mnt/c/dev/flash-accelerator-tests/rigs/fw_map_nrf && make"
 
-python hardware/boards.py flash h723 hardware/fw_map_h7/fw.bin
-python -m pyocd flash -u 1050219420 -t nrf52840 --connect halt --base-address 0x0 --format bin hardware/fw_map_nrf/fw.bin
+python hardware/boards.py flash h723 rigs/fw_map_h7/fw.bin
+python -m pyocd flash -u 1050219420 -t nrf52840 --connect halt --base-address 0x0 --format bin rigs/fw_map_nrf/fw.bin
 
 python -m flashmap selftest --port COM21      # H723
 python -m flashmap selftest --port COM24      # nRF52840

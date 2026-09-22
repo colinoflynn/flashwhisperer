@@ -107,7 +107,7 @@ def capture_from_observed(plaintext, ciphertext, timing, *, label=""):
 
 # --------------------------------------------------------------------------
 # Wire-format codecs shared by the CLI, the local test server, and the F429
-# firmware (demos/oscore/fw). Request: 0xC0, K, PartialIV[4] big-endian.
+# firmware (demo/oscore/fw). Request: 0xC0, K, PartialIV[4] big-endian.
 # Reply: ct[16] (protected message block) then cyc[4] little-endian (device
 # calibration count; a real attacker uses its own PTP/2nd-MCU timestamp).
 # --------------------------------------------------------------------------

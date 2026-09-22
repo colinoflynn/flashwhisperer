@@ -1,6 +1,6 @@
 # What the G474 and L552 shims need from the host package
 
-Written from `hardware/fw_map_g4/` and `hardware/fw_map_l5/`, which implement
+Written from `rigs/fw_map_g4/` and `rigs/fw_map_l5/`, which implement
 `memmap/1` exactly as [`PROTOCOL.md`](PROTOCOL.md) freezes it. Everything below
 is either a request against the host package (which I do not own) or a
 deviation the host should know about.
@@ -196,7 +196,7 @@ theoretical: with `loopmem 1` and the cache on, an SRAM walk — which performs
 every one of them the probe loop fetching itself. The instrument and the
 perturbation are the same object.
 
-`hardware/fw_l5_cache/` solved this with flash-resident instruction footprints
+`rigs/fw_l5_cache/` solved this with flash-resident instruction footprints
 at known addresses (`pad.S`: a 16 KB NOP run enterable at any 16-byte offset,
 and 512 `bx lr` stubs on 64-byte centres), so a chosen number of lines on chosen
 sets can be executed on demand.

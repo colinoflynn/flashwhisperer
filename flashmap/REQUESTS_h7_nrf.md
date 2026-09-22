@@ -1,6 +1,6 @@
 # Requests from the H723 and nRF52840 shims
 
-What `hardware/fw_map_h7/` and `hardware/fw_map_nrf/` need from the host package
+What `rigs/fw_map_h7/` and `rigs/fw_map_nrf/` need from the host package
 (`device.py`, `experiments.py`, `infer.py`, `report.py`, `__main__.py`), which I
 do not own. Everything here is worked around in the shims meanwhile, so nothing
 below blocks a `map` run — but four of them are wrong answers, not
@@ -286,7 +286,7 @@ registry entry. I flashed via pyocd directly meanwhile:
 
 ```
 python -m pyocd flash -u 1050219420 -t nrf52840 --connect halt \
-       --base-address 0x0 --format bin hardware/fw_map_nrf/fw.bin
+       --base-address 0x0 --format bin rigs/fw_map_nrf/fw.bin
 ```
 
 The H723 (`001800353438511734313939`) is unaffected — its serial is already

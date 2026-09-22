@@ -153,7 +153,7 @@ class OscoreNetworkSource:
     extracts the first protected block and its known plaintext for one packet.
 
     This is the thin glue only; the CoAP/OSCORE framing lives in the attacker
-    tool that talks to the firmware (demos/oscore/fw). Supplied so the wire
+    tool that talks to the firmware (demo/oscore/fw). Supplied so the wire
     format can be swapped without touching the engine.
     """
     def __init__(self, host, port, n, decode_fn, request_fn, *, K=1, R=1,

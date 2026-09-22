@@ -54,7 +54,7 @@ literal, and it points at the *first byte of the .data initialiser* -- which is
 frequently the first table, when the tables are the thing that was moved to
 RAM.  A naive "is there a literal equal to base+offset?" therefore fires on the
 copy loop itself and calls the fixed build broken.  Measured on
-`hardware/fw_g4_st` built with `link_cta.ld`: `_sidata = 0x080019e0` and
+`rigs/fw_g4_st` built with `link_cta.ld`: `_sidata = 0x080019e0` and
 `AES_sbox`'s initialiser is at file offset `0x19e0`.  `_sdata` is the mirror
 image: it aliases that same first table's *run-time* address, so a literal
 matching it is not evidence the cipher reads RAM either.  Both are excluded.
@@ -211,7 +211,7 @@ _L4 = Part("stm32l4", (
 # STM32F7.  The DTCM/SRAM1 boundary MOVES WITHIN THE FAMILY, and it moves
 # across exactly the addresses a table lands at: on an F746 the DTCM is 64 KB,
 # so 0x20010000 is cacheable SRAM1; on an F769 the DTCM is 128 KB, so the same
-# address is DTCM.  `hardware/fw_f7/link.ld` puts RAM at 0x20010000 precisely
+# address is DTCM.  `rigs/fw_f7/link.ld` puts RAM at 0x20010000 precisely
 # because that is *not* DTCM on the board here.  There is no family-wide answer,
 # which is why `stm32f7` means F746 and `stm32f76x` is separate.
 _F7 = Part("stm32f7", (
@@ -641,7 +641,7 @@ def find_copy_regions(data: bytes, base: int, part: Part,
     That filter alone is not enough, and the failure is instructive.  The
     *bss-clear* loop has the same shape -- `(_sbss, _ebss)` are two RAM words in
     the same literal pool -- so any nearby flash word completes a plausible
-    triple, and on `hardware/fw_f7` one such phantom region swallowed the S-box
+    triple, and on `rigs/fw_f7` one such phantom region swallowed the S-box
     and turned a flash table into a "SAFE" verdict: a **false negative**, the
     worst kind of error this tool can make.
 
@@ -746,8 +746,8 @@ def find_zero_regions(data: bytes, part: Part, window: int = 12) -> list[tuple[i
 
     Worth having for one reason: a build whose tables are in flash *and* which
     owns a table-sized zeroed RAM buffer may be copying the tables there at
-    run time and reading them through a pointer.  `hardware/fw_f4_ctguard` and
-    `hardware/fw_f7_rsm DTCM=1` both do exactly that, and both measure flat on
+    run time and reading them through a pointer.  `rigs/fw_f4_ctguard` and
+    `rigs/fw_f7_rsm DTCM=1` both do exactly that, and both measure flat on
     silicon while every static signal says "tables in flash".  The tool cannot
     decide it, but it can stop being quietly confident about it.
     """
@@ -877,7 +877,7 @@ def analyse_elf(data: bytes, part: Part, path: str = "<elf>") -> Report:
             "flash-resident tables coexist with zero-initialised RAM buffers "
             f"({big}). If the build copies the tables into one of those at start-up "
             "and reads them through a pointer, the run-time placement is a RUNTIME "
-            "decision this analysis cannot settle. hardware/fw_f4_ctguard is "
+            "decision this analysis cannot settle. rigs/fw_f4_ctguard is "
             "precisely that shape.")
 
     rep.verdict = _roll_up(rep.placements)
@@ -957,7 +957,7 @@ def analyse_bin(data: bytes, part: Part, base: int | None = None,
     # a PC-relative literal holding its own flash address -- then the group did
     # not move, and any delta that seems to fit the others is a coincidence.
     #
-    # `hardware/fw_f4` is the case that forced this.  `aes.c` keeps
+    # `rigs/fw_f4` is the case that forced this.  `aes.c` keeps
     # `te0_ram[256] .. te3_ram[256]` in .bss at exactly the same 1 KB spacing as
     # `Te0..Te3` in flash, so those four .bss addresses look like a perfect
     # four-table relocation -- while `SBOX`'s own flash address sits in a
@@ -1150,7 +1150,7 @@ def analyse_bin(data: bytes, part: Part, base: int | None = None,
                 "there at start-up and reads them through a pointer, the run-time "
                 "placement is a RUNTIME decision and the EXPOSED verdict above is "
                 "about the stored copy, not necessarily the one that is read. "
-                "hardware/fw_f4_ctguard and hardware/fw_f7_rsm DTCM=1 are both this "
+                "rigs/fw_f4_ctguard and rigs/fw_f7_rsm DTCM=1 are both this "
                 "shape and both measure flat on silicon.")
     return rep
 
@@ -1296,7 +1296,7 @@ def check_linker_script(text: str, section: str, dialect: str | None = None) -> 
     memory region it lands in -- because mentioning it is not enough: ST's own
     published snippet places it at a fixed RAM address with **no load region and
     no copy**, which leaves the tables uninitialised (see
-    hardware/fw_g4_st/link_cta.ld).
+    rigs/fw_g4_st/link_cta.ld).
     """
     raw_lines = [ln.strip() for ln in text.splitlines() if section in ln]
     code = strip_comments(text)
