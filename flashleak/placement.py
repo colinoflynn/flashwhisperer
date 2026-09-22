@@ -119,6 +119,13 @@ class Part:
     name: str
     regions: tuple[Region, ...]
     note: str = ""
+    # What actually closes the channel ON THIS PART, where the bench has
+    # measured it.  This exists because "EXPOSED" alone sends integrators to
+    # the wrong knob: on most parts here disabling the accelerator reduces the
+    # channel without closing it, and on the CC1352 it makes it STRONGER.
+    # Printed with an EXPOSED verdict.  Empty means "not measured on this part"
+    # and nothing is printed -- silence rather than a plausible guess.
+    mitigation: str = ""
 
     def classify(self, addr: int) -> Region | None:
         for r in self.regions:
@@ -255,12 +262,81 @@ _NRF52 = Part("nrf52", (
     Region("flash (NVMC)", 0x0000_0000, 1 * _M, EXPOSED,
            "wait states; the NVMC cache is instruction-side only"),
     Region("RAM", 0x2000_0000, 256 * _K, SAFE),
-), note="flash at 0x00000000: an address-prefix rule fails on this part")
+), note="flash at 0x00000000: an address-prefix rule fails on this part",
+   mitigation="No register reaches the read latch on this part -- there is no "
+              "FLASH_ACR equivalent and no wait-state field anywhere. Every "
+              "ICACHECNF setting leaks identically. Tables in RAM is the only "
+              "measured fix.")
 
 _NRF53 = Part("nrf53", (
     Region("flash (application core)", 0x0000_0000, 1 * _M, EXPOSED),
     Region("RAM", 0x2000_0000, 512 * _K, SAFE),
 ), note="same shape as nrf52")
+
+# STM32L152RE: 512 KB flash at 0x08000000, 80 KB SRAM.  Measured on this bench
+# (hardware/L1_GEOMETRY.md): a 1-entry 8-byte row latch, i.e. the same structure
+# as the G4 at the same granularity as its 64-bit flash.
+_L1 = Part("stm32l1", (
+    Region("flash", 0x0800_0000, 512 * _K, EXPOSED,
+           "64-bit read + 1-entry 8-byte row latch (measured)"),
+    Region("EEPROM (data)", 0x0808_0000, 16 * _K, EXPOSED,
+           "same flash interface; not a table home anyone chooses, but it is read "
+           "through the same wait states"),
+    Region("SRAM", 0x2000_0000, 80 * _K, SAFE),
+), note="measured: hardware/L1_GEOMETRY.md")
+
+# Renesas RA2A1 (R7FA2A1AB3CFM), Cortex-M23.  Measured on this bench
+# (hardware/RA2A1_GEOMETRY.md).  Two things are unlike every ST part:
+# code flash is at 0x00000000, so an 0x08xxxxxx prefix rule misses it entirely;
+# and it is the first part here where the accelerator's own enable really does
+# remove the data-side reuse (FCACHEEN = 0 -> no latch behind it at all).
+# The flash is still EXPOSED, because the shipped/firmware default enables the
+# cache and no static tool can see a register write.
+_RA2A1 = Part("ra2a1", (
+    Region("code flash", 0x0000_0000, 256 * _K, EXPOSED,
+           "FCACHE (1 entry x 16 B) + MEMWAIT/FLWT wait states; leaks as shipped, "
+           "but FCACHEEN = 0 closes it completely (measured)"),
+    Region("data flash", 0x4010_0000, 8 * _K, EXPOSED,
+           "same flash interface"),
+    Region("SRAM", 0x2000_0000, 32 * _K, SAFE),
+), note="flash at 0x00000000: an address-prefix rule fails on this part. "
+        "measured: hardware/RA2A1_GEOMETRY.md",
+   mitigation="FCACHEE.FCACHEEN=0 closes it completely -- no latch survives "
+              "behind the register, unlike every ST part here. MEMWAIT=0 "
+              "(requires ICLK<=32 MHz) also works. But on this Cortex-M23 the "
+              "cipher must ALSO avoid a branching xtime(), which no flash "
+              "setting fixes.")
+
+# TI CC1352R1F3 (CC13x2 / CC26x2), Cortex-M4.  Measured on this bench
+# (hardware/CC1352_GEOMETRY.md).  The reason this part gets a long note is that
+# it is the one part here where "disable the accelerator" is ACTIVELY WRONG:
+# VIMS_CTL.MODE = OFF leaves a 16-byte read latch and makes the S-box channel
+# STRONGER (sigma 1.539 -> 4.289, full key in 5 000 traces instead of 10 000).
+# What closes it is a different bit, VIMS_CTL.IDCODE_LB_DIS, and only while MODE
+# is off as well.  None of that is visible to a static tool, so flash is EXPOSED
+# regardless of what the firmware does with VIMS.
+_CC13X2 = Part("cc13x2", (
+    Region("flash", 0x0000_0000, 352 * _K, EXPOSED,
+           "VIMS 8 KB data-capable cache + a 1-entry 16 B Icode/Dcode line "
+           "buffer; MODE=OFF does NOT close it, IDCODE_LB_DIS=1 does (measured)"),
+    Region("ROM (boot + driverlib)", 0x1000_0000, 32 * _K, UNKNOWN,
+           "TI's ROM, including a driverlib copy; read through VIMS, but no "
+           "table of ours lands here and it was not measured"),
+    Region("GPRAM", 0x1100_0000, 8 * _K, UNKNOWN,
+           "the SAME 8 KB array as the VIMS cache, mapped as RAM only while "
+           "VIMS_CTL.MODE = GPRAM. A table here is plausibly latch-free, but "
+           "(a) it exists only in one VIMS mode, which a static tool cannot "
+           "see, and (b) reads to 0x11000000 were NOT measured on this bench. "
+           "UNKNOWN rather than SAFE, deliberately"),
+    Region("SRAM", 0x2000_0000, 80 * _K, SAFE),
+), note="flash at 0x00000000: an address-prefix rule fails on this part. "
+        "measured: hardware/CC1352_GEOMETRY.md",
+   mitigation="DO NOT just clear VIMS_CTL.MODE: MODE=OFF leaves the 16 B line "
+              "buffer and makes the S-box channel STRONGER (sigma 1.539 -> 4.289, "
+              "full key in 5 000 traces instead of 10 000). What closes it is "
+              "MODE=OFF *plus* VIMS_CTL.IDCODE_LB_DIS=1 -- both, and the second "
+              "is inert on its own. Alternatives: PRCM_CPUCLKDIV=/2 (bit-exact "
+              "in CACHE mode only), or tables in SRAM.")
 
 # A deliberately conservative fallback for an unknown part.  It knows only the
 # two things that are true of every Cortex-M STM32-alike, and says UNKNOWN for
@@ -277,8 +353,8 @@ _GENERIC = Part("generic", (
 ), note="no part given: the SRAM region cannot be classified without one")
 
 PARTS: dict[str, Part] = {p.name: p for p in
-                          (_F1, _F2, _F3, _F4, _F7, _F76X, _G4, _H7, _L4, _L5,
-                           _NRF52, _NRF53, _GENERIC)}
+                          (_F1, _F2, _F3, _F4, _F7, _F76X, _G4, _H7, _L1, _L4,
+                           _L5, _NRF52, _NRF53, _RA2A1, _CC13X2, _GENERIC)}
 
 # Aliases an integrator would actually type.
 _ALIASES = {
@@ -288,8 +364,12 @@ _ALIASES = {
     "f767": "stm32f76x", "f769": "stm32f76x", "f777": "stm32f76x", "f76x": "stm32f76x",
     "g4": "stm32g4", "g474": "stm32g4",
     "h7": "stm32h7", "h723": "stm32h7", "h743": "stm32h7",
+    "l1": "stm32l1", "l152": "stm32l1", "l152re": "stm32l1",
     "l4": "stm32l4", "l5": "stm32l5", "l552": "stm32l5",
     "nrf52840": "nrf52", "nrf52832": "nrf52", "nrf5340": "nrf53",
+    "ra2": "ra2a1", "r7fa2a1": "ra2a1", "r7fa2a1ab": "ra2a1",
+    "cc1352": "cc13x2", "cc1352r1": "cc13x2", "cc1352r1f3": "cc13x2",
+    "cc2652": "cc13x2", "cc26x2": "cc13x2", "cc1312": "cc13x2",
     "": "generic", "none": "generic",
 }
 
@@ -1374,6 +1454,13 @@ def render(rep: Report, verbose: bool = True) -> str:
             for e in p.evidence:
                 out.append(f"        - {e}")
     out.append(f"  => VERDICT: {rep.verdict}  {_VERDICT_TEXT.get(rep.verdict, '')}")
+    # An EXPOSED verdict is where an integrator decides what to change, and on
+    # several parts here the obvious change is the wrong one.  Print what the
+    # bench actually measured for this part, when it has.
+    if rep.verdict == "EXPOSED":
+        part = PARTS.get(rep.part or "")
+        if part is not None and part.mitigation:
+            out.append(f"  what closes it on {part.name}: {part.mitigation}")
     return "\n".join(out)
 
 
