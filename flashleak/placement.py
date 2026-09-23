@@ -81,7 +81,7 @@ from . import fwscan
 #   EXPOSED     read through the flash interface -- wait states, a 64/128-bit
 #               row latch, and whatever ART/prefetch sits on top.  This is the
 #               channel this project measures; it is present even with every
-#               cache bit cleared (hardware/G4_ART_GEOMETRY.md).
+#               cache bit cleared (research/targets/stm32g474_art_geometry.md).
 #   SAFE        SRAM or a tightly-coupled memory with no wait states and no
 #               cache in front of it.  RAM has no row latch; this is the fix.
 #   CACHED_RAM  RAM that is cacheable by a Cortex-M7 L1 D-cache (H7 AXI-SRAM at
@@ -274,7 +274,7 @@ _NRF53 = Part("nrf53", (
 ), note="same shape as nrf52")
 
 # STM32L152RE: 512 KB flash at 0x08000000, 80 KB SRAM.  Measured on this bench
-# (hardware/L1_GEOMETRY.md): a 1-entry 8-byte row latch, i.e. the same structure
+# (research/targets/stm32l152.md): a 1-entry 8-byte row latch, i.e. the same structure
 # as the G4 at the same granularity as its 64-bit flash.
 _L1 = Part("stm32l1", (
     Region("flash", 0x0800_0000, 512 * _K, EXPOSED,
@@ -283,10 +283,10 @@ _L1 = Part("stm32l1", (
            "same flash interface; not a table home anyone chooses, but it is read "
            "through the same wait states"),
     Region("SRAM", 0x2000_0000, 80 * _K, SAFE),
-), note="measured: hardware/L1_GEOMETRY.md")
+), note="measured: research/targets/stm32l152.md")
 
 # Renesas RA2A1 (R7FA2A1AB3CFM), Cortex-M23.  Measured on this bench
-# (hardware/RA2A1_GEOMETRY.md).  Two things are unlike every ST part:
+# (research/targets/ra2a1.md).  Two things are unlike every ST part:
 # code flash is at 0x00000000, so an 0x08xxxxxx prefix rule misses it entirely;
 # and it is the first part here where the accelerator's own enable really does
 # remove the data-side reuse (FCACHEEN = 0 -> no latch behind it at all).
@@ -300,7 +300,7 @@ _RA2A1 = Part("ra2a1", (
            "same flash interface"),
     Region("SRAM", 0x2000_0000, 32 * _K, SAFE),
 ), note="flash at 0x00000000: an address-prefix rule fails on this part. "
-        "measured: hardware/RA2A1_GEOMETRY.md",
+        "measured: research/targets/ra2a1.md",
    mitigation="FCACHEE.FCACHEEN=0 closes it completely -- no latch survives "
               "behind the register, unlike every ST part here. MEMWAIT=0 "
               "(requires ICLK<=32 MHz) also works. But on this Cortex-M23 the "
@@ -308,7 +308,7 @@ _RA2A1 = Part("ra2a1", (
               "setting fixes.")
 
 # TI CC1352R1F3 (CC13x2 / CC26x2), Cortex-M4.  Measured on this bench
-# (hardware/CC1352_GEOMETRY.md).  The reason this part gets a long note is that
+# (research/targets/cc1352.md).  The reason this part gets a long note is that
 # it is the one part here where "disable the accelerator" is ACTIVELY WRONG:
 # VIMS_CTL.MODE = OFF leaves a 16-byte read latch and makes the S-box channel
 # STRONGER (sigma 1.539 -> 4.289, full key in 5 000 traces instead of 10 000).
@@ -330,7 +330,7 @@ _CC13X2 = Part("cc13x2", (
            "UNKNOWN rather than SAFE, deliberately"),
     Region("SRAM", 0x2000_0000, 80 * _K, SAFE),
 ), note="flash at 0x00000000: an address-prefix rule fails on this part. "
-        "measured: hardware/CC1352_GEOMETRY.md",
+        "measured: research/targets/cc1352.md",
    mitigation="DO NOT just clear VIMS_CTL.MODE: MODE=OFF leaves the 16 B line "
               "buffer and makes the S-box channel STRONGER (sigma 1.539 -> 4.289, "
               "full key in 5 000 traces instead of 10 000). What closes it is "

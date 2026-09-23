@@ -230,7 +230,7 @@ vs proximity model 89% over 47 offsets (17 of them negative)"*.
 
 ### 2.4 The four instruments now agree, which they did not before
 
-`NRF52_GEOMETRY.md` quotes the per-word cost as a **range**, 2.5 to 3.0, because
+`nrf52840.md` quotes the per-word cost as a **range**, 2.5 to 3.0, because
 the number moved with the probe's shape: 2.94 in a tight hand-written walk, 0.98
 in a compiler-scheduled one, 2.5 in an amplified loop, 3 for an isolated
 re-read. With the walk loop written so the loaded value is consumed by the very
@@ -294,7 +294,7 @@ twins, caches off, `LATENCY = 7`, minimum of 5 repeats:
 | **flash − dtcm** | **270** | **284** | **312** | **368** | **480** | **704** | **704** | **704** | **704** |
 | flash − axisram | −50 | −36 | −8 | 48 | 160 | 384 | 384 | 384 | 384 |
 
-* **The correct twin reproduces `H7_GEOMETRY.md`'s published table bit-exactly
+* **The correct twin reproduces `stm32h723.md`'s published table bit-exactly
   in all nine cells**, and the whole row is the closed form
   "4 x accesses + 7 x distinct 32-byte blocks" with no fitted parameter:
   270, 284, 312, 368, 480, 704, 704, 704, 704 predicted and measured.
@@ -396,7 +396,7 @@ waitstate_scaling = 1.0  [high]
   - points: 0:0 1:1 2:2 3:3 4:4 5:5 6:6 7:7 8:8 10:10 12:12 15:15
 ```
 
-The second line is `H7_GEOMETRY.md`'s closed form recovered as a fit: the `4` is
+The second line is `stm32h723.md`'s closed form recovered as a fit: the `4` is
 the fixed cost of an uncached flash access, the `1.000 x WS` is the latch.
 
 `alt` at 200 repetitions confirms the same thing at 1/200-cycle resolution:
@@ -441,7 +441,7 @@ than assumed.
 ### 3.6 Instruction placement, and the published "42%" settled
 
 The protocol's rule 3 says the probe loop runs from RAM/ITCM, and
-`H7_GEOMETRY.md` quantifies the cost of ignoring it as a 42% understatement.
+`stm32h723.md` quantifies the cost of ignoring it as a 42% understatement.
 The shim's (deliberately unadvertised — section 4.3) `exec` knob runs the *same
 compiled bytes* from ITCM, AXI SRAM or flash in place. `nop` is pure instruction
 fetch with no data access at all, so it isolates the placement cost:
@@ -564,7 +564,7 @@ deterministically:
 
 A 4-way cache with any fill policy that prefers invalid ways should not evict A
 when three ways in that set are empty — and the probe runs immediately after a
-full clean+invalidate, so they are. `H7_GEOMETRY.md` recorded this as 21 of 21
+full clean+invalidate, so they are. `stm32h723.md` recorded this as 21 of 21
 trials and flagged it unresolved; it is still unresolved, and section 5.1 is
 what I can and cannot say about it.
 
@@ -604,7 +604,7 @@ on a part whose latch `alt` resolved to three decimal places in the same
 capture. A high-confidence false negative on the headline structure, produced by
 the instrument's own floor becoming the instrument's answer.
 
-The fix is `NRF52_GEOMETRY.md` section 1a's `dep=1`, applied: the walk loop is
+The fix is `nrf52840.md` section 1a's `dep=1`, applied: the walk loop is
 written out so the loaded value is consumed by the **very next instruction**.
 `walk` then agrees with `chase` and `alt` (section 2.4) and the latch is found.
 
@@ -778,7 +778,7 @@ different harness.
   that caches data accesses, so section 2's structure does not carry over to it.
 * **One clock each, and the H7's is the reset clock.** HSI 64 MHz on the H723
   with no PLL and no prescalers, 64 MHz from the crystal on the nRF.
-  `H7_GEOMETRY.md` reproduced its numbers at 64, 32 and 16 MHz; I did not re-run
+  `stm32h723.md` reproduced its numbers at 64, 32 and 16 MHz; I did not re-run
   that here, so "a fixed number of cycles, not a fixed time" is inherited from
   that work rather than re-established.
 * **The AXI-SRAM arm of section 3.8's conflict map did not reproduce across
@@ -799,7 +799,7 @@ different harness.
   host's plan never reaches either case and the checksum records which addresses
   were actually read, but a hand-driven probe can silently measure a shorter
   ring than it asked for.
-* **The nRF's I-cache geometry is quoted from `NRF52_GEOMETRY.md`**, not
+* **The nRF's I-cache geometry is quoted from `nrf52840.md`**, not
   re-measured here — section 5.3 says why this tool cannot re-measure it.
 * **"`SCB_InvalidateDCache` on a dirty line loses data" is a rule this shim
   follows, not a thing it demonstrates.** Nothing writable lives in AXI SRAM

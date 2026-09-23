@@ -21,7 +21,7 @@ reduce that cost, and they are not the same:
    !! CORRECTED 2026-09-17 -- this block used to say "universal", and that
    "every wide flash has one current-row register". Both halves were wrong, and
    they were wrong in opposite directions on two parts measured on this bench
-   (see hardware/G4_ART_GEOMETRY.md and rigs/fw_f3_cache/):
+   (see research/targets/stm32g474_art_geometry.md and rigs/fw_f3_cache/):
 
      * STM32G474 HAS it, and no FLASH_ACR bit removes it. With prefetch,
        I-cache and D-cache ALL disabled, a re-read is still free iff the

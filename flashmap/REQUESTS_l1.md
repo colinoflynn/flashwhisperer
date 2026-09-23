@@ -6,7 +6,7 @@ What `rigs/fw_map_l1/` needs from the host package (`device.py`,
 the shim, so nothing here blocks a `map` run — but **item 1 produced a wrong
 answer**, not an inconvenience, and is marked as such.
 
-Evidence: `hardware/L1_GEOMETRY.md` §2, `flashmap/l152re.json`.
+Evidence: `research/targets/stm32l152.md` §2, `flashmap/l152re.json`.
 
 The part this comes from is the least accelerated one the protocol has met:
 STM32L152RE, Cortex-M3, no cache of any kind, and a `LATENCY` field that is
@@ -150,6 +150,6 @@ For the record, the same sweep says the flash data path has **no hit/miss cost
 whatsoever at `LATENCY = 0`** — `+0.00000` cycles per access in all four flash
 configurations, both `loopmem` values, with a clean-zero SRAM twin. That is
 `MEASURING_CHANNELS.md` B3 confirmed at five decimal places by the amplified
-probe, and it is what makes `hardware/L1_GEOMETRY.md` §4 a result rather than a
+probe, and it is what makes `research/targets/stm32l152.md` §4 a result rather than a
 measurement error: the AES leaks one cycle at `LATENCY = 0` in a configuration
 where the data path, measured on its own, does not.

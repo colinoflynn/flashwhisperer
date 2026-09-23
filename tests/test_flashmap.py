@@ -9,9 +9,9 @@ Two kinds of test, and the distinction matters:
    a cache is tags with per-word validity), not from the inference, so a bug that
    makes `infer.py` agree with itself does not pass.
 
-2. **Published numbers.**  The literal tables from `hardware/F4_LATCH.md`,
-   `hardware/G4_ART_GEOMETRY.md`, `hardware/L5_GEOMETRY.md`,
-   `hardware/H7_GEOMETRY.md` and `hardware/NRF52_GEOMETRY.md` are fed in as
+2. **Published numbers.**  The literal tables from `research/targets/stm32f4_latch.md`,
+   `research/targets/stm32g474_art_geometry.md`, `research/targets/stm32l552.md`,
+   `research/targets/stm32h723.md` and `research/targets/nrf52840.md` are fed in as
    measurements, and the inference must reproduce what those documents concluded
    by hand.  This is what lets the two other shim authors trust the inference
    without a board: if their part behaves like one of the five already
@@ -372,7 +372,7 @@ def test_f429_recovered():
     assert km["icache"]["latch"]["verdict"] == "no effect"
     assert km["dcache"]["read_width"]["verdict"] == "no effect"
     # DCEN does not switch the latch off, it hides it -- a different claim, and
-    # the one F4_LATCH.md makes ("no register reaches it").
+    # the one stm32f4_latch.md makes ("no register reaches it").
     assert km["dcache"]["latch"]["verdict"] == "masks"
 
 
@@ -591,7 +591,7 @@ def _ms_from_tables(part, walk_row, reread_rows, evict_rows, twin_walk=None,
 
 
 def test_published_f429_tables():
-    """hardware/F4_LATCH.md sections 1, 2 and 3, verbatim."""
+    """research/targets/stm32f4_latch.md sections 1, 2 and 3, verbatim."""
     walk = {1: 20, 2: 40, 4: 80, 8: 160, 16: 320, 32: 320, 64: 320, 128: 320}
     # section 3: read target, read one other address at `off`, re-read target
     off_all_off = {0: 10, 1: 10, 4: 10, 8: 10, 12: 10, 15: 10,
@@ -624,7 +624,7 @@ def test_published_f429_tables():
         {tuple(sorted(c_off.items())): ev_off,
          tuple(sorted(c_on.items())): ev_on})
     st = infer_all(ms)
-    assert st.value("read_width") == 16, "F4_LATCH.md section 1: 128-bit"
+    assert st.value("read_width") == 16, "stm32f4_latch.md section 1: 128-bit"
     latch = st.value("latch")
     assert latch["granularity_bytes"] == 16 and latch["entries"] == 1
     assert latch["differential_cycles"] == 5
@@ -634,7 +634,7 @@ def test_published_f429_tables():
 
 
 def test_published_g474_eviction_surface_is_fully_associative():
-    """G4_ART_GEOMETRY.md section 2: 8 tags, and the spacing sweep that shows
+    """stm32g474_art_geometry.md section 2: 8 tags, and the spacing sweep that shows
     there is no address-derived index."""
     measured = {sp: (8, True) for sp in (8, 16, 32, 64, 128, 256, 512)}
     measured[8] = (32, True)     # sub-line spacing: four words share one tag
@@ -646,7 +646,7 @@ def test_published_g474_eviction_surface_is_fully_associative():
 
 
 def test_published_l552_index_sweep():
-    """L5_GEOMETRY.md section 3b: the 1-way and 2-way conflict spacings."""
+    """stm32l552.md section 3b: the 1-way and 2-way conflict spacings."""
     one_way = {16: (512, True), 1024: (8, True), 2048: (4, True),
                4096: (2, True), 8192: (1, True), 16384: (1, True)}
     f1 = _fit_cache(one_way, 16, cap=2048)
@@ -661,7 +661,7 @@ def test_published_l552_index_sweep():
 
 
 def test_published_nrf52_icache_is_direct_mapped():
-    """NRF52_GEOMETRY.md section 4b/4c: 2 KB, 16 B lines, one-way."""
+    """nrf52840.md section 4b/4c: 2 KB, 16 B lines, one-way."""
     measured = {16: (128, True), 32: (64, True), 64: (32, True),
                 128: (16, True), 256: (8, True), 512: (4, True),
                 1024: (2, True), 2048: (1, True), 4096: (1, True)}
@@ -673,7 +673,7 @@ def test_published_nrf52_icache_is_direct_mapped():
 
 
 def test_published_h723_probe_disagrees_with_ccsidr():
-    """H7_GEOMETRY.md section 3: `CCSIDR` says 4-way, the conflict probe says a
+    """stm32h723.md section 3: `CCSIDR` says 4-way, the conflict probe says a
     single 8192-byte-away access evicts.  The tool must report what it measured
     (1-way) rather than the register value -- the disagreement is the result."""
     measured = {32: (256, True), 8192: (1, True), 16384: (1, True)}
@@ -683,7 +683,7 @@ def test_published_h723_probe_disagrees_with_ccsidr():
 
 
 def test_published_l552_latch_offset_sweep_fits_two_entries():
-    """L5_GEOMETRY.md section 2a, the 81-offset sweep collapsed to its rule."""
+    """stm32l552.md section 2a, the 81-offset sweep collapsed to its rule."""
     obs = {}
     for off in range(-32, 48):
         blk_same = (off // 8) == 0
@@ -696,7 +696,7 @@ def test_published_l552_latch_offset_sweep_fits_two_entries():
 
 
 def test_published_h7_aligned_block_not_a_distance():
-    """H7_GEOMETRY.md section 2: the fast window is the aligned 32 B block.
+    """stm32h723.md section 2: the fast window is the aligned 32 B block.
     An aligned-block model and a proximity model differ on negative offsets,
     which is why the sweep is signed."""
     obs = {off: ("fast" if 0 <= off < 32 else "slow")
@@ -944,7 +944,7 @@ def _capture(name):
 
 
 def test_real_f429_capture():
-    """NUCLEO-F429ZI against hardware/F4_LATCH.md."""
+    """NUCLEO-F429ZI against research/targets/stm32f4_latch.md."""
     st = _capture("results/flashmap/f429.raw.json")
     assert st.value("read_width") == 16
     latch = st.value("latch")
@@ -966,7 +966,7 @@ def test_real_f429_capture():
 
 
 def test_real_g474_capture():
-    """NUCLEO-G474RE against hardware/G4_ART_GEOMETRY.md."""
+    """NUCLEO-G474RE against research/targets/stm32g474_art_geometry.md."""
     st = _capture("results/flashmap/map_g4.raw.json")
     assert st.value("read_width") == 8
     latch = st.value("latch")
@@ -993,7 +993,7 @@ def test_real_g474_capture():
 
 
 def test_real_l552_capture():
-    """NUCLEO-L552ZE-Q against hardware/L5_GEOMETRY.md.
+    """NUCLEO-L552ZE-Q against research/targets/stm32l552.md.
 
     This is the part that produced four wrong claims, and every assertion here
     is one of them.
@@ -1067,7 +1067,7 @@ def test_real_captures_never_claim_more_than_they_measured():
 
 
 def test_real_h723_capture():
-    """NUCLEO-H723ZG against hardware/H7_GEOMETRY.md and the CCSIDR read over
+    """NUCLEO-H723ZG against research/targets/stm32h723.md and the CCSIDR read over
     SWD: L1-D is 32 B lines x 4 ways x 256 sets = 32768 B.
 
     Three of this repository's four "confident and wrong" claims were on this
@@ -1121,7 +1121,7 @@ def test_real_h723_capture():
 
 
 def test_real_nrf52840_capture():
-    """nRF52840-DK against hardware/NRF52_GEOMETRY.md: one 16-byte latch
+    """nRF52840-DK against research/targets/nrf52840.md: one 16-byte latch
     tracking the aligned word, and no data-side cache."""
     st = _capture("results/flashmap/nrf52840.raw.json")
     assert st.value("read_width") == 16

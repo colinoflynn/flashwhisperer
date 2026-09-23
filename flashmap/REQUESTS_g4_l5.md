@@ -45,7 +45,7 @@ the start of the interference and the two policies predict the same transition.
 Using it, both parts came out **LRU, and not FIFO**: the G474 at three
 independent re-touch positions, the L552 with the hardware miss counter as
 witness. Both ground-truth documents leave the policy open, and
-`L5_GEOMETRY.md` §8 states explicitly that its measurement "does not separate
+`stm32l552.md` §8 states explicitly that its measurement "does not separate
 LRU from FIFO".
 
 **Request:** adopt the optional `start` argument into `PROTOCOL.md`, and add a
@@ -328,7 +328,7 @@ knob that moves it. The data is in the capture; the classifier discarded it.
 - `cache.line_bytes = 8` — the read width standing in for a line the sweep never
   resolved;
 - `knob_map.dcache -> data_reuse : no effect`, which is the exact opposite of
-  `G4_ART_GEOMETRY.md` §2, whose whole point is that `DCEN` is the **only**
+  `stm32g474_art_geometry.md` §2, whose whole point is that `DCEN` is the **only**
   source of data reuse on this part.
 
 **Request:** compute the scale **per configuration** — or at minimum per
@@ -376,7 +376,7 @@ Re-run of `python -m flashmap map` against the fixed `infer.py`. The G474 now
 comes out essentially correct — `cache = 8 ways, 256 B, conflict period 32 B,
 capacity_unit "tags"`, `latch = 8 B x 1 entry, depth 1, knob_reaches_it false`,
 `dcache -> data_reuse: controls (1 -> 32)`, `dcache -> latch: masks` — all at
-high confidence and all matching `G4_ART_GEOMETRY.md`. The L552 has three
+high confidence and all matching `stm32g474_art_geometry.md`. The L552 has three
 remaining problems, each with a specific cause.
 
 ### 10a. The L552 latch: the right answer is measured and then outvoted
@@ -421,7 +421,7 @@ icache=1 waysel=1 : ... 4096:2 8192:2  16384:2  -> 2-way, conflict period 4096 B
 ```
 
 Same capacity, different conflict period and different ways — which is exactly
-`L5_GEOMETRY.md` §3b's finding that `WAYSEL` **re-indexes rather than resizes**,
+`stm32l552.md` §3b's finding that `WAYSEL` **re-indexes rather than resizes**,
 and the tool does *not* make the "1-way = half the cache" error. Good.
 
 But `knob_map` says `waysel -> data_reuse : no effect, identical in all 4

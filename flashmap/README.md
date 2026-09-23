@@ -21,9 +21,9 @@ This repository already contained five bespoke probes — `f4_latch_probe.py`,
 `g4_cache_probe.py`, `l5_cache_probe.py`, `h7_cache_probe.py`,
 `nrf_cache_probe.py` — each with its own firmware, each answering the same
 question for one part, each printing a table someone then interpreted by hand.
-The write-ups those produced (`hardware/G4_ART_GEOMETRY.md`,
-`hardware/F4_LATCH.md`, `hardware/L5_GEOMETRY.md`, `hardware/H7_GEOMETRY.md`,
-`hardware/NRF52_GEOMETRY.md`) are this tool's ground truth: it has to rediscover
+The write-ups those produced (`research/targets/stm32g474_art_geometry.md`,
+`research/targets/stm32f4_latch.md`, `research/targets/stm32l552.md`, `research/targets/stm32h723.md`,
+`research/targets/nrf52840.md`) are this tool's ground truth: it has to rediscover
 what they established without being told.
 
 What is generalised is the *reasoning*, not the tables.
@@ -194,7 +194,7 @@ Each of these is a trap this bench already paid for once.
   survived into SRAM (`MEASURING_CHANNELS.md` A5).
 * **The twin is recorded, not folded away.** The twin can *eat* the effect when
   the probe loop is loose enough that the SRAM side does work the flash side
-  gets for free (`NRF52_GEOMETRY.md` §1a), so `infer.py` also keeps a
+  gets for free (`nrf52840.md` §1a), so `infer.py` also keeps a
   within-column reference (stride 0 against stride N on flash) and flags a
   disagreement.
 * **The probe loop runs from RAM.** Running from flash conflates the I-side with

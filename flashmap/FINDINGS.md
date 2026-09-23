@@ -26,11 +26,11 @@ python -m flashmap map --raw results/flashmap/f429.raw.json
 
 ## 0. The headline
 
-Everything [`../hardware/F4_LATCH.md`](../../research/targets/stm32f4_latch.md) established by
+Everything [`../../research/targets/stm32f4_latch.md`](../../research/targets/stm32f4_latch.md) established by
 hand, the tool rediscovered from timings alone, at a different wait-state
 setting, with no part-specific knowledge anywhere in the host package.
 
-| property | `F4_LATCH.md` (by hand, `LATENCY = 5`) | `flashmap` (`LATENCY = 4`) | |
+| property | `stm32f4_latch.md` (by hand, `LATENCY = 5`) | `flashmap` (`LATENCY = 4`) | |
 |---|---|---|---|
 | flash read width | 16 B (128-bit) | **16 B**, invariant across all 8 accelerator settings | agree |
 | data cache | 8 tags x 16 B = 128 B, `DCEN` only | **128 B, 8 entries x 16 B, `DCEN` only** | agree |
@@ -58,7 +58,7 @@ Cold forward walk, 64 accesses, flash minus its own SRAM twin, `LATENCY = 4`:
 | per access (cyc) | 0.0625 | 0.25 | 0.50 | 1.00 | 2.00 | **4.00** | 4.00 | 4.00 | 4.00 | 4.00 |
 
 `cost = LATENCY x (distinct 16-byte words touched)`, exactly, saturating at
-stride 16. `F4_LATCH.md` section 1 measured 0.31 / 0.62 / 1.25 / 2.50 / **5.00**
+stride 16. `stm32f4_latch.md` section 1 measured 0.31 / 0.62 / 1.25 / 2.50 / **5.00**
 at `LATENCY = 5` -- the same table scaled by 5/4, to the cycle.
 
 The tool checked the thing the hand-written table asserts and does not test: it
@@ -126,7 +126,7 @@ re-read. `LATENCY = 4`, so 10 = hit and 14 = miss.
 | `DCEN` on | 10 | 10 | 10 | 10 | **14** | 14 | 14 | 14 |
 | `DCEN` off | 10 | 14 | 14 | 14 | 14 | 14 | 14 | 14 |
 
-Eight entries, and `DCEN` is the only switch -- `F4_LATCH.md` section 2 exactly.
+Eight entries, and `DCEN` is the only switch -- `stm32f4_latch.md` section 2 exactly.
 
 What the tool adds is the **spacing sweep**, which is how associativity is
 decided:
@@ -217,7 +217,7 @@ measured that the wording does not cover.
 
 ### 6a. "The per-collision signal is `LATENCY` cycles" is loop-dependent, by one cycle
 
-`F4_LATCH.md` and `G4_ART_GEOMETRY.md` both state the differential as exactly
+`stm32f4_latch.md` and `stm32g474_art_geometry.md` both state the differential as exactly
 `LATENCY`. That is the **single-access** figure. Measured on the same board, in
 the same configuration, at the same wait states, with the `alt` probe -- the
 same two addresses alternated 200 times inside one timed window:
@@ -245,12 +245,12 @@ Two consequences worth carrying:
   silently assumes the effect survives being put in a longer loop. Here it does
   not.
 
-This is the `NRF52_GEOMETRY.md` section 1a lesson (the probe loop's schedule
+This is the `nrf52840.md` section 1a lesson (the probe loop's schedule
 changes the number) reproduced on a second vendor's part, and quantified.
 
 ### 6b. On the F429, "8 tags" and "128 bytes" are the same statement
 
-`G4_ART_GEOMETRY.md`'s sharpest result is that the G474's capacity is a count of
+`stm32g474_art_geometry.md`'s sharpest result is that the G474's capacity is a count of
 **line tags** and not a byte budget: 8 tags of 32 B, so a walk at 32-byte
 spacing dies at 8 and not at the 32 doubleword-slots a byte-budget model
 predicts. The tool tests this explicitly -- and on the F429 it **declines to
@@ -261,7 +261,7 @@ same structure and the test has nothing to discriminate. The claim comes out
 
 ### 6c. `DCEN` off is "no *multi-line* reuse", not "no reuse"
 
-`F4_LATCH.md` section 2 reads "With `DCEN` clear there is no multi-line reuse at
+`stm32f4_latch.md` section 2 reads "With `DCEN` clear there is no multi-line reuse at
 any N", which is correct and is the table's spacing-16 row. At spacing **8** the
 same probe with `DCEN` clear reads 10 at n=1 -- the intervening access fell in
 the target's own 16-byte word and the latch held. The two sections of that
@@ -331,7 +331,7 @@ measured, and that choice makes the I-side unobservable in the same breath.
 
 This matters more than it sounds. `hardware/INSTRUCTION_PATH.md` and
 `hardware/SCODE_BREAK.md` establish that on the F303 the instruction path
-carries a channel the data path does not have, and `NRF52_GEOMETRY.md` section 5
+carries a channel the data path does not have, and `nrf52840.md` section 5
 finds both a position and a collision channel there. A tool that reports
 "`ICEN`: no effect" is, on those parts, reporting the absence of something it
 cannot see.

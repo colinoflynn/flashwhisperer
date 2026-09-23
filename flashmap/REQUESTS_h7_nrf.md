@@ -41,7 +41,7 @@ decimal places in the same capture. A *high-confidence false negative* on the
 headline structure.
 
 I fixed this in the shims by writing the walk loop so the loaded value is
-consumed by the next instruction (`NRF52_GEOMETRY.md` §1a's `dep=1`), which
+consumed by the next instruction (`nrf52840.md` §1a's `dep=1`), which
 brings `walk` into agreement with `chase` and `alt`. But the fix lives in the
 shim, and the next shim author will not know to do it.
 
@@ -71,7 +71,7 @@ from a miss that is 1 cycle dearer.
 **Request.** Two things, either of which fixes it:
 
 * classify against the **flash column's own minimum** rather than against the
-  twin. `NRF52_GEOMETRY.md` §1a already prescribes this ("take the reference
+  twin. `nrf52840.md` §1a already prescribes this ("take the reference
   from the same column") for exactly this failure, and the plan already
   measures `walk 0 n` as the within-column reference — use it here too;
 * and keep the sign: a systematically negative differential means the twin is
@@ -239,7 +239,7 @@ that primitive's interrupts-off window.
 
 This is not laziness, it is the only correct implementation: read outside that
 window and the UART busy-wait loop's own flash instruction fetches land in the
-count. An early version of this measurement in `NRF52_GEOMETRY.md` §3 reported
+count. An early version of this measurement in `nrf52840.md` §3 reported
 ~5 500 hits for a 650-cycle walk — more hits than cycles.
 
 **Request.** Say in PROTOCOL.md that `C` reports the last timed primitive's

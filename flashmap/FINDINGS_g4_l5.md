@@ -6,8 +6,8 @@ about either part beyond what `V`, `R` and `K` reported. Shims
 [`../rigs/fw_map_l5/`](../../rigs/fw_map_l5); captures `map_g4_geometry.npz`,
 `map_l5_geometry.npz`, `map_l5_counters.npz`.
 
-Ground truth: [`../hardware/G4_ART_GEOMETRY.md`](../../research/targets/stm32g474_art_geometry.md) and
-[`../hardware/L5_GEOMETRY.md`](../../research/targets/stm32l552.md), both established by bespoke
+Ground truth: [`../../research/targets/stm32g474_art_geometry.md`](../../research/targets/stm32g474_art_geometry.md) and
+[`../../research/targets/stm32l552.md`](../../research/targets/stm32l552.md), both established by bespoke
 hand-written probes. **The point of the exercise is whether a generic tool rediscovers
 them without being told.**
 
@@ -43,7 +43,7 @@ belongs to the flash array, not the accelerator.
 
 ### 2a. Both caches are LRU; FIFO is excluded
 
-`L5_GEOMETRY.md` §8 records that its data "does not separate LRU from FIFO". One
+`stm32l552.md` §8 records that its data "does not separate LRU from FIFO". One
 optional argument on `evict` settles it: start the walk *below* A so it passes through A
 once mid-walk — a hit LRU promotes and FIFO ignores.
 
@@ -62,7 +62,7 @@ With the probe loop resident in flash rather than SRAM:
   anomalous.
 
 This is the sharpest methodological result of the pair, and it is why the "run the probe
-from SRAM" rule in [`../MEASURING_CHANNELS.md`](../../research/mechanism/MEASURING_CHANNELS.md) is
+from SRAM" rule in [`research/mechanism/MEASURING_CHANNELS.md`](../../research/mechanism/MEASURING_CHANNELS.md) is
 load-bearing rather than hygienic. It also explains the L552's unified-cache behaviour
 from the other side: on that part the instruction stream and the data under test share
 one structure.

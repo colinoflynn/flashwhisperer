@@ -136,7 +136,7 @@ ramp: excess over the median at least `ratio` (default 3) times the best rejecte
 offset's. Measured, that statistic reads 17-40 for a real single-family leak and
 1.2-1.7 for a uniform one, so the cut is not tuned. `engine.select_offsets` is
 the rule on its own, tested against eight recorded peak maps in
-[`tests/test_offsets.py`](../tests/test_offsets.py), because the scan that
+[`flashwhisperer/tests/test_offsets.py`](../tests/test_offsets.py), because the scan that
 produces one costs ~50 s.
 
 Note the calibration needs more traces than the attack it accelerates (~450 k

@@ -3,7 +3,7 @@
 A `Target` carries only what the host cannot discover over the wire. Everything else --
 kernel addresses, table address, offsets modulo the read word -- is asked of the device,
 because a host that assumes those is a host that reports the sweep it meant to run rather
-than the one it ran (`hardware/G4_ARB_PROBE.md` §5.3).
+than the one it ran (`research/targets/stm32g474_arb_probe.md` §5.3).
 """
 from __future__ import annotations
 
@@ -120,7 +120,7 @@ L5_CONFIGS = (
 # pulsing ICRST/DCRST, which is not part of the word).
 #
 # DCEN gets its own row here, which the G4 list does not have. On this part the data cache is
-# 8 tags x 16 B (hardware/F4_LATCH.md section 2) and the probe touches exactly two words, so
+# 8 tags x 16 B (research/targets/stm32f4_latch.md section 2) and the probe touches exactly two words, so
 # with DCEN on both the colliding and the non-colliding index are simply cached and the
 # differential must vanish for a reason that has nothing to do with arbitration. Sweeping it
 # says so explicitly rather than leaving a reader to wonder.
@@ -147,20 +147,20 @@ TARGETS = {
     ),
     "l552": Target(
         name="l552", port="COM6", board="l552", fw_dir="fw_l5_arb", banner="l5arb",
-        # RM0438 / L5_GEOMETRY.md: 64-bit read, and a TWO-entry latch direct-mapped on A[3].
+        # RM0438 / stm32l552.md: 64-bit read, and a TWO-entry latch direct-mapped on A[3].
         read_width=8, entry_stride=4, latch_entries=2, latch_index_bit=3,
         configs=L5_CONFIGS, clocks=(1, 2, 4, 8, 16),
     ),
     "f429": Target(
         name="f429", port="COM9", board="f429", fw_dir="fw_f4_arb", banner="f4arb",
-        # RM0090 / F4_LATCH.md: 128-bit read -- read_width is 16 here, NOT the 8 the other
+        # RM0090 / stm32f4_latch.md: 128-bit read -- read_width is 16 here, NOT the 8 the other
         # two parts use. Getting this wrong is the quiet way to break the port: with 8, the
         # host would pick idx_miss = 0x42, which on a 16-byte word SHARES idx_a's word, so
         # the "miss" case would hit and the whole target would report clean. The collision
         # predicate on this part is idx >> 2 (four 4-byte entries per read word), not
         # idx >> 1.
         #
-        # ONE latch entry, 16 bytes, measured (F4_LATCH.md section 3) -- the G474's shape
+        # ONE latch entry, 16 bytes, measured (stm32f4_latch.md section 3) -- the G474's shape
         # scaled up, not the L552's 2-entry pair, so latch_entries stays 1 and
         # latch_index_bit is unused.
         read_width=16, entry_stride=4, latch_entries=1,

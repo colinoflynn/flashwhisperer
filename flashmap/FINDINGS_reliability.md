@@ -40,8 +40,8 @@ run. Each capture is a complete, unmodified transcript of the board it names.
 | twin calibration | +0.000 cyc/access | +0.000 cyc/access | **-1.000 cyc/access** (isolated config) |
 | which knob does what | `dcache` controls reuse and masks the latch | `dcache` controls reuse | `icache` controls reuse; `waysel` **re-indexes** it at constant capacity |
 
-All three match their ground-truth documents -- `hardware/F4_LATCH.md`,
-`hardware/G4_ART_GEOMETRY.md`, `hardware/L5_GEOMETRY.md` -- with no
+All three match their ground-truth documents -- `research/targets/stm32f4_latch.md`,
+`research/targets/stm32g474_art_geometry.md`, `research/targets/stm32l552.md` -- with no
 part-specific tuning anywhere in the plan or the inference. The L552's four
 wrong claims are gone, and the G474 and F429 did not regress.
 
@@ -74,7 +74,7 @@ holds more than one model the family is listed, the representative is the
 *simplest* member of it (fewest entries, then smallest granularity) and the
 confidence drops to `low`; if the intersection is empty the configurations
 contradict each other, and that is reported as the finding rather than resolved
-by preference. The published `hardware/F4_LATCH.md` table, fed in literally, is
+by preference. The published `research/targets/stm32f4_latch.md` table, fed in literally, is
 exactly such an under-determined case -- its ten offsets fit `16 B x 1` and
 `8 B x 2` equally -- and the tool now says so.
 
@@ -676,7 +676,7 @@ The tool now prints each of these as a note on any capture that has them.
 * **Geometry is probed at exactly one wait-state setting on every part.** All
   four parts with a `waitstates` knob have **zero** `evict` and `chase` rows
   outside `waitstates = 5`. Nothing suggests the geometry moves with the latency;
-  nothing here tests it either, and `hardware/G4_LATENCY0.md` exists because
+  nothing here tests it either, and `research/targets/stm32g474_latency0.md` exists because
   `LATENCY = 0` is a case where behaviour does change.
 * **The H723's twin is DTCM, and that is the right choice with a price.**
   `FINDINGS_h7_nrf.md` section 3.1 shows why the shim picks it: the only other
@@ -724,8 +724,8 @@ is what made the rule asymmetric.
 | wait-state scaling | 1.000 | 1.000 | 1.000 | 1.000 | no knob |
 | twin calibration | +0.000 | +0.000 | -1.000 | +4.000 (`walk`), **+3.000** (`reread`) *(was +2.000 — a median over two configurations, the one thing this claim exists to forbid)* | no knob |
 
-Every cell in the H723 and nRF columns now matches `hardware/H7_GEOMETRY.md` and
-`hardware/NRF52_GEOMETRY.md`, or says `unknown` with the measurement that would
+Every cell in the H723 and nRF columns now matches `research/targets/stm32h723.md` and
+`research/targets/nrf52840.md`, or says `unknown` with the measurement that would
 close it.
 
 ---

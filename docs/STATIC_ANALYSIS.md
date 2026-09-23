@@ -20,7 +20,7 @@ the same ciphertext, one linker line apart, is either
 * a full AES-128 key in 20 000 timings, or
 * `sd = 0.00`, a single cycle count, 0/16 — and **20–25 % faster**
 
-([`hardware/ST_CRYPTOLIB.md`](../../research/exposure/ST_CRYPTOLIB.md) §4). No functional test
+([`research/exposure/ST_CRYPTOLIB.md`](../../research/exposure/ST_CRYPTOLIB.md) §4). No functional test
 can see the difference; the ciphertext is identical. The question here is
 whether a *static* tool can.
 
@@ -63,7 +63,7 @@ levels, because two are not enough:
 
 | level | meaning |
 |---|---|
-| `EXPOSED` | read through the flash interface — wait states, a 64/128/256-bit row latch, whatever ART sits on top. **Present with every cache bit cleared** ([`hardware/G4_ART_GEOMETRY.md`](../../research/targets/stm32g474_art_geometry.md)). |
+| `EXPOSED` | read through the flash interface — wait states, a 64/128/256-bit row latch, whatever ART sits on top. **Present with every cache bit cleared** ([`../../research/targets/stm32g474_art_geometry.md`](../../research/targets/stm32g474_art_geometry.md)). |
 | `SAFE` | SRAM / CCM / TCM: no wait states, no cache in front. This is the fix. |
 | `CACHED_RAM` | RAM that a Cortex-M7 L1 D-cache caches — H7 AXI-SRAM at `0x2400_0000`, F7 SRAM1 at `0x2001_0000`. The flash wait-state channel is gone; a *classical* cache-timing channel is not. **This project has not measured it, so it does not get called "safe".** |
 
@@ -129,7 +129,7 @@ The CC1352R1F3 is why this exists:
 On that part "disable the flash accelerator" — the advice every other page in
 this project implies — **doubles the attacker's advantage**, because with only a
 1-entry latch left, adjacency decides everything and adjacency is what the
-last-round collision reads ([`hardware/CC1352_GEOMETRY.md`](../../research/targets/cc1352.md)
+last-round collision reads ([`../../research/targets/cc1352.md`](../../research/targets/cc1352.md)
 §3a, §4). A tool that says `EXPOSED` and stops is complicit in that.
 
 Three parts were added to the map at the same time, all measured on silicon and
@@ -547,7 +547,7 @@ five *different* reasons placement is **necessary but not sufficient**:
 
 | build | why EXPOSED is not a key |
 |---|---|
-| `fw_f3_aes` | **The part.** F303 has wait states but the data path measured *bit-exactly constant time* ([`hardware/WHAT_LEAKS_ON_F3.md`](../../research/mechanism/WHAT_LEAKS_ON_F3.md)). Tables in flash, no data channel. |
+| `fw_f3_aes` | **The part.** F303 has wait states but the data path measured *bit-exactly constant time* ([`research/mechanism/WHAT_LEAKS_ON_F3.md`](../../research/mechanism/WHAT_LEAKS_ON_F3.md)). Tables in flash, no data channel. |
 | `fw_f4_ctguard` | **Run-time placement.** `aes.c` carries both copies behind one pointer; the shipping path reads `.bss`, the flash tables are the *positive control*. §6.1. |
 | `fw_f7_rsm DTCM=1` | **Run-time relocation.** 4.75 KB `memcpy`'d to DTCM at boot; `t = 0.00`. |
 | `fw_f4_rsm` | **A countermeasure in the cipher.** Rotating masked S-box: 0/16 — while the *plain control in the same image* reads 16/16. |
@@ -602,7 +602,7 @@ this module and it had none of them, which makes them a clean held-out set.
   has since been measured** — the instruction-side-only claim was confirmed
   directly with the part's own `IHIT`/`IMISS` counters, and a **1-entry 16-byte
   read latch that no register reaches** was found behind it, from which the full
-  key falls in 6 250 traces ([`hardware/NRF52_GEOMETRY.md`](../../research/targets/nrf52840.md)).
+  key falls in 6 250 traces ([`../../research/targets/nrf52840.md`](../../research/targets/nrf52840.md)).
 
 **A sixth build, and it is only half held out.** `fw_cc1352_aes` (TI
 CC1352R1F3) was added 2026-09-21. The tool's table-finding and address
@@ -915,8 +915,8 @@ python research/placement_corpus.py --root /path/to/corpus
 
 | file | what |
 |---|---|
-| [`flashleak/placement.py`](../flashleak/placement.py) | the module: part maps, ELF/`ar` readers, the Thumb decoders, the three artefact cases, the linker-script check, the CLI |
-| [`tests/test_placement.py`](../tests/test_placement.py) | 41 tests: decoders, a synthetic matched pair, the repo's committed firmware, the CI gate |
+| [`flashwhisperer/flashleak/placement.py`](../flashleak/placement.py) | the module: part maps, ELF/`ar` readers, the Thumb decoders, the three artefact cases, the linker-script check, the CLI |
+| [`flashwhisperer/tests/test_placement.py`](../tests/test_placement.py) | 41 tests: decoders, a synthetic matched pair, the repo's committed firmware, the CI gate |
 | [`research/placement_corpus.py`](../../research/placement_corpus.py) | the 38 labels and the two confusion matrices of §5 |
 
 ### 9.1 As a CI gate — the "deployment linter" of §8, concretely
