@@ -1,7 +1,7 @@
 # What `flashmap` measured on the NUCLEO-F429ZI
 
 Board: NUCLEO-F429ZI, COM9, probe `0671FF353445503043081931`, SYSCLK = HSI16
-(16 MHz). Shim [`rigs/fw_map_f4/`](../rigs/fw_map_f4/), probe loop in
+(16 MHz). Shim [`rigs/fw_map_f4/`](../rigs/fw_map_f4), probe loop in
 `.ramfunc`, `FLASH_ACR.LATENCY` over-programmed to **4** for the structural grid
 and swept 0-15 for the scaling. One run, 6 876 observations over 30
 configurations in 200 s, 7 repeats each, **zero capture warnings**.

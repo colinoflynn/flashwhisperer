@@ -1,7 +1,7 @@
 # What `flashmap` infers on an STM32H723 and an nRF52840
 
-Two shims — [`rigs/fw_map_h7/`](../rigs/fw_map_h7/) and
-[`rigs/fw_map_nrf/`](../rigs/fw_map_nrf/) — and what the host package
+Two shims — [`rigs/fw_map_h7/`](../rigs/fw_map_h7) and
+[`rigs/fw_map_nrf/`](../rigs/fw_map_nrf) — and what the host package
 makes of them. These are the two parts that stress the `memmap/1` method hardest
 and in opposite directions: the H723 has a memory hierarchy and two L1 caches
 that the protocol's "twin" concept was not written for, and the nRF52840 has

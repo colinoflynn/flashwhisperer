@@ -6,7 +6,7 @@ whether the bytes are plaintext or ciphertext, not whether the device encrypts
 or decrypts, not the implementation. Every question is answered by a test whose
 *outcome differs* between the possible answers.
 
-It is deliberately separate from [`../flashattack/`](../flashattack/), which is
+It is deliberately separate from [`../flashattack/`](../flashattack), which is
 the key-recovery engine and assumes you already know all of that. flashleak
 borrows two things from it — the AES tables and the 2^16 pair search — and
 nothing else, so it is easy to lift out.

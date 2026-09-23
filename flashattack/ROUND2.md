@@ -645,7 +645,7 @@ requirement; untested.
 
 ## Reproduction
 
-Prototypes are kept in [`../research/round2/`](../research/round2/). They are
+Prototypes are kept in [`../research/round2/`](../research/round2). They are
 research scripts, not part of the package or the test suite -- run them from the
 repo root, and they score against the known key because they exist to answer
 "does this work", not to attack anything:
