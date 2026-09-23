@@ -81,7 +81,7 @@ silicon: **25 TP / 0 FP / 13 TN / 0 FN**, from the `.elf` and from the raw
 `.bin` alike.
 Full method, the failure modes found along the way, the exploitability
 confusion matrix (18/5/4/**0**) and what static analysis can never see:
-[`../STATIC_ANALYSIS.md`](../../STATIC_ANALYSIS.md).
+[`../STATIC_ANALYSIS.md`](../docs/STATIC_ANALYSIS.md).
 
 ## The two situations
 
