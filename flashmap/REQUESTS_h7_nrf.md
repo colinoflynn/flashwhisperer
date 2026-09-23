@@ -129,7 +129,7 @@ re-read misses. That contributed to the `latch: present=False` above, and on the
 H723 it tripled a 48-cell grid (`icache × dcache × wrhighfreq × exec`).
 
 I have stopped advertising `exec` (it is still reachable as `S exec <n>` for
-`hardware/map_capture.py`), so this is worked around. But the underlying issue
+`results/flashmap/map_capture.py`), so this is worked around. But the underlying issue
 is general: **the host has no way to tell a configuration knob from a knob that
 breaks its own measurement discipline.**
 
@@ -224,7 +224,7 @@ Both shims accept `reread <off> [aoff] [nother]` and
 `evict <n> <spacing> [start] [aoff]`, where `aoff` moves the **target** A. The
 host never sends it, so the "aligned block versus within-N-bytes" distinction —
 which the H7 report quotes as a finding — cannot be measured by the host; I take
-it in `hardware/map_capture.py`. Sliding A's own alignment is the only way to
+it in `results/flashmap/map_capture.py`. Sliding A's own alignment is the only way to
 tell an address-tagged row register from a proximity rule, and the two leak
 differently.
 

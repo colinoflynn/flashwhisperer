@@ -58,7 +58,7 @@ python -m flashmap selftest --port COM24      # nRF52840
 python -m flashmap map --port COM21 --out flashmap/h723.json
 python -m flashmap map --port COM24 --out flashmap/nrf52840.json
 
-python hardware/map_capture.py both           # the part-specific captures
+python results/flashmap/map_capture.py both           # the part-specific captures
 ```
 
 `boards.py flash nrf52840` currently refuses — its probe-attachment check
@@ -511,7 +511,7 @@ a **median over an even number of repeats** is parity-dependent, and the stride
 sweep came out `690 718 690 718` alternating around the right answer. The
 **minimum** is the correct statistic for a distribution with a hard floor and an
 additive disturbance, and with it the table in section 3.1 reproduces the
-published numbers in all nine cells. `hardware/map_capture.py` uses `min`; the
+published numbers in all nine cells. `results/flashmap/map_capture.py` uses `min`; the
 host's `Sample` uses the median, by an explicit and normally sound argument,
 which is [`REQUESTS_h7_nrf.md`](REQUESTS_h7_nrf.md)'s smallest item and its
 easiest fix.
@@ -633,7 +633,7 @@ and every data re-read misses. That contributed to section 4.1's false negative,
 and on the H723 it tripled a 48-cell grid.
 
 `exec` is no longer advertised. `S exec <n>` still works, and
-`hardware/map_capture.py` — which knows what it is doing — uses it for
+`results/flashmap/map_capture.py` — which knows what it is doing — uses it for
 section 3.6.
 
 > Two more from the same family, recorded in the shims' comments. An **ISB** in
