@@ -26,7 +26,7 @@ python -m flashmap map --raw results/flashmap/f429.raw.json
 
 ## 0. The headline
 
-Everything [`../hardware/F4_LATCH.md`](../hardware/F4_LATCH.md) established by
+Everything [`../hardware/F4_LATCH.md`](../research/targets/stm32f4_latch.md) established by
 hand, the tool rediscovered from timings alone, at a different wait-state
 setting, with no part-specific knowledge anywhere in the host package.
 
