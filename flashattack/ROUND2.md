@@ -128,7 +128,7 @@ Three confounds were removed, all offline, on captures already taken.
 **Not the statistic.** The input side buckets linearly into 16 or 64 bins; the
 last-round attack searches 2^16 guesses through a non-linear predictor. Run both
 on the *same* bench traces over the *same* AES calls
-([`../research/round2/statistic_power.py`](../research/round2/statistic_power.py)),
+([`../research/round2/statistic_power.py`](../../research/round2/statistic_power.py)),
 they track each other almost exactly -- tiny-AES decrypt, 1 M:
 
 | traces | input side | output side |
@@ -142,7 +142,7 @@ The linear bucketing is not the weaker instrument.
 
 **Not which call was observed.** The SNMPv3 capture stores both ends of CFB block
 2 -- `C1` is its input, `keystream2` its output, one AES call, one round-trip
-time ([`../research/round2/same_call_sides.py`](../research/round2/same_call_sides.py)).
+time ([`../research/round2/same_call_sides.py`](../../research/round2/same_call_sides.py)).
 Pointed at that single call, the output side reads 15/16 from 50 k traces onward
 while the input side reads 1/16 at 717 k. The asymmetry survives the
 deconfounding.
@@ -151,7 +151,7 @@ deconfounding.
 simply noisier. It is testable: rescale the bench capture into the attacker's
 clock (216 MHz counting a 180 MHz victim) and add Gaussian noise until its sigma
 matches the remote 60.1
-([`../research/round2/noise_matched_bench.py`](../research/round2/noise_matched_bench.py)).
+([`../research/round2/noise_matched_bench.py`](../../research/round2/noise_matched_bench.py)).
 If sigma were the whole story the two ladders would overlay. They do not:
 
 | aligned pairs correct (shift=2) | 50 k | 100 k | 250 k | 500 k | 717 k |
@@ -172,12 +172,12 @@ line in, the access hits either way and the pair goes dark. That masks signal
 rather than adding noise, which matched the saturating behaviour.
 
 It is wrong. A `Z` command was added to
-[`../rigs/fw_f4_lib/main.c`](../rigs/fw_f4_lib/main.c) that runs the CFB
+[`../rigs/fw_f4_lib/main.c`](../../rigs/fw_f4_lib/main.c) that runs the CFB
 chain on the bench -- `ks1 = E(iv)` with `iv` from the PRNG, `C1 = P1 ^ ks1`,
 `ks2 = E(C1)` -- so the attacked call is preceded by one whose table-access
 pattern varies per trace and is unrelated to `C1`. Three arms, one board, one
 ACR, 250 k traces each
-([`../research/round2/chain_warmup.py`](../research/round2/chain_warmup.py)):
+([`../research/round2/chain_warmup.py`](../../research/round2/chain_warmup.py)):
 
 | arm | sigma | aligned 4 B | aligned 16 B | last round |
 |---|---:|---:|---:|---:|
@@ -195,7 +195,7 @@ a host-side mirroring bug and a confirmed hypothesis would both read at chance.)
 The noise-matched control assumed the two captures differ only in noise. That
 assumption was never checked, and it is false. Measuring the collision dip
 directly with the key known -- how much faster colliding traces run, in cycles
-([`../research/round2/dip_amplitude.py`](../research/round2/dip_amplitude.py)):
+([`../research/round2/dip_amplitude.py`](../../research/round2/dip_amplitude.py)):
 
 | capture | side | sigma | median dip | dip/sigma |
 |---|---|---:|---:|---:|
@@ -226,7 +226,7 @@ side's 15 -- and its unknown is a difference rather than an absolute value.
 
 Solving each group jointly -- one hypothesis `(d1,d2,d3)` scored against all six
 of the group's histograms at once, rather than six independent argmins
-([`../research/round2/round1_joint.py`](../research/round2/round1_joint.py)) --
+([`../research/round2/round1_joint.py`](../../research/round2/round1_joint.py)) --
 confirms the mechanism works and is not enough:
 
 | | joint | per-pair |
@@ -259,14 +259,14 @@ reading the banner:
 `0x305` is LATENCY=5, PRFTEN=1, ICEN=1, **DCEN=0**. Every bench capture it was
 being compared against was taken at `0x705` -- same wait states, same prefetch,
 **data cache on**. The two were never the same channel. This is not news to the
-repo: [`../demo/oscore/README.md`](../demo/oscore/README.md) already documents
+repo: [`../demo/oscore/README.md`](../../demo/oscore/README.md) already documents
 that ST's own `stm32f4xx_hal_conf.h` for this board never defines
 `DATA_CACHE_ENABLE` while CubeMX does, and measures both. The error was using a
 `0x705` bench capture as the reference for a `0x305` victim.
 
 Rerunning the bench at both settings, 717 099 traces each, one runtime `C`
 command apart
-([`../research/round2/acr_amplitude.py`](../research/round2/acr_amplitude.py)):
+([`../research/round2/acr_amplitude.py`](../../research/round2/acr_amplitude.py)):
 
 | | sigma | dip (4 B) | dip/sigma | input per-pair | output per-pair | pooled vote |
 |---|---:|---:|---:|---:|---:|---:|
@@ -356,10 +356,10 @@ only `C1` off the wire and never reading the keystream:
 | finish | 38,498 candidate tests against `E(K,C1)==ks2`, a pair free off the wire |
 | key | `befa18829b1376e8d5d0d232ce6ecf5b` **EXACT** |
 
-[`../research/round2/round2_complete.py`](../research/round2/round2_complete.py)
+[`../research/round2/round2_complete.py`](../../research/round2/round2_complete.py)
 does the last step; it needs no new traces and no statistics, so 13/16 was never
 a failure but a 2^9-shaped residual in a known structure.
-[`../research/round2/round2_parallel.py`](../research/round2/round2_parallel.py)
+[`../research/round2/round2_parallel.py`](../../research/round2/round2_parallel.py)
 runs the search across processes with per-offset checkpointing: 3,376 s against
 the serial version's 5.4 h, after a machine crash destroyed 2.8 h of the latter.
 
@@ -375,15 +375,15 @@ nothing resolves.
 An earlier draft of this section blamed a particular switch for re-timing frames
 and costing ~1e8 traces. That was wrong: the variable is link speed, invisible
 from the host, and the same two switches produced both outcomes on different
-sessions. See [`../demo/snmpv3/README.md`](../demo/snmpv3/README.md).
+sessions. See [`../demo/snmpv3/README.md`](../../demo/snmpv3/README.md).
 
 Still open: the round-2 search on that single-table capture, linking the four
 groups of a 4-table victim, and wiring the
 solver into the package rather than
-[`../research/round2/round2_fullsolve.py`](../research/round2/round2_fullsolve.py)
+[`../research/round2/round2_fullsolve.py`](../../research/round2/round2_fullsolve.py)
 and its `_dec` sibling. This document is the
 solver into the package rather than
-[`../research/round2/round2_fullsolve.py`](../research/round2/round2_fullsolve.py)
+[`../research/round2/round2_fullsolve.py`](../../research/round2/round2_fullsolve.py)
 and its `_dec` sibling. This document is the
 design and the measured evidence behind it, so a later session can start from the
 open questions rather than re-deriving the closed ones.
@@ -398,7 +398,7 @@ byte were right and all eight errors sat in the low 3 bits round 2 owns.
 Searching those blindly is 2^36. But round 2 scores all 4096 low-bit
 combinations per column and reports only the best one, so the real question is
 where the TRUE combination ranks
-([`../research/round2/round2_rank.py`](../research/round2/round2_rank.py)):
+([`../research/round2/round2_rank.py`](../../research/round2/round2_rank.py)):
 
 | column | bytes | rank of truth |
 |---|---|---:|
@@ -412,7 +412,7 @@ columns are independent and their scores add, the cost is the product of those
 ranks rather than the worst one raised to the fourth power -- about 6e4 against
 3.6e11, seven orders of magnitude apart.
 
-[`../research/round2/round2_finish.py`](../research/round2/round2_finish.py)
+[`../research/round2/round2_finish.py`](../../research/round2/round2_finish.py)
 walks the four ranked lists best-first against the free `E(K,C1)==ks2` oracle:
 
 ```
@@ -645,7 +645,7 @@ requirement; untested.
 
 ## Reproduction
 
-Prototypes are kept in [`../research/round2/`](../research/round2). They are
+Prototypes are kept in [`../research/round2/`](../../research/round2). They are
 research scripts, not part of the package or the test suite -- run them from the
 repo root, and they score against the known key because they exist to answer
 "does this work", not to attack anything:

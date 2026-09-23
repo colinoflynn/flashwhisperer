@@ -91,7 +91,7 @@ only" is not a keyspace reduction at all; it is a break, and this section's
 original framing was too pessimistic by the whole 2^38.
 
 See [`ROUND2.md`](ROUND2.md) for the decomposition that makes it cheap (four
-independent per-column searches) and [`../research/round2/round2_fullsolve.py`](../research/round2/round2_fullsolve.py)
+independent per-column searches) and [`../research/round2/round2_fullsolve.py`](../../research/round2/round2_fullsolve.py)
 for the run above.
 
 **The 4-table case is weaker but not dead, and the earlier reading of it was a
@@ -113,7 +113,7 @@ was simply the single-reference propagation being unable to leave byte 0's group
 **Solve the group jointly rather than pair by pair.** The per-pair argmin above
 treats each of a group's six histograms separately. Scoring one hypothesis
 `(d1,d2,d3)` against all six at once
-([`../research/round2/round1_joint.py`](../research/round2/round1_joint.py))
+([`../research/round2/round1_joint.py`](../../research/round2/round1_joint.py))
 shares evidence across the group and is measurably stronger: on the bench capture
 it recovers all 12 within-group unknowns at **25 k** traces where per-pair
 scoring still reads 20/24 and needs 50 k. On the SNMPv3 network capture with the

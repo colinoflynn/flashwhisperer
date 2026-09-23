@@ -81,7 +81,7 @@ silicon: **25 TP / 0 FP / 13 TN / 0 FN**, from the `.elf` and from the raw
 `.bin` alike.
 Full method, the failure modes found along the way, the exploitability
 confusion matrix (18/5/4/**0**) and what static analysis can never see:
-[`../STATIC_ANALYSIS.md`](../STATIC_ANALYSIS.md).
+[`../STATIC_ANALYSIS.md`](../../STATIC_ANALYSIS.md).
 
 ## The two situations
 
@@ -191,7 +191,7 @@ against 2^68 at 16.
 
 Use this figure to bound the answer, then get the real one by sweeping
 `line_shift` against recovered differences
-([`research/round2/round2_decrypt.py`](../research/round2/round2_decrypt.py)).
+([`research/round2/round2_decrypt.py`](../../research/round2/round2_decrypt.py)).
 
 ## Mode does not matter for detection (mostly)
 

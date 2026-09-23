@@ -14,13 +14,24 @@ See hardware/line_offset.py and PASSIVE_ORACLE.md ("Cache-line alignment").
 """
 from __future__ import annotations
 
+import os as _os, sys as _sys
+# The five packages live under flashwhisperer/ (REORG_PLAN D2).  Walk up to the
+# .git marker rather than assume a depth: importers of these packages sit at the
+# repository root, in hardware/, results/<campaign>/, demo/<stack>/ and
+# research/<area>/ -- four different depths.  `.git` is a FILE in a worktree, so
+# test existence, not isdir.
+_fw = _os.path.dirname(_os.path.abspath(__file__))
+while _fw != _os.path.dirname(_fw) and not _os.path.exists(_os.path.join(_fw, ".git")):
+    _fw = _os.path.dirname(_fw)
+_sys.path.insert(0, _os.path.join(_fw, "flashwhisperer"))
+
 import pathlib
 import struct
 import sys
 
 import pytest
 
-ROOT = pathlib.Path(__file__).resolve().parents[1]
+ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "hardware"))
 

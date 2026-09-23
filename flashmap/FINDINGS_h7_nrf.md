@@ -1,7 +1,7 @@
 # What `flashmap` infers on an STM32H723 and an nRF52840
 
-Two shims — [`rigs/fw_map_h7/`](../rigs/fw_map_h7) and
-[`rigs/fw_map_nrf/`](../rigs/fw_map_nrf) — and what the host package
+Two shims — [`rigs/fw_map_h7/`](../../rigs/fw_map_h7) and
+[`rigs/fw_map_nrf/`](../../rigs/fw_map_nrf) — and what the host package
 makes of them. These are the two parts that stress the `memmap/1` method hardest
 and in opposite directions: the H723 has a memory hierarchy and two L1 caches
 that the protocol's "twin" concept was not written for, and the nRF52840 has
@@ -73,11 +73,11 @@ Makefile, append `-DPROBE_ALIGN=16` to the first and `-Wl,--defsym=PCPAD=0` or
 `-Wl,--defsym=PCPAD=16` to the second: PCPAD 0 puts the walk loop inside one
 32-byte flash block, PCPAD 16 makes it straddle a boundary.
 
-Captures: [`map_h7_geometry.npz`](../results/flashmap/map_h7_geometry.npz),
-[`map_h7_twin.npz`](../results/flashmap/map_h7_twin.npz),
-[`map_h7_dcache.npz`](../results/flashmap/map_h7_dcache.npz),
-[`map_nrf_geometry.npz`](../results/flashmap/map_nrf_geometry.npz),
-[`map_nrf_counters.npz`](../results/flashmap/map_nrf_counters.npz).
+Captures: [`map_h7_geometry.npz`](../../results/flashmap/map_h7_geometry.npz),
+[`map_h7_twin.npz`](../../results/flashmap/map_h7_twin.npz),
+[`map_h7_dcache.npz`](../../results/flashmap/map_h7_dcache.npz),
+[`map_nrf_geometry.npz`](../../results/flashmap/map_nrf_geometry.npz),
+[`map_nrf_counters.npz`](../../results/flashmap/map_nrf_counters.npz).
 
 Both parts: SysTick is the time base and `V` refuses to name it until it has
 been seen to advance, because **both parts have a dead DWT** and they are dead

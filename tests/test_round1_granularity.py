@@ -15,6 +15,17 @@ blocks): the channel resolves 4 bytes, not the 16-byte cache line -- there is
 sub-line structure, consistent with 32-bit flash data reads inside a 128-bit
 line. See flashattack/EXPERIMENTAL.md.
 """
+
+import os as _os, sys as _sys
+# The five packages live under flashwhisperer/ (REORG_PLAN D2).  Walk up to the
+# .git marker rather than assume a depth: importers of these packages sit at the
+# repository root, in hardware/, results/<campaign>/, demo/<stack>/ and
+# research/<area>/ -- four different depths.  `.git` is a FILE in a worktree, so
+# test existence, not isdir.
+_fw = _os.path.dirname(_os.path.abspath(__file__))
+while _fw != _os.path.dirname(_fw) and not _os.path.exists(_os.path.join(_fw, ".git")):
+    _fw = _os.path.dirname(_fw)
+_sys.path.insert(0, _os.path.join(_fw, "flashwhisperer"))
 import os
 
 import numpy as np

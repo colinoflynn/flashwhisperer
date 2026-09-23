@@ -17,8 +17,9 @@ dev = ["pytest>=7"]
 flashattack = "flashattack.cli:main"
 
 [tool.setuptools]
-packages = ["flashattack", "flashsim"]
+package-dir = {"" = "flashwhisperer"}
+packages = ["flashattack", "flashsim", "flashleak", "flashmap", "flasharb"]
 
 [tool.pytest.ini_options]
 addopts = "-q"
-testpaths = ["tests"]
+testpaths = ["flashwhisperer/tests"]

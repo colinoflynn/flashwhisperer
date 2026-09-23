@@ -21,6 +21,17 @@ Run: `pytest tests/test_flashmap.py -q`
 """
 from __future__ import annotations
 
+import os as _os, sys as _sys
+# The five packages live under flashwhisperer/ (REORG_PLAN D2).  Walk up to the
+# .git marker rather than assume a depth: importers of these packages sit at the
+# repository root, in hardware/, results/<campaign>/, demo/<stack>/ and
+# research/<area>/ -- four different depths.  `.git` is a FILE in a worktree, so
+# test existence, not isdir.
+_fw = _os.path.dirname(_os.path.abspath(__file__))
+while _fw != _os.path.dirname(_fw) and not _os.path.exists(_os.path.join(_fw, ".git")):
+    _fw = _os.path.dirname(_fw)
+_sys.path.insert(0, _os.path.join(_fw, "flashwhisperer"))
+
 import pathlib
 import sys
 
@@ -922,7 +933,7 @@ def test_an_unexplained_split_is_not_reported_as_a_fill_unit():
 # They are what stops a fix for one part from silently breaking another, and
 # they cost nothing to run: `--raw` re-inference touches no hardware.
 
-_ROOT = pathlib.Path(__file__).resolve().parent.parent
+_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent  # tests/ is two below the root
 
 
 def _capture(name):

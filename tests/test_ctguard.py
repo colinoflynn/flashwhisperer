@@ -16,7 +16,7 @@ import shutil
 import subprocess
 import pytest
 
-FW = os.path.join(os.path.dirname(__file__), "..", "rigs", "fw_f4_ctguard")
+FW = os.path.join(os.path.dirname(__file__), "..", "..", "rigs", "fw_f4_ctguard")
 FW = os.path.abspath(FW)
 SRC = ["test_ctguard_host.c", "ctguard.c", "hosttest/mock_cmsis.c"]
 

@@ -18,7 +18,8 @@ from __future__ import annotations
 import os, shutil, subprocess, sys, textwrap
 import pytest
 
-REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))))   # tests/ is two below the repo root
 RIGS = os.path.join(REPO, "rigs")
 
 # FIPS-197 C.1 (AES-128)

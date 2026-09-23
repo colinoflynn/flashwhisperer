@@ -11,6 +11,17 @@ Every map below is measured -- the {offset: mean peak} that `leaking_offsets`
 returned on the named capture. Producing one costs a ~50 s 120-pair scan, which
 is why the decision is tested apart from the scan that feeds it.
 """
+
+import os as _os, sys as _sys
+# The five packages live under flashwhisperer/ (REORG_PLAN D2).  Walk up to the
+# .git marker rather than assume a depth: importers of these packages sit at the
+# repository root, in hardware/, results/<campaign>/, demo/<stack>/ and
+# research/<area>/ -- four different depths.  `.git` is a FILE in a worktree, so
+# test existence, not isdir.
+_fw = _os.path.dirname(_os.path.abspath(__file__))
+while _fw != _os.path.dirname(_fw) and not _os.path.exists(_os.path.join(_fw, ".git")):
+    _fw = _os.path.dirname(_fw)
+_sys.path.insert(0, _os.path.join(_fw, "flashwhisperer"))
 import numpy as np
 import pytest
 
