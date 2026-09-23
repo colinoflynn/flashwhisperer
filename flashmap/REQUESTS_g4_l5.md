@@ -6,8 +6,8 @@ is either a request against the host package (which I do not own) or a
 deviation the host should know about.
 
 Measurements backing every item are in the captures
-`hardware/map_g4_geometry.npz`, `hardware/map_l5_geometry.npz` and
-`hardware/map_l5_counters.npz`, produced by
+`results/flashmap/map_g4_geometry.npz`, `results/flashmap/map_l5_geometry.npz` and
+`results/flashmap/map_l5_counters.npz`, produced by
 `hardware/map_experiments.py` over `hardware/map_shim_probe.py`; the mapped
 structure is in `hardware/map_g4.json` and `hardware/map_l5.json`.
 
