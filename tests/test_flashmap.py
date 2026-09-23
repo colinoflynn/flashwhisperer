@@ -967,7 +967,7 @@ def test_real_f429_capture():
 
 def test_real_g474_capture():
     """NUCLEO-G474RE against hardware/G4_ART_GEOMETRY.md."""
-    st = _capture("hardware/map_g4.raw.json")
+    st = _capture("results/flashmap/map_g4.raw.json")
     assert st.value("read_width") == 8
     latch = st.value("latch")
     assert (latch["granularity_bytes"], latch["entries"]) == (8, 1)
@@ -998,7 +998,7 @@ def test_real_l552_capture():
     This is the part that produced four wrong claims, and every assertion here
     is one of them.
     """
-    st = _capture("hardware/map_l5.raw.json")
+    st = _capture("results/flashmap/map_l5.raw.json")
     assert st.value("read_width") == 8
     assert st.value("fill_unit") == 16
 
@@ -1050,8 +1050,8 @@ def test_real_captures_never_claim_more_than_they_measured():
     """Whatever each capture resolves, no claim may be `high` confidence and
     wrong-by-construction: an ambiguous model family or a contradiction between
     configurations must cost confidence, not be hidden."""
-    for name in ("results/flashmap/f429.raw.json", "hardware/map_g4.raw.json",
-                 "hardware/map_l5.raw.json"):
+    for name in ("results/flashmap/f429.raw.json", "results/flashmap/map_g4.raw.json",
+                 "results/flashmap/map_l5.raw.json"):
         st = _capture(name)
         latch = st.get("latch")
         if latch.known and latch.value.get("present"):
@@ -1139,8 +1139,8 @@ def test_real_nrf52840_capture():
 
 
 @pytest.mark.parametrize("name", ["results/flashmap/f429.raw.json",
-                                  "hardware/map_g4.raw.json",
-                                  "hardware/map_l5.raw.json",
+                                  "results/flashmap/map_g4.raw.json",
+                                  "results/flashmap/map_l5.raw.json",
                                   "results/flashmap/h723.raw.json",
                                   "results/flashmap/nrf52840.raw.json"])
 def test_every_real_capture_keeps_its_claims_self_consistent(name):
@@ -1184,8 +1184,8 @@ def test_every_real_capture_keeps_its_claims_self_consistent(name):
 
 
 @pytest.mark.parametrize("name", ["results/flashmap/f429.raw.json",
-                                  "hardware/map_g4.raw.json",
-                                  "hardware/map_l5.raw.json",
+                                  "results/flashmap/map_g4.raw.json",
+                                  "results/flashmap/map_l5.raw.json",
                                   "results/flashmap/h723.raw.json",
                                   "results/flashmap/nrf52840.raw.json"])
 def test_no_claim_rests_on_a_cell_that_could_not_discriminate(name):
