@@ -186,6 +186,25 @@ def cmd_placement(a):
     return pl.main(argv)
 
 
+def cmd_codescan(a):
+    from . import codescan as cs
+    if a.selftest:
+        return cs.selftest()
+    argv = [a.artefact]
+    if a.part:
+        argv += ["--part", a.part]
+    if a.base is not None:
+        argv += ["--base", hex(a.base)]
+    if a.window is not None:
+        argv += ["--window", str(a.window)]
+    argv += ["--top", str(a.top)]
+    if a.json:
+        argv += ["--json", a.json]
+    if a.fail_on:
+        argv += ["--fail-on", a.fail_on]
+    return cs.main(argv)
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="flashleak", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -247,6 +266,25 @@ def main(argv=None):
                     help="exit non-zero on this verdict or worse (CI gate); "
                          "the default always exits 0")
     pc.set_defaults(fn=cmd_placement)
+
+    cs = sub.add_parser("codescan",
+                        help="find table lookups by code shape, for an algorithm "
+                             "with no byte signature (PQC and anything else new)")
+    cs.add_argument("artefact", help=".elf or .bin")
+    cs.add_argument("--part", default=None,
+                    help="part family for the memory map, as for `placement`")
+    cs.add_argument("--base", type=lambda s: int(s, 0), default=None,
+                    help="flash base for a raw .bin (default 0x08000000)")
+    cs.add_argument("--window", type=int, default=None,
+                    help="bytes to look back for the base-register setup")
+    cs.add_argument("--top", type=int, default=12,
+                    help="distinct base addresses to print")
+    cs.add_argument("--json", metavar="FILE")
+    cs.add_argument("--selftest", action="store_true",
+                    help="check this finder against `placement` on the in-tree "
+                         "builds whose keys were recovered on silicon")
+    cs.add_argument("--fail-on", choices=["exposed"], default=None)
+    cs.set_defaults(fn=cmd_codescan)
 
     a = p.parse_args(argv)
     return a.fn(a) or 0

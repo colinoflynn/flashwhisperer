@@ -83,6 +83,59 @@ Full method, the failure modes found along the way, the exploitability
 confusion matrix (18/5/4/**0**) and what static analysis can never see:
 [`flashwhisperer/docs/STATIC_ANALYSIS.md`](../docs/STATIC_ANALYSIS.md).
 
+## The question neither can answer for a NEW algorithm: `codescan`
+
+`fwscan` and `placement` both start by recognising a table's **bytes**. That is
+the right design for AES and it is checked against builds whose keys came out on
+silicon — but it means a table nobody has a signature for is invisible. Three
+cases in a row went past it, all in
+[`research/exposure/PQC_SURVEY.md`](../../research/exposure/PQC_SURVEY.md):
+SQIsign keeps its precomputed data in `const` structs, QR-UOV's
+modular-inverse table is a non-`const` array, and `rigs/fw_f401_ct` reads its
+S-box through a pointer. On the two QR-UOV builds that differ by one `const`
+keyword — one table in RAM, one in flash — `placement` prints **word-for-word
+identical** `NO-TABLES` verdicts.
+
+`codescan` asks the other question: a table lookup has a **shape** in the
+instruction stream whatever the table holds.
+
+```
+LDR   r3, [pc, #N]       ; or MOVW/MOVT -- materialise a base
+LDRB  r0, [r3, r0]       ; register-offset load from that base
+```
+
+A register-offset load whose base resolves into a flash region is a table read,
+and it does not matter whether the table holds an S-box, GF(16) products or
+discrete-Gaussian weights.
+
+```bash
+python -m flashleak codescan fw.elf --part f4           # names the table from the symtab
+python -m flashleak codescan fw.bin --part l1 --base 0x08000000
+python -m flashleak codescan fw.elf --part g4 --fail-on exposed
+python -m flashleak codescan x --selftest
+```
+
+On the QR-UOV pair it separates them, knowing nothing about QR-UOV:
+
+| build | verdict | base |
+|---|---|---|
+| as shipped (no `const`) | `SAFE` | `0x20000000` `SRAM1/2 [.data] Fq_inv_table` |
+| with `const` added | **`EXPOSED`** | `0x0800000c` `flash (AXI/ART) [.rodata] Fq_inv_table` |
+
+**`--selftest` is a cross-check, not a fixture.** It requires `codescan` to find
+every base `placement` reports on the in-tree builds whose keys were recovered
+on the F429 — two independent finders, one answer. It passes on all four, and
+`codescan` returns a superset: `fw.elf` yields `sbox`, `gfm2_sbox` and
+`gfm3_sbox` by name, plus the firmware's hex-digit table.
+
+Two things to know before trusting a run. It finds a table **read**, not a
+*secret-dependent* table read — the index register's provenance is not traced, so
+a hit is a candidate and jump tables, font data and character classes will
+appear. And `--window` is calibrated, not arbitrary: at 64 bytes it misses two
+of `fw.elf`'s three tables, and past the default it starts attributing stale
+register values and inventing unmapped bases. The module docstring lists the
+rest of what it does not cover.
+
 ## The two situations
 
 **Observation only** — you can see data and times but cannot control anything.
