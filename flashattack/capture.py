@@ -38,6 +38,14 @@ class Capture:
     iv: Optional[bytes] = None                      # for cbc-dec (single block)
     line_shift_last: int = 4                         # last-round table: 4=S-box, 2=4-byte T-table
     line_shift_prev: int = 2                         # round Nr-1 table (for 192/256 full recovery)
+    # Where each table starts inside the flash row, in table ENTRIES.  A
+    # per-IMAGE property (link-order luck), so it belongs with the capture
+    # rather than with the engine: the same attack on the same part needs a
+    # different value for a different build.  0 is the aligned case; a byte
+    # S-box at 0x...cc is 12.  See flashattack.geometry, and
+    # flashleak.row_offset_from_image to read it off the firmware.
+    line_off_last: int = 0
+    line_off_prev: int = 0
     label: str = ""
     meta: dict = field(default_factory=dict)
 
@@ -82,7 +90,9 @@ class Capture:
     def save_npz(self, path):
         d = {"timing": np.asarray(self.timing), "mode": self.mode,
              "keysize": np.uint16(self.keysize), "line_shift_last": np.uint8(self.line_shift_last),
-             "line_shift_prev": np.uint8(self.line_shift_prev), "label": self.label}
+             "line_shift_prev": np.uint8(self.line_shift_prev),
+             "line_off_last": np.uint8(self.line_off_last),
+             "line_off_prev": np.uint8(self.line_off_prev), "label": self.label}
         if self.plaintext is not None: d["plaintext"] = self.plaintext
         if self.ciphertext is not None: d["ciphertext"] = self.ciphertext
         if self.iv is not None: d["iv"] = np.frombuffer(bytes(self.iv), np.uint8)
@@ -96,7 +106,12 @@ class Capture:
         return cls(timing=d["timing"], mode=str(g("mode")), keysize=int(g("keysize") or 128),
                    plaintext=g("plaintext"), ciphertext=g("ciphertext"), iv=iv,
                    line_shift_last=int(g("line_shift_last") or 4),
-                   line_shift_prev=int(g("line_shift_prev") or 2), label=str(g("label") or ""))
+                   line_shift_prev=int(g("line_shift_prev") or 2),
+                   # `or 0` would be a no-op and `g()` returns None for an older
+                   # npz that predates these fields, so spell the default out.
+                   line_off_last=int(g("line_off_last") or 0),
+                   line_off_prev=int(g("line_off_prev") or 0),
+                   label=str(g("label") or ""))
 
     @classmethod
     def from_csv(cls, path, mode="ecb-enc", keysize=128, **kw):

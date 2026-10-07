@@ -57,9 +57,16 @@ def _oracle_stats(t):
             "min": float(t.min()), "max": float(t.max()), "n": int(t.size)}
 
 
-def attack(capture, *, verify=None, full="auto", key_for_truth=None, log=None):
+def attack(capture, *, verify=None, full="auto", key_for_truth=None, log=None,
+           pairs="all", ct_adjacent=False):
     """Run the attack on a Capture. `verify=(pt,ct)` (known pair) enables master
-    verification and brute-force; `key_for_truth` is for validation only."""
+    verification and brute-force; `key_for_truth` is for validation only.
+
+    The table GEOMETRY travels with the Capture (`line_shift_*`, `line_off_*`),
+    because it is a property of the captured image rather than of the attack.
+    `pairs`/`ct_adjacent` choose the pair coverage -- see `engine.recover`; they
+    apply to the single-round path only, since AES-192/256 full recovery runs
+    the 120-pair sweep on both rounds."""
     known, direction = capture.engine_input()
     timing = capture.timing
     keysize = capture.keysize
@@ -74,6 +81,8 @@ def attack(capture, *, verify=None, full="auto", key_for_truth=None, log=None):
         r = engine.recover_full(known, timing, keysize=keysize,
                                 line_shift_last=capture.line_shift_last,
                                 line_shift_prev=capture.line_shift_prev,
+                                line_off_last=capture.line_off_last,
+                                line_off_prev=capture.line_off_prev,
                                 verify=verify, key_for_truth=key_for_truth, log=log)
         for res in r["round_keys"]:
             rk_infos.append(RoundKeyInfo(res.roundkey_index, res.which, res.roundkey.hex(),
@@ -86,7 +95,10 @@ def attack(capture, *, verify=None, full="auto", key_for_truth=None, log=None):
             truth = (aesref.key_expansion(key_for_truth)[-1] if direction == "enc"
                      else aesref.key_expansion(key_for_truth)[0])
         res = engine.recover(known, timing, direction=direction, keysize=keysize,
-                             line_shift=capture.line_shift_last, verify=verify, truth=truth, log=log)
+                             line_shift=capture.line_shift_last,
+                             line_off=capture.line_off_last,
+                             pairs=pairs, ct_adjacent=ct_adjacent,
+                             verify=verify, truth=truth, log=log)
         rk_infos.append(RoundKeyInfo(res.roundkey_index, res.which, res.roundkey.hex(),
                                      float(min(res.confidence)), res.truth_correct).__dict__)
         master = res.master.hex() if res.master else None

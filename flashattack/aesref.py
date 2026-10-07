@@ -89,24 +89,41 @@ def _mix(state, inv):
     return out.reshape(state.shape)
 
 
-def encrypt_blocks(key: bytes, blocks: np.ndarray) -> np.ndarray:
-    rk = key_expansion(key); Nr = rk.shape[0] - 1
-    st = blocks.astype(np.uint8, copy=True) ^ rk[0]
+def encrypt_blocks_rk(rk, blocks: np.ndarray) -> np.ndarray:
+    """AES encrypt from ROUND KEYS rather than a master key.
+
+    `rk` is (Nr+1, 16) uint8, as `key_expansion` returns. Separated out because
+    a recovery has round keys in hand before it has a master -- the last-round
+    attack recovers rk[Nr], and verifying a candidate rk[Nr-1] against a known
+    pair needs this and not `encrypt_blocks`. `hardware/aes_ref.py`'s
+    `encrypt(key, block, rk=...)` is this function with a bytes interface.
+    """
+    rk = np.asarray(rk, np.uint8).reshape(-1, 16)
+    Nr = rk.shape[0] - 1
+    st = np.asarray(blocks, np.uint8).reshape(-1, 16) ^ rk[0]
     for r in range(1, Nr):
         st = SBOX[st][:, _SHIFT_ROWS]
         st = _mix(st, False) ^ rk[r]
-    st = SBOX[st][:, _SHIFT_ROWS] ^ rk[Nr]
-    return st
+    return SBOX[st][:, _SHIFT_ROWS] ^ rk[Nr]
 
 
-def decrypt_blocks(key: bytes, blocks: np.ndarray) -> np.ndarray:
-    rk = key_expansion(key); Nr = rk.shape[0] - 1
-    st = blocks.astype(np.uint8, copy=True) ^ rk[Nr]
+def decrypt_blocks_rk(rk, blocks: np.ndarray) -> np.ndarray:
+    """AES InvCipher from ROUND KEYS rather than a master key. See above."""
+    rk = np.asarray(rk, np.uint8).reshape(-1, 16)
+    Nr = rk.shape[0] - 1
+    st = np.asarray(blocks, np.uint8).reshape(-1, 16) ^ rk[Nr]
     for r in range(Nr - 1, 0, -1):
         st = SINV[st[:, _ISR]] ^ rk[r]
         st = _mix(st, True)
-    st = SINV[st[:, _ISR]] ^ rk[0]
-    return st
+    return SINV[st[:, _ISR]] ^ rk[0]
+
+
+def encrypt_blocks(key: bytes, blocks: np.ndarray) -> np.ndarray:
+    return encrypt_blocks_rk(key_expansion(key), blocks)
+
+
+def decrypt_blocks(key: bytes, blocks: np.ndarray) -> np.ndarray:
+    return decrypt_blocks_rk(key_expansion(key), blocks)
 
 
 def invert_key_schedule(final_words, keysize=128):

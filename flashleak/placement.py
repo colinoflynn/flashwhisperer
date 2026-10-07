@@ -1436,6 +1436,39 @@ def analyse(path: str, part: str | None = None, base: int | None = None) -> Repo
     return analyse_bin(data, p, base, path)
 
 
+def row_offset_from_image(path, part="stm32f4", granule=None):
+    """Exact ROW OFFSET of the S-box in a firmware image: (offset, addr, note).
+
+    Moved here from `hardware/line_offset.py` when the scoring geometry moved
+    into `flashattack.geometry`: the arithmetic belongs beside the scorer, and
+    reading an image belongs here, because `flashattack` must not import
+    `flashleak` (the layering has no back edges).
+
+    `analyse()` locates the table by its byte pattern and resolves its run-time
+    address, so this needs no symbols and works on a raw `.bin`.
+
+    Returns `(None, addr, note)` when the table is NOT flash-resident: a build
+    that copies it to RAM has no flash row structure, so the collision channel
+    is absent rather than merely offset, and a caller that treated a `None` as
+    "assume 0" would be scoring a channel that does not exist.
+    """
+    from flashattack import geometry as _geo
+    granule = _geo.GRANULE if granule is None else int(granule)
+    rep = analyse(path, part=part)
+    for p in rep.placements:
+        if "S-box" not in p.table:
+            continue
+        addr = p.runtime_addr
+        if addr is None:
+            continue
+        note = "%s %s @ 0x%08x (%s, %s)" % (
+            p.table, p.symbol or "", addr, p.section or "?", p.exposure)
+        if p.exposure != EXPOSED:
+            return None, addr, note + "  -- not flash-resident, no row channel"
+        return _geo.row_offset(addr, granule), addr, note
+    return None, None, "no S-box table found in %s" % path
+
+
 _MARK = {EXPOSED: "!!", SAFE: "ok", CACHED_RAM: " ~", UNKNOWN: " ?"}
 
 

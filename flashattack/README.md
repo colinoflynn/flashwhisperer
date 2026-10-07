@@ -13,7 +13,12 @@ flashattack/
   EXPERIMENTAL.md  partial results & their structural ceilings (SM4, ARIA/Camellia)
   ROUND2.md        round-2 collisions: full key from ONE side of the cipher
   bruteforce.py  batched multi-key AES: 2^24 candidate keys in ~26 s (finishes an uneven vote)
+  search.py      ranked candidates from a score surface + a best-first walk -> (traces, candidate keys)
   engine.py      unified last-round cache-collision engine + robust assembler; recover_full (192/256)
+  lastround.py   THE scoring rule: surface, row geometry, fast path + its selftest, pair coverage
+  geometry.py    where the table starts inside the flash row, and why a wrong value costs 2x-10x
+  round2.py      round-2 collision primitives (both directions) -- the attack ROUND2.md documents
+  oracle.py      conditioning a NETWORK round-trip time: fit the transport artefact, subtract per mode
   modes.py       AES mode -> block the attacker reconstructs (ECB/CBC/CTR/GCM/CMAC, enc+dec)
   capture.py     Capture: target-agnostic OBSERVED data (pt/ct + timing, NO key); save/load npz, from_csv
   sources.py     TraceSource interface (Recorded/Array/SerialModes) -- the extension point for agents
@@ -63,6 +68,25 @@ touch it, then — if a known plaintext/ciphertext pair is given — **verifies 
 key and brute-forces the low-confidence bytes** (full 0..255 over the positions
 whose confidence gap flags them) until it matches. This turns near-misses
 (e.g. 13/16, 15/16) into exact recovery.
+
+**Two parameters the engine did not used to have, and both are worth traces.**
+
+`line_off=` is where the table starts inside the flash row, in table ENTRIES: a
+byte S-box at `0x...cc` is 12, a 4-byte T-table 12 bytes in is 3. It is a
+per-IMAGE property, so it travels on the `Capture` (`line_off_last`/`_prev`),
+is read off a firmware image by `flashleak.row_offset_from_image`, and can be
+swept over `geometry.candidate_row_offsets()` keeping whichever verifies.
+Measured on captures with a known key, getting it (and the row width) right is
+worth **2x to 10x in traces** -- `results/stm32f4/rescore_rowoffset.py`, and a
+row of `research/FINDINGS_LEDGER.md` section D.
+
+`pairs=` is the coverage: `"all"` (the 120, the default), `"intra-column"` (the
+24 pairs that are two reads of one state column, which is what every archived
+`hardware/atk_lastround.py` trace count was measured with), or a row-pairing
+name such as `"r1r2"`. **A wider vote is not automatically better** -- where
+the leak is concentrated in one adjacent-read pair set, 104 noise pairs cost
+more than the coverage buys -- and `leaking_offsets` is how to choose without
+the key.
 
 - `direction="enc"` (attacker knows the ciphertext / keystream block) → recovers
   the last round key → master via schedule inversion.

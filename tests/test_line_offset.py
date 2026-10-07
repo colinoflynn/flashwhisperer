@@ -10,7 +10,19 @@ Nothing here needs hardware or a toolchain -- the arithmetic is the point, plus
 one synthetic ELF to prove the offset is recovered from an image rather than
 hardcoded.
 
-See hardware/line_offset.py and PASSIVE_ORACLE.md ("Cache-line alignment").
+The arithmetic is `flashattack.geometry` and the image half is
+`flashleak.row_offset_from_image`; both used to be `hardware/line_offset.py`,
+which this test reached by putting `hardware/` on `sys.path` -- the one back
+edge out of the packaged suite, and the reason the geometry moved in. See
+PASSIVE_ORACLE.md ("Cache-line alignment").
+
+WHAT THIS FILE DOES NOT COVER: that the scorer USES the offset it is given.
+`test_geometry_agrees_with_the_scorer` below pins the two row counts to each
+other, and `flashattack.lastround.selftest` checks the fast path against the
+reference at a geometry, but neither shows a recovery improving at the right
+offset -- that is a measurement on a capture, in
+`results/stm32f4/rescore_rowoffset.py` and a row of
+`research/FINDINGS_LEDGER.md` section D, not a unit test.
 """
 from __future__ import annotations
 
@@ -33,11 +45,32 @@ import pytest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(ROOT / "hardware"))
 
-from line_offset import (GRANULE, candidate_offsets, line_index,  # noqa: E402
-                         nlines, offset_from_image)
+from flashattack.geometry import (GRANULE, candidate_offsets,  # noqa: E402
+                                  line_index, nlines)
+from flashattack import lastround  # noqa: E402
+from flashleak import row_offset_from_image as offset_from_image  # noqa: E402
 from flashsim import aes  # noqa: E402
+
+
+def test_the_two_table_sets_are_the_same_bytes():
+    """`hardware/atk_lastround.py` re-exports flashattack's S-box instead of
+    building its own from flashsim's. That is only sound while the two agree,
+    and nothing checked it."""
+    import numpy as np
+    from flashattack import aesref
+    assert np.array_equal(np.asarray(aesref.SBOX, np.int64),
+                          np.asarray(aes.SBOX, np.int64))
+    assert np.array_equal(lastround.PINV, np.argsort(aes._SHIFT_ROWS))
+
+
+@pytest.mark.parametrize("off", [0, 1, 4, 12, 15])
+@pytest.mark.parametrize("shift", [1, 2, 3, 4, 5])
+def test_geometry_agrees_with_the_scorer(off, shift):
+    """One row count, two parameterisations: `geometry` takes a granule in
+    entries and `lastround` takes a shift, and a disagreement between them
+    would size an accumulator wrong at exactly the offsets that matter."""
+    assert nlines(off, granule=1 << shift) == lastround.nlines(shift, off)
 
 
 def test_aligned_table_spans_16_lines():

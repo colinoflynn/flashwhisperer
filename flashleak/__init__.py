@@ -30,6 +30,7 @@ does not clear a target. Cache-collision leakage lives in pairs of bytes and is
 normally invisible to any single-byte test. That is the whole reason the pair
 tests exist.
 """
+from .placement import row_offset_from_image
 from .probe import (TestResult, data_dependence, floor_check, offset_profile,
                     pair_input_test, pair_output_test, timing_summary)
 from .hypotheses import Assessment, Finding, assess, combine_cbc, granularity_sweep
@@ -44,4 +45,7 @@ __all__ = [
     "TestResult",
     "SimulatedTarget", "SerialTarget", "collect", "determinism",
     "fixed_vs_random",
+    # The image half of the table's row geometry; the arithmetic half is
+    # flashattack.geometry, and flashattack must not import this package.
+    "row_offset_from_image",
 ]
