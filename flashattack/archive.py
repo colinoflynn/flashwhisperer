@@ -278,6 +278,25 @@ def verify_cipher(cap, sample=4096):
     capture missing plaintexts or a key cannot be checked and says so -- which
     is a finding about the capture, not a pass.
 
+    WHAT THIS PROVES DEPENDS ENTIRELY ON WHERE THE CIPHERTEXT COLUMN CAME
+    FROM, and the function cannot tell. If `ct` was reported BY THE DEVICE this
+    detects a device that is not computing AES. If `ct` was computed on the
+    HOST -- `cts = aesref.encrypt_blocks(KEY, pts)`, which 29 of this
+    repository's capture scripts do, including the nRF52840's and the
+    LPC2124's, because their batch commands stream cycle counts alone -- then
+    this compares `flashattack.aesref` against `flashsim.aes` and is a
+    TAUTOLOGY about the device. It still catches a corrupted or mislabelled
+    file, which is worth having, but a pass is not evidence the silicon
+    computed AES.
+
+    So: record the ciphertext provenance in the capture's `meta` and say which
+    check you are relying on. The device-side evidence is the rig's own
+    FIPS-197 self-test run IN THE CELL'S CONFIGURATION, or a single-block
+    command echoed against the capture's own plaintexts. `rigs/fw_g4`'s `E`,
+    `T` and `M` return the device's ciphertext, so captures from
+    `results/stm32g474/g4_cell_capture.py` are the class where this function is
+    a device check; most others are not.
+
     WHAT THIS DOES NOT COVER: it assumes an UNMASKED AES-128 ECB encryption of
     the recorded plaintexts under the recorded key. A masked implementation
     legitimately fails it -- `results/rsm_f7/` is Rotating S-box Masking and
@@ -309,6 +328,10 @@ def verify_cipher(cap, sample=4096):
     want = np.asarray(want, np.uint8).reshape(len(pt), 16)
     bad = int(np.count_nonzero(np.any(want != ct[:, :16], axis=1)))
     return {"ok": bad == 0, "checked": n, "mismatch": bad,
+            "caveat": "a pass proves the device computed AES only if this "
+                      "capture's ciphertext column was reported BY THE DEVICE; "
+                      "if the script computed it on the host this is a check "
+                      "of two software implementations against each other",
             "reason": ("every one of %d matches AES(pt, key)" % n) if not bad
                       else ("%d of %d ciphertexts are NOT AES(pt, key) -- the "
                             "device computed something else and any recovery "
