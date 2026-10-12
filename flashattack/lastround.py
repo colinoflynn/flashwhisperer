@@ -342,3 +342,79 @@ def coverage(spec="all", *, ct_adjacent=False):
             return pairs_intra_column(spec, ct_adjacent=ct_adjacent)
         raise ValueError(f"unknown coverage {spec!r}")
     return [(int(a), int(b)) for a, b in spec]
+
+
+# ---------------------------------------------------------------------------
+# Pair-set recovery, moved in from hardware/atk_lastround.py on 2026-10-12.
+#
+# It lived in the shim because "the archived trace counts were measured through
+# it", which was a good reason to keep ONE implementation and a bad reason for
+# that one to sit outside the package: a script that reproduces a published
+# figure has to import the package, not a directory the package layering has no
+# edge to. The shim now delegates here, and flashwhisperer/tests asserts the
+# surfaces and margins are bit-identical rather than taking it on trust.
+# ---------------------------------------------------------------------------
+
+RCON = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36]
+
+
+def recover_k10(ct, cyc, rows, line_shift=4, line_off=0, ct_adjacent=False):
+    """Recover 8 round-10 key bytes from one pair set.
+
+    Returns `(k10, margin)`: a {ct index -> byte} map for the eight positions
+    this pair set covers, and the mean margin in the TIMING'S OWN UNITS
+    (median minus winner), which is the convention every archived margin in
+    `research/targets/` and the findings ledger was measured in. `engine`
+    votes in `margin="z"` and the two are not interchangeable -- in particular
+    the 1/sqrt(n) scaling test that decides whether a partial recovery is
+    structural is a statement about THIS margin.
+
+    `ct_adjacent` picks which adjacency the collision test assumes, and it is a
+    property of the cipher's last round rather than of the part:
+
+      False   SubBytes runs over a state column and ShiftRows follows, so
+              consecutive S-box reads are state indices 4c+r and reach the
+              ciphertext through PINV. The byte S-box build.
+      True    the last round FOLDS ShiftRows into the read -- every T-table
+              build in this repository does -- so the four consecutive reads
+              producing output column c emit ciphertext bytes 4c+0..4c+3 in
+              that order and PINV must not be applied.
+
+    GETTING THIS WRONG DOES NOT DEGRADE GRACEFULLY: it tests an adjacency the
+    access stream does not have and returns a clean null. It has cost two parts
+    a wrong answer -- the TC234 read as 7/16 in 26 624 traces when it is the
+    cheapest cell on the part at 3 072, and the MPC5606B's T-table builds read
+    as 0/16 at 20 000 when they fall at 2 500 and 750.
+    """
+    import numpy as _np
+    if isinstance(rows, str):
+        rows = ROW_PAIRINGS[rows]
+    y = cyc - cyc.mean()
+    k10, margins = {}, []
+    for c in range(4):
+        if ct_adjacent:
+            ja, jb = 4 * c + rows[0], 4 * c + rows[1]
+        else:
+            ja, jb = int(PINV[4 * c + rows[0]]), int(PINV[4 * c + rows[1]])
+        surf = score_surface(ct[:, ja], ct[:, jb], y, SINV,
+                             line_shift=line_shift, line_off=line_off)
+        ga, gb, mg = best(surf, margin="cycles")
+        k10[ja], k10[jb] = ga, gb
+        margins.append(mg)
+    return k10, float(_np.mean(margins))
+
+
+def invert_ks(k10):
+    """Round-10 subkey -> master key. `k10` must hold all sixteen bytes."""
+    rk = [int(k10[i]) for i in range(16)]
+    for rnd in range(10, 0, -1):
+        prev = [0] * 16
+        for i in range(4, 16):
+            prev[i] = rk[i] ^ rk[i - 4]
+        t = [prev[13], prev[14], prev[15], prev[12]]
+        t = [int(SBOX[b]) for b in t]
+        t[0] ^= RCON[rnd - 1]
+        for i in range(4):
+            prev[i] = rk[i] ^ t[i]
+        rk = prev
+    return bytes(rk)
