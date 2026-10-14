@@ -188,6 +188,7 @@ cost.
 | encryption or decryption? | which of the two output-side predictors (inverse S-box / forward S-box) fires |
 | table layout | which byte offsets carry signal: all of them = one shared table; only offsets 0 mod 4 = four separate tables; one family = a restricted access order |
 | effective line granularity | an UPPER bound only, and biased coarse, see the caveat below |
+| the row width the output side is scored at | scanned over 2/4/8/16 table entries per flash row, each against its own shuffled floor, and the winner reported |
 | how many traces to be sure | excess over the shuffled floor grows as sqrt(n) |
 
 ### Input side vs output side
@@ -306,17 +307,6 @@ here.
 whose answers are known, including two negative controls. The simulator is
 the part worth trusting or not:
 
-**NOTE:** as of 2026-10-14 it reports 3/6, deterministically. Both
-negative controls pass and the input-side case passes; all three
-output-side cases ("encrypt, observe ciphertext, single table", "decrypt,
-observe plaintext, single table", "four separate tables") come back `not
-detectably`. This is the simulator disagreeing with the detector rather
-than a measurement: on the real captured vector
-`tests/vectors/sbox_tinyaes_ecb-enc_128.npz` the same `assess` call does
-identify the output side, `[strong]`. Which of the two is wrong is not
-established here. Until it is, read a selftest pass as the controls
-holding rather than as the detector being calibrated.
-
 * it leaks from every round, as a real cipher does. A one-round simulator
   reads ~6 on the concentration statistic where hardware reads ~1.4, and
   would have put the threshold about four times too high.
@@ -328,6 +318,54 @@ holding rather than as the detector being calibrated.
 Both of those were bugs here first, found because the selftest disagreed
 with hardware. If you extend the simulator, keep the selftest honest the
 same way.
+
+### What it took to get it to 6/6
+
+It reported 3/6 for a long time, missing every output-side case while both
+negative controls passed, and the three causes are worth knowing because
+two of them were costing real captures as well.
+
+The row width was a constant. `assess` scored the output side at a
+hardcoded 2 for any capture that was not input-side, while the simulator
+models a 16-byte row of 1-byte entries, which is 4. At 20 000 traces that
+turned +7.9 and +56.4 over the floor into +0.7 and +7.0 - a clean null
+that reads exactly like a target which does not leak, which is the trap
+this project warns about everywhere else. The width is now scanned, each
+candidate against its own shuffled floor, and the chosen one is reported
+in the notes.
+
+Conditioning invented modes. The mode finder took any histogram valley,
+and the tails of a plain Gaussian go sparse before they end: 20 000
+samples of clean N(1000, 3), no cipher involved, came out as three modes
+of 3.0 % / 94.4 % / 2.6 %. Each sliver then had its own median subtracted,
+which is signal removal when the thing being measured is a shift in a
+subset's mean. On the real 250 000-trace `tinyaes` vector it found NINE
+modes and cost 60 % of the output-side statistic - 39.5 down to 14.5
+against the same floor. An edge now has to clear a share and a separation
+test, which the SNMPv3 capture's real modes (~1480 apart, within-mode
+sigma ~59, so ~25 sigma) do easily.
+
+The selftest was under-powered. It ran at 20 000 traces, where the
+"encrypt, observe ciphertext" case reads +0.19 over its floor; at 50 000
+it reads +40. The default is now 50 000. Note the pytest suite had been
+exercising the same cases at 60 000 and 150 000 all along, which is why it
+stayed green while the CLI did not.
+
+**NOTE:** scanning the width is not free. Keeping the best of four widths
+inflates the statistic under the null, so both bars had to be re-measured
+rather than inherited: 20 draws of pure Gaussian noise, no cipher in them,
+scanned and scored through the identical call, read mean +0.29, sd 1.66,
+**max +3.72**. The old firing bar was 4.0, which that nearly clears, and
+the old "suggestive" bar was 1.5, which noise cleared about half the time.
+They are now 6.0 and 4.0, named and documented in
+[`hypotheses.py`](hypotheses.py). A pilot of only 8 draws had put the null
+max at +2.16 and would have left the firing bar alone, which is worth
+remembering next time a threshold is set from a handful of runs.
+
+The cost is real and worth stating: the band a fixed-width rule would have
+hedged now reads "none detected". This detector is the weaker instrument
+either way, so read a quiet result as "not at this trace count", never as
+"safe".
 
 ## Files
 

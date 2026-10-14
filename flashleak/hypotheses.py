@@ -56,6 +56,21 @@ from . import probe
 #: the same as when a key-known attack succeeds. The detector is strictly the
 #: weaker instrument; treat its estimate as an upper bound on the attacker's
 #: cost, never a lower one.
+#:
+#: STALE, AND KNOWN TO BE. The 0.24 above was measured while `probe.condition`
+#: was splitting unimodal timing into spurious modes and re-centring each one,
+#: which cost about 60 % of this statistic on the one capture that could be
+#: rechecked. Whatever that capture's excess really was, it was larger than
+#: 0.24, so this constant is too small and every estimate derived from it is
+#: too optimistic. It shows: on the tinyaes vector the detector now says
+#: "order 3,083 traces" where the key-known ladder needs 250 000 for the full
+#: key and gets 4/16 at 50 000 - the "upper bound on the attacker's cost"
+#: promise above is violated by about 80x there.
+#:
+#: Re-measuring it needs the F429 OSCORE capture, which is untracked and not
+#: in this repository, so it is left alone rather than guessed at. Until
+#: someone re-runs it with conditioning fixed, read the trace estimate as an
+#: order of magnitude and nothing more.
 RECOVERY_EXCESS = 0.25
 
 #: Two thresholds, because neither statistic settles it alone.
@@ -67,14 +82,22 @@ RECOVERY_EXCESS = 0.25
 #: Measured, real captures first:
 #:
 #:                                             truth    pooled  family
-#:   tiny-AES decrypt, observed ciphertext     input      2.78    3.39
-#:   mbedTLS compact decrypt, observed ct      input      7.73    8.93
-#:   mbedTLS 4-table decrypt, observed ct      input      0.56   10.05
-#:   SNMPv3 CFB keystream                      output     0.38    0.53
-#:   simulated single-table, observe input     input     10.45   11.34
-#:   simulated 4-table,      observe input     input      0.56   24.92
-#:   simulated single-table, observe output    output     0.50    0.85
-#:   simulated 4-table,      observe output    output     0.45    2.11
+#:   tiny-AES decrypt, observed ciphertext     input      2.78    3.39   (*)
+#:   mbedTLS compact decrypt, observed ct      input      7.73    8.93   (*)
+#:   mbedTLS 4-table decrypt, observed ct      input      0.56   10.05   (*)
+#:   SNMPv3 CFB keystream                      output     0.38    0.53   (*)
+#:   simulated single-table, observe input     input      6.17    6.74
+#:   simulated 4-table,      observe input     input      0.71   16.61
+#:   simulated single-table, observe output    output     0.40    0.81
+#:   simulated 4-table,      observe output    output     0.48    0.79
+#:
+#: (*) measured before `probe.condition` stopped splitting unimodal timing
+#: into spurious modes; those four captures are untracked and could not be
+#: re-run here. The four simulated rows WERE re-measured after that fix and
+#: are the numbers shown. All eight still classify correctly, and the narrow
+#: case got wider rather than narrower: the two 4-table rows used to sit at
+#: 10.05 against 2.11 on the family statistic and now sit at 16.61 against
+#: 0.79, so the bar at 5.0 has more room on both sides than when it was set.
 #:
 #: A target is called input-side if EITHER bar is cleared; every row above is
 #: then classified correctly. The narrow case is a partitioned layout seen from
@@ -90,6 +113,40 @@ CONCENTRATION_FIRES = 1.0
 
 #: Bar for the best-offset-family statistic, which only partitioned layouts clear.
 CONCENTRATION_FAMILY_FIRES = 5.0
+
+#: How far over its own shuffled floor the output-side mean peak has to sit,
+#: in standard errors of that floor, before the side is called.
+#:
+#: The width is SELECTED by `probe.output_shift_scan` and then scored, so
+#: this covers a maximum over four row widths and the null is inflated. Both
+#: numbers here are measured against that, not inherited from the fixed-width
+#: version: 20 draws of pure N(1000, 3), no cipher in them at all, 20 000
+#: traces each, conditioned exactly as a real capture would be, scanned and
+#: then scored through the identical call.
+#:
+#:     null, 20 draws:  mean +0.29   sd 1.66   max +3.72
+#:
+#: 4.0 was the fixed-width bar and a null draw reached 3.72, so it does not
+#: survive selection - which an 8-draw pilot had missed at max +2.16. 6.0
+#: sits 3.4 sd above the null mean. Real cases are nowhere near it: the
+#: tinyaes vector reads +39.5 at its true width, the simulated four-table
+#: target +56 at 20 000 traces, the single-table one +16.6 at 50 000.
+OUTPUT_FIRES = 6.0
+
+#: Below `OUTPUT_FIRES` but above this, the answer is "suggestive" rather than
+#: "nothing". A target that IS exploitable but under-sampled lands here, and
+#: calling that clean would be the most damaging thing this tool could do.
+#:
+#: This was 1.5 when the row width was fixed. Under selection that is below
+#: the null's own mean plus one sd, and pure noise read "suggestive" about
+#: half the time - the negative control in `selftest` is what caught it. 4.0
+#: is just above the largest null draw seen in 20.
+#:
+#: Note what that costs. The band a fixed-width rule would have hedged now
+#: reads "none detected", and this detector is already the weaker instrument
+#: - `assess` says so in its own notes. Read a quiet result as "not at this
+#: trace count", never as "safe".
+OUTPUT_SUGGESTIVE = 4.0
 
 
 @dataclass
@@ -277,14 +334,36 @@ def assess(blocks, timing, *, quick=False, seed=0) -> Assessment:
                        "--quick before drawing either conclusion.")
         return a
 
+    # The row width for the OUTPUT side is its own question. The input-side
+    # sweep above answers it only when the input side is live, because that is
+    # where the XOR bucketing concentrates; on an output-side capture it reads
+    # flat at every width and `best_shift` is whichever noise peak won. This
+    # used to fall back to a constant 2, which is a guess, and a wrong row
+    # width here returns a clean null rather than a degraded one.
+    if input_side:
+        out_shift, scan = shift, None
+    else:
+        out_shift, scan = probe.output_shift_scan(blocks, timing, seed=seed)
+        a.tests["output_shift_scan"] = scan
+        a.tests["output_shift"] = out_shift
+
     sub = [(i, (i + 4) % 16) for i in range(8)] + [(i, (i + 3) % 16) for i in range(4)]
     sub = [(min(x, y), max(x, y)) for x, y in sub if x != y]
-    enc = probe.pair_output_test(blocks, timing, "enc", shift, pairs=sub)
-    dec = probe.pair_output_test(blocks, timing, "dec", shift, pairs=sub)
+    enc = probe.pair_output_test(blocks, timing, "enc", out_shift, pairs=sub)
+    dec = probe.pair_output_test(blocks, timing, "dec", out_shift, pairs=sub)
     a.tests["pair_output_enc"] = enc
     a.tests["pair_output_dec"] = dec
-    a.tests["floor_check"] = probe.floor_check(blocks, timing, "enc", shift, seed=seed)
-    _conclude(a, inp, enc, dec, shift, input_side, blocks, timing)
+    a.tests["floor_check"] = probe.floor_check(blocks, timing, "enc", out_shift,
+                                               seed=seed)
+    if scan is not None:
+        a.notes.append(
+            "the output-side row width was scanned rather than assumed: "
+            + ", ".join(f"{1 << s} entries:{v:+.1f}"
+                        for s, v in sorted(scan.items()))
+            + f" over each width's own shuffled floor, so {1 << out_shift} "
+            "entries per row was scored. A wrong width here returns a clean "
+            "null, not a weak reading")
+    _conclude(a, inp, enc, dec, out_shift, input_side, blocks, timing)
     return a
 
 
@@ -309,7 +388,7 @@ def _conclude(a: Assessment, inp, enc, dec, shift, input_side_already=False,
     out_fired = []
     for r, label in ((enc, "encryption output (ciphertext / keystream)"),
                      (dec, "decryption output (plaintext)")):
-        if r is not None and (r.statistic - floor) / max(se, 1e-9) > 4.0:
+        if r is not None and (r.statistic - floor) / max(se, 1e-9) > OUTPUT_FIRES:
             out_fired.append((r, label))
 
     # The 2^16 search is not specific either: given 65536 guesses it can find a
@@ -390,7 +469,7 @@ def _conclude(a: Assessment, inp, enc, dec, shift, input_side_already=False,
         # that "clean" would be the most damaging thing this tool could do.
         best_excess = max([(r.statistic - floor) for r in (enc, dec)
                            if r is not None], default=0.0)
-        if best_excess / max(se, 1e-9) > 1.5:
+        if best_excess / max(se, 1e-9) > OUTPUT_SUGGESTIVE:
             need = a.timing["n"] * (RECOVERY_EXCESS / best_excess) ** 2
             a.add("cache-collision leakage",
                   "SUGGESTIVE - above the floor but below the firing threshold",

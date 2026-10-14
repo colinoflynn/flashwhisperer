@@ -107,22 +107,29 @@ The key is used to rebuild the blocks the attacker would have seen on the
 wire, and `assess` never gets it. Trimmed output:
 
 ```
-  pair_output_enc                   4.909   floor 4.2, excess +0.71
-  pair_output_dec                   4.270   floor 4.2, excess +0.07
-  shuffled-null floor          4.08 (assumed 4.2)
+  data_dependence              285715.431   z=   +5.2  ####....................
+  pair_output_enc                   6.429   floor 4.2, excess +2.23
+  pair_output_dec                   4.233   floor 4.2, excess +0.03
+  shuffled-null floor          4.18 (assumed 4.2)
 
   what the observed block is
       consistent with a cipher encryption output (ciphertext / keystream)   [strong]
-      peak 4.91 vs measured floor 4.08
+      peak 6.43 vs measured floor 4.18
 ```
 
-Note it calls the side correctly and still rates the byte-level
-data-dependence "not detectably" at z = +2.4, on a capture whose key the
-attack recovers outright a few paragraphs down. That gap is the point of
+It gets the side right and the direction right - the `enc` predictor sits
++2.23 over the floor and the `dec` one +0.03, which is what a correct
+reading looks like. It also picks the row width itself: the scan reads
+`2 entries:+2.9  4:+19.9  8:+15.6  16:+25.0` and scores the last.
+
+Don't read a quiet flashleak result as "safe", though. This detector is
+strictly weaker than an attack that knows the key, and
 [`flashleak/README.md`](flashleak/README.md) § *Reading a negative
-honestly*: a detector that doesn't know the key is searching, not
-confirming, so its trace estimate is an upper bound on an attacker's cost.
-Don't read a weak flashleak result as "safe".
+honestly* is the three ways it can say nothing about a target that is
+broken. Its "traces to be confident" line is currently **not** a
+trustworthy upper bound on an attacker's cost - on this very capture it
+says order 3 000 where the key-known ladder below needs 250 000 - and
+`RECOVERY_EXCESS` in `hypotheses.py` records why.
 
 Pass `--quick` and the 2^16 search is skipped, which drops the test that
 found the side at all. It's for triage, not for a verdict.

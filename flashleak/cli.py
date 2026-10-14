@@ -140,7 +140,19 @@ def cmd_selftest(a):
         ("noise only, no channel (negative control)",
          dict(layout="none", noise=3.0), "none detected"),
     ]
-    n = a.n or 20000
+    # 20 000 was the default for a long time and it is not enough: the
+    # "encrypt, observe ciphertext" case reads +0.19 over its floor there and
+    # +40 at 50 000, so the detector was being graded on a capture it could
+    # not have called either way. The other five cases pass at 20 000; this
+    # one sets the number. Pass --n to go lower if you only want a smoke test.
+    n = a.n or 50000
+    # --quick skips the 2^16 output-side search, which is the only thing that
+    # can answer four of these six. Grading them anyway reported 2/6 and read
+    # as four failures rather than as four questions nobody asked.
+    if a.quick:
+        cases = [c for c in cases if "output" not in c[2].lower()]
+        print("--quick skips the output-side search, so only the cases that do "
+              "not need it are graded.\n")
     bad = 0
     for name, kw, expect in cases:
         tgt = target_mod.SimulatedTarget(seed=1, **kw)

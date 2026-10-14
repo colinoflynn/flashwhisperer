@@ -100,7 +100,58 @@ def timing_summary(timing) -> dict:
     }
 
 
-def condition(blocks, timing, outlier_sigma=6.0, sep=4.0):
+def _validate_modes(t, edges, min_share=0.05, sep=4.0):
+    """Keep only the splits that a real transport mode would produce.
+
+    An edge survives when both the clusters it separates hold at least
+    `min_share` of the traces and their medians are at least `sep`
+    within-cluster sigmas apart. Dropping an edge merges two clusters and
+    changes both statistics, so the weakest offender goes first and the
+    rest are re-checked, rather than filtering them all in one pass.
+    """
+    edges = sorted(float(e) for e in edges)
+    while edges:
+        lab = np.searchsorted(np.array(edges), t)
+        groups = [t[lab == m] for m in range(len(edges) + 1)]
+        worst, worst_score = None, None
+        for i, e in enumerate(edges):
+            lo, hi = groups[i], groups[i + 1]
+            if lo.size == 0 or hi.size == 0:
+                worst, worst_score = i, -1.0
+                break
+            share = min(lo.size, hi.size) / max(t.size, 1)
+            # Robust within-cluster spread. An on-chip cycle count is discrete
+            # enough that a cluster can hold ONE value and have a MAD of zero,
+            # which would divide into an infinite separation and wave every
+            # edge through - exactly the captures this has to get right. Fall
+            # back to the pooled spread, so separation is always measured
+            # against a scale the data actually has.
+            spread = max(_mad(lo), _mad(hi)) or _mad(t) or float(np.std(t))
+            if spread <= 0:                      # constant: nothing to split
+                worst, worst_score = i, -1.0
+                break
+            gap = abs(float(np.median(hi)) - float(np.median(lo))) / spread
+            # Normalised so the two tests are comparable and the genuinely
+            # weakest edge is the one that goes.
+            score = min(share / min_share, gap / sep)
+            if score >= 1.0:
+                continue
+            if worst_score is None or score < worst_score:
+                worst, worst_score = i, score
+        if worst is None:
+            break
+        edges.pop(worst)
+    return edges
+
+
+def _mad(x):
+    """Median absolute deviation, scaled to a Gaussian sigma."""
+    if x.size == 0:
+        return 0.0
+    return float(np.median(np.abs(x - np.median(x))) * 1.4826)
+
+
+def condition(blocks, timing, outlier_sigma=6.0, sep=4.0, min_mode_share=0.05):
     """Strip the nuisance structure that would otherwise hide everything.
 
     Raw timings off a real target are rarely a single tight cluster. Two things
@@ -119,9 +170,19 @@ def condition(blocks, timing, outlier_sigma=6.0, sep=4.0):
     every test reads zero and the tool calls it clean. Conditioned, the same
     traces light up. That false negative is the reason this function exists.
 
-    Outliers go by a MAD-based cut; modes are found by looking for a gap in the
-    sorted values wider than `sep` times the within-cluster spread, and each
-    cluster is then centred on its own median. Returns (blocks, y, info).
+    Outliers go by a MAD-based cut; modes are found as histogram valleys and
+    then validated - each side has to hold `min_mode_share` of the traces and
+    the two medians have to be `sep` within-cluster sigmas apart - and each
+    surviving cluster is centred on its own median. Returns (blocks, y, info).
+
+    WHAT THIS DOES NOT COVER. The outlier cut runs FIRST and knows nothing
+    about modes, so a real mode that is both far out and small is deleted
+    before mode-finding ever sees it: a cluster holding 8 % of the traces 30
+    sigma away is dropped whole by the 6-MAD cut, and `dropped_outliers` is
+    the only trace of it. Balanced modes like the SNMPv3 capture's are safe
+    because each one drags the pooled median and MAD toward itself. If you
+    are looking at a capture whose `dropped_outliers` is more than a percent
+    or two, plot it before believing anything below.
     """
     t = np.asarray(timing, float)
     b = np.asarray(blocks)
@@ -158,6 +219,27 @@ def condition(blocks, timing, outlier_sigma=6.0, sep=4.0):
                     if j < nb_:                      # a real valley, not the tail
                         edges.append(float(be[(i + j) // 2]))
             edges = edges[:8]
+    # A valley in the histogram is necessary but NOT sufficient. The tails of
+    # a perfectly unimodal Gaussian go sparse before they end, so an occupied
+    # bin, a few empty ones and another occupied bin all sit inside one mode -
+    # and the rule above calls that a valley. Measured on 20 000 samples of
+    # clean N(1000, 3) with no cipher anywhere near it: 3 modes, shares 3.0 %
+    # / 94.4 % / 2.6 %, which is the body and its own two tails. Each sliver
+    # then got its own median subtracted, which drags the tails inward and
+    # takes sigma down 16 % for nothing.
+    #
+    # That is not cosmetic. The thing being measured is a shift in the mean of
+    # a subset, so re-centring arbitrary subsets removes signal: on the real
+    # 250 000-trace tinyaes vector the splitter found NINE modes (eight
+    # slivers of 1-4 % around an 80 % body) and cost 60 % of the output-side
+    # statistic, 39.5 down to 14.5 against the same floor.
+    #
+    # So an edge now has to survive both tests a real transport mode passes
+    # and a Gaussian tail does not: each side holds a real share of the data,
+    # and the two medians are `sep` within-cluster sigmas apart. The SNMPv3
+    # capture this function was written for clears that easily - its modes are
+    # ~1480 apart with a within-mode sigma of ~59, so about 25 sigma.
+    edges = _validate_modes(t, edges, min_share=min_mode_share, sep=sep)
     lab = np.searchsorted(np.array(edges), t) if edges else np.zeros(len(t), int)
     y = t.astype(float).copy()
     for m in np.unique(lab):
@@ -351,6 +433,68 @@ def pair_output_test(blocks, timing, table="enc", line_shift=4,
                       len(y), {"per_pair": per_pair, "line_shift": line_shift,
                                "max": float(vals.max()), "n_pairs": len(vals),
                                "above_floor": int((vals > floor + 1.0).sum())})
+
+
+#: Row widths the output-side scan tries, as log2(entries per flash row).
+#: 3 is a byte S-box in an 8-byte row, 4 the same in a 16-byte row, 2 a
+#: 4-byte word table in a 16-byte row, 1 a word table in an 8-byte one.
+OUTPUT_SHIFTS = (1, 2, 3, 4)
+
+
+def output_shift_scan(blocks, timing, shifts=OUTPUT_SHIFTS, n_pairs=8,
+                      n_floor=8, max_traces=None, seed=0):
+    """Which row width does the output-side collision live at?
+
+    Nothing on the chip reports it and it is not derivable from the data
+    without trying, so it gets tried. This was a constant 2 until it was
+    measured: the simulated targets in `target.py` model a 16-byte row of
+    1-byte entries, which is shift 4, and scoring them at 2 took a result
+    that fires at 7.9 and 56.4 down to 0.7 and 7.0 against the same floor.
+    Guessing the row width wrong returns a clean null that reads exactly
+    like a target which does not leak - the same trap `flashattack`
+    ladders its geometry to avoid.
+
+    Cheap in PAIRS, not in traces. This only has to rank the widths, and a
+    handful of pairs does that - but it needs all the traces, which was
+    measured the embarrassing way after an earlier version capped them at
+    50 000. On the 250 000-trace tinyaes vector, where the full 12-pair test
+    says 1:+6.1 2:+21.7 3:+24.4 4:+39.5 and the answer is plainly 4:
+
+        4 pairs,  50 000 traces  -> 3     8 pairs,  50 000 -> 3
+       12 pairs,  50 000 traces  -> 1     4 pairs, 250 000 -> 4
+                                          8 pairs, 250 000 -> 4
+
+    More pairs did not rescue the capped version and none of the three
+    capped budgets got it right. `max_traces` is therefore None by default;
+    pass a number only if you know your capture is strong enough.
+
+    Returns (best_shift, scan) where scan maps each shift to its excess
+    over its own shuffled floor. Each shift is compared against a floor
+    measured at that same shift, since the floor is mildly width-dependent
+    and comparing across widths otherwise reads as signal.
+
+    WHAT THIS DOES NOT COVER: picking the maximum over several widths
+    inflates the statistic under the null, so the caller has to hold a
+    higher bar than it would for one fixed width - see
+    `hypotheses.OUTPUT_FIRES`. It also assumes the leak is at ONE width;
+    a target reading two differently shaped tables in its last round
+    would be ranked by whichever is louder.
+    """
+    b = _as_blocks(blocks)
+    y = np.asarray(timing, float)
+    if max_traces is not None and len(y) > max_traces:
+        b, y = b[:max_traces], y[:max_traces]
+    pairs = [(0, 4), (1, 5), (2, 6), (3, 7)][:max(n_pairs, 1)]
+    scan = {}
+    for s in shifts:
+        best = -np.inf
+        for table in ("enc", "dec"):
+            r = pair_output_test(b, y, table, s, pairs=pairs)
+            fl = floor_check(b, y, table, s, n_pairs=n_floor, seed=seed)
+            se = (fl["se"] or 0.1) or 0.1
+            best = max(best, (r.statistic - fl["mean"]) / se)
+        scan[s] = float(best)
+    return max(scan, key=scan.get), scan
 
 
 def floor_check(blocks, timing, table="enc", line_shift=4, n_pairs=12, seed=0) -> dict:

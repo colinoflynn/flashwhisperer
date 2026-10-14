@@ -119,3 +119,81 @@ def test_determinism_reports_a_noiseless_target_as_deterministic():
 def test_blocks_must_be_16_wide():
     with pytest.raises(ValueError):
         probe.data_dependence(np.zeros((10, 8), np.uint8), np.zeros(10))
+
+
+# ---- conditioning must not invent structure, or destroy it ---------------
+# `condition` splits a capture into transport modes and re-centres each on
+# its own median. That is load-bearing on a real network capture and
+# actively harmful when the modes are not real: the thing being measured IS
+# a shift in the mean of a subset, so re-centring arbitrary subsets removes
+# signal. It used to call a clean Gaussian three modes - the body and its
+# own two tails - and the real 250 000-trace tinyaes vector nine.
+
+def test_condition_leaves_unimodal_noise_alone():
+    """A Gaussian with no cipher anywhere near it is ONE mode."""
+    rng = np.random.default_rng(7)
+    b = rng.integers(0, 256, size=(20_000, 16), dtype=np.uint8)
+    t = rng.normal(1000.0, 3.0, size=20_000)
+    _, y, info = probe.condition(b, t)
+    assert info["modes"] == 1, info["mode_shares"]
+    # and it must not quietly shrink the scale every margin is measured in
+    assert y.std() == pytest.approx(info["sigma_raw"], rel=0.02)
+
+
+def test_condition_still_splits_a_real_transport_mode():
+    """The case this function exists for: the SNMPv3 capture's two modes are
+    ~1480 apart with a within-mode sigma of ~59. If a share-and-separation
+    rule ever merges those, conditioning has stopped doing its job and every
+    statistic downstream reads zero again."""
+    rng = np.random.default_rng(8)
+    b = rng.integers(0, 256, size=(20_000, 16), dtype=np.uint8)
+    t = np.concatenate([rng.normal(0, 59, 10_000),
+                        rng.normal(1480, 59, 10_000)])
+    _, y, info = probe.condition(b, t[rng.permutation(20_000)])
+    assert info["modes"] == 2, info["mode_shares"]
+    assert y.std() < 100          # pooled would be ~740
+
+
+def test_output_shift_scan_finds_the_row_width_the_target_uses():
+    """The output-side row width was a hardcoded 2 until this was measured.
+    `SimulatedTarget` models a 16-byte row of 1-byte entries, so 4 is the
+    right answer; scoring the same capture at 2 cost an order of magnitude
+    and read as a target that does not leak."""
+    tgt = SimulatedTarget(seed=1, direction="enc", observe="output",
+                          layout="four")
+    blocks = np.random.default_rng(0).integers(0, 256, size=(20_000, 16),
+                                               dtype=np.uint8)
+    timing, seen = tgt.measure_many(blocks)
+    best, scan = probe.output_shift_scan(seen, timing, seed=0)
+    assert best == tgt.line_shift, scan
+    assert scan[best] > scan[2], scan
+
+
+@pytest.mark.slow
+def test_output_shift_scan_needs_the_traces_not_the_pairs():
+    """The regression that cost a round: the scan used to cap itself at
+    50 000 traces on the grounds that ranking is cheaper than scoring. It
+    is not. On this capture the full test reads 1:+6.1 2:+21.7 3:+24.4
+    4:+39.5, and every capped budget - 4, 8 and even 12 pairs - ranked it
+    wrong, while 4 pairs on all the traces got it right."""
+    import os
+    from flashattack import modes, transport
+    p = os.path.join(os.path.dirname(__file__), "vectors",
+                     "sbox_tinyaes_ecb-enc_128.npz")
+    if not os.path.isfile(p):
+        pytest.skip("vector not present")
+    d = np.load(p)
+    key = bytes.fromhex(str(d["key_hex"]))
+    material = transport.gen_pts(int(d["seed"]), int(d["n"]))
+    ct, _ = modes.known_output(str(d["mode"]), material, key)
+    blocks = np.asarray(ct, np.uint8)
+    timing = d["timing"].astype(float)
+
+    best, scan = probe.output_shift_scan(blocks, timing, seed=0)
+    assert best == 4, scan
+    capped, cscan = probe.output_shift_scan(blocks, timing, max_traces=50_000,
+                                            seed=0)
+    assert capped != 4, (
+        "the 50k cap used to get this wrong; if it now gets it right the "
+        "comment above and the docstring's table need revisiting, not this "
+        "assertion deleting")
