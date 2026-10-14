@@ -8,7 +8,6 @@ from __future__ import annotations
 import time
 
 import numpy as np
-import serial
 
 WIDTHS = (2, 4)
 NS = tuple(range(0, 13))
@@ -20,6 +19,7 @@ class ArbDevice:
     """One probe board."""
 
     def __init__(self, target, port=None, settle=0.8):
+        import serial  # pyserial; lazy so the package installs without a bench
         self.t = target
         self.s = serial.Serial(port or target.port, 115200, timeout=3.0)
         time.sleep(settle)
