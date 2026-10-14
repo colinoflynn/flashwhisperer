@@ -1,14 +1,16 @@
-# What `flashwhisperer/` would need to become a project of its own
+# The split, and what it decided
 
-The five packages here are meant to be liftable out of this repository, and
-this records what that would take, measured rather than assumed. It lives
-inside the thing it describes so it travels with it.
+**This document was a checklist for a split that had not happened. It is now
+the record of one that has.** It was written inside the research repository,
+under `flashwhisperer/docs/`, to say what lifting those five packages out
+would take; everything below marked *decided* answers a question it had left
+open. Where the old version and this one disagree, this one happened.
 
-**Status 2026-10-07: the packaged test suite passes with only
-`flashwhisperer/` on `sys.path`.** It did not before: `tests/test_line_offset.py`
-inserted `hardware/` to reach the row-offset arithmetic, which was the one back
-edge out of the package, and that arithmetic is now
-[`../flashattack/geometry.py`](../flashattack/geometry.py).
+The packages were extracted 2026-10-14 with their history, including the
+commits from before the reorganisation that first grouped them under a
+`flashwhisperer/` directory — that directory is gone again here, the packages
+sit at the repository root as they originally did, so no package's history
+stops at the move.
 
 ## The layering, and what enforces it
 
@@ -22,50 +24,83 @@ edge out of the package, and that arithmetic is now
 
 Left to right, no back edges. Only `flashmap`'s independence is enforced by a
 test (`tests/test_flashmap.py` asserts it imports no crypto); the rest holds
-because nothing has broken it yet, which is not the same thing. Re-measure with
+because nothing has broken it yet, which is not the same thing. Re-measure
+with
 
 ```bash
 for pkg in flashsim flashattack flashleak flashmap flasharb; do
   printf "%s -> " $pkg
   grep -rhoE "(from|import) (flashsim|flashattack|flashleak|flashmap|flasharb)" \
-    flashwhisperer/$pkg/*.py | awk '{print $2}' | sort -u | tr '\n' ' '
+    $pkg/*.py | awk '{print $2}' | sort -u | tr '\n' ' '
   echo
 done
 ```
 
-The rule that keeps it true: **a package here may not import `serial` or
-`hardware.hil`.** That is why the board-driving scripts went to `rigs/host/`
-rather than into `flashattack` — see [`../../REORG_PLAN.md`](../../REORG_PLAN.md),
-*What was deliberately refused* — and why a campaign that drives hardware can
-contribute a reusable core to the toolkit but never move into it wholesale.
+The rule that keeps it true: **a package here may not import `serial` at
+module level, and may not import a board driver at all.** That is why the
+board-driving scripts were never allowed into `flashattack`, and why a
+campaign that drives hardware can contribute a reusable core to the toolkit
+but never move into it wholesale.
 
-## What a split still has to deal with
+## What the split decided
 
-* **`conftest.py` lives at the repository root** and registers `--runslow`,
-  which `demo/oscore/` also needs; registering it in two conftests is an error
-  its own docstring warns about, which is why it was not moved. A standalone
-  package needs its own copy and the demo keeps the root one.
-* **The shims stay behind.** `hardware/atk_lastround.py`,
+* **The name.** *Decided: the distribution is `flashwhisperer`.* The old
+  version noted that `pyproject.toml` said `flashattack` while the directory
+  and the five packages said `flashwhisperer`, and that a release had to pick
+  one. It picked the repository's name. The console script stays
+  `flashattack = flashattack.cli:main`, because that spelling is in every
+  capture script written against it; deprecating it would be a second
+  decision and nothing here takes it.
+
+* **`conftest.py`.** *Decided: this repository has its own copy.* The original
+  stayed at the research repository's root, where it still serves
+  `demo/oscore/` as well as the package tests — registering `--runslow` in two
+  conftests is an error. With one test tree here, one conftest is correct.
+
+* **The shims stayed behind**, as planned. `hardware/atk_lastround.py`,
   `hardware/aes_ref.py`, `hardware/refaes.py`, `hardware/line_offset.py` and
-  `demo/oscore/oracle.py` exist only to keep this repository's callers working
-  after their implementations moved into the package. They are not part of the
-  toolkit and should not travel with it.
-* **[`../../pyproject.toml`](../../pyproject.toml) is named `flashattack`**
-  while the directory and the five packages are `flashwhisperer`. It also
-  points `package-dir` at `flashwhisperer`, so a standalone release has to pick
-  one name and keep the console script (`flashattack = flashattack.cli:main`)
-  or deprecate it deliberately.
-* **The test vectors are tracked and small on purpose** (`tests/vectors/*.npz`
-  store timing only, with seed-regenerated material), so they travel. The
-  captures the campaigns replay do not: they are untracked, recorded in
-  `results/MANIFEST.tsv`, and a split loses the long-run replays unless those
-  vectors come too.
-* **Documentation that points outward.** The package docstrings cite campaign
-  results under `results/` for their measured claims, which is correct here and
-  dangling in a standalone clone. Decide per link whether to inline the number
-  or drop the citation; do not leave a path that resolves on one machine only.
+  `demo/oscore/oracle.py` exist only to keep that repository's callers working
+  after their implementations moved into these packages. They are not part of
+  the toolkit and did not travel.
+
+* **The test vectors travelled**, as planned: `tests/vectors/*.npz` are small
+  and store timing with seed-regenerated material, so the long-run replays
+  work here. The campaign captures did not travel — they are untracked and
+  recorded in the research repository's manifest.
+
+* **Two tests did not travel.** *Decided after measuring, not planned.*
+  `test_fw_aes_kat.py` compiles each firmware copy of `aes.c` and
+  `test_ctguard.py` compiles `rigs/fw_f4_ctguard`; both test firmware, which
+  is not in this repository. They were removed rather than left as permanent
+  skips, because a test that can never run reads as coverage and is not.
+
+* **Outward documentation.** *Decided: the citations stay, and the README says
+  they are citations.* The old version said to decide per link whether to
+  inline the number or drop it. Dropping them would delete the provenance of
+  every measured claim in the docstrings, and inlining them is a rewrite of
+  sixty-odd comments with a real chance of changing a number in the process.
+  So they stay as what they are — pointers into the research repository — and
+  the README says so once, rather than each docstring apologising.
+
+## What the split found that the checklist had not
+
+* **Three tests resolved the repository root by DEPTH** (`parents[2]`, "tests/
+  is two below the root"), which was true under `flashwhisperer/tests/` and is
+  one level too high here. A depth-resolved path fails lazily, on whichever
+  machine runs it next; these were fixed at the move.
+
+* **One capture-replay test loaded its file without the skip guard** the rest
+  of the module uses, so it failed rather than skipped when the untracked
+  captures were absent. Two linker-script tests did the same with firmware
+  assets. All now skip, and `FLASHWHISPERER_RIGS` points the firmware ones at
+  a firmware checkout.
+
+* **A fresh clone checks out CRLF** until `.gitattributes` exists, whatever
+  the object database holds, if `core.autocrlf` is true. A scripted edit
+  matching a two-line pattern then silently matches nothing. See the header of
+  [`../.gitattributes`](../.gitattributes).
 
 ## What this document does not cover
 
-Whether the split is worth doing, and what the package would be called. Both
-are decisions, not measurements, and nothing here settles them.
+Whether the split was worth doing. It records what it cost and what it
+decided; the argument for it was made elsewhere, and is not re-made here.
