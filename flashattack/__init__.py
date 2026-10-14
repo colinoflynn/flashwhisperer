@@ -32,8 +32,9 @@ from . import (aesref, attack, capture, engine, geometry, lastround, modes,  # n
                oracle, round2, search, sm4, sources, stats, tvla, vectors)
 from .capture import Capture                 # noqa: F401
 from .attack import attack as run_attack     # noqa: F401
+from . import sweep                          # noqa: F401
 
 __all__ = ["aesref", "engine", "lastround", "geometry", "modes", "capture",
            "attack", "sources", "stats", "oracle", "round2", "search",
-           "tvla", "vectors", "sm4", "Capture", "run_attack"]
+           "tvla", "vectors", "sm4", "Capture", "run_attack", "sweep"]
 __version__ = "0.2.0"
