@@ -306,6 +306,17 @@ here.
 whose answers are known, including two negative controls. The simulator is
 the part worth trusting or not:
 
+**NOTE:** as of 2026-10-14 it reports 3/6, deterministically. Both
+negative controls pass and the input-side case passes; all three
+output-side cases ("encrypt, observe ciphertext, single table", "decrypt,
+observe plaintext, single table", "four separate tables") come back `not
+detectably`. This is the simulator disagreeing with the detector rather
+than a measurement: on the real captured vector
+`tests/vectors/sbox_tinyaes_ecb-enc_128.npz` the same `assess` call does
+identify the output side, `[strong]`. Which of the two is wrong is not
+established here. Until it is, read a selftest pass as the controls
+holding rather than as the detector being calibrated.
+
 * it leaks from every round, as a real cipher does. A one-round simulator
   reads ~6 on the concentration statistic where hardware reads ~1.4, and
   would have put the threshold about four times too high.
