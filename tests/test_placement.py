@@ -18,16 +18,11 @@ not reproduced here. What is here runs anywhere.
 """
 from __future__ import annotations
 
-import os as _os, sys as _sys
-# The five packages live under flashwhisperer/ (REORG_PLAN D2).  Walk up to the
-# .git marker rather than assume a depth: importers of these packages sit at the
-# repository root, in hardware/, results/<campaign>/, demo/<stack>/ and
-# research/<area>/ -- four different depths.  `.git` is a FILE in a worktree, so
-# test existence, not isdir.
-_fw = _os.path.dirname(_os.path.abspath(__file__))
-while _fw != _os.path.dirname(_fw) and not _os.path.exists(_os.path.join(_fw, ".git")):
-    _fw = _os.path.dirname(_fw)
-_sys.path.insert(0, _os.path.join(_fw, "flashwhisperer"))
+import os as _os
+# No sys.path walk: the packages sit at the repository root here, so pytest
+# from the root (or an editable install) finds them.  In the repository this
+# was extracted from they lived under flashwhisperer/ and this file walked up
+# to the .git marker to reach them.
 
 import pathlib
 import struct
@@ -36,8 +31,13 @@ import pytest
 
 from flashleak import placement as P
 
-ROOT = pathlib.Path(__file__).resolve().parents[2]
-RIGS = ROOT / "rigs"
+# The firmware images and linker scripts these tests read belong to the
+# FIRMWARE repository, not to this one -- this is the host toolkit.  Every use
+# goes through `_need()`, which SKIPS when the asset is absent, so the suite
+# says what it did not check instead of failing on a tree it does not own.
+# Point FLASHWHISPERER_RIGS at a firmware checkout's rigs/ to run them.
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+RIGS = pathlib.Path(_os.environ.get("FLASHWHISPERER_RIGS") or (ROOT / "rigs"))
 LIB = RIGS / "fw_f4_lib"
 
 SBOX = bytes(P.fwscan._SBOX)
@@ -232,13 +232,13 @@ def test_copy_chain_rejects_a_bss_shaped_phantom():
 # --------------------------------------------------------------------------
 
 def test_stock_script_does_not_place_the_cta_section():
-    ld = (RIGS / "fw_g4_st" / "link.ld").read_text()
+    ld = _need(RIGS / "fw_g4_st" / "link.ld").read_text()
     r = P.check_linker_script(ld, "CMOX_CTA_PROTECTED_DATA")
     assert not r.found
 
 
 def test_cta_script_places_it_in_data_with_a_load_region():
-    ld = (RIGS / "fw_g4_st" / "link_cta.ld").read_text()
+    ld = _need(RIGS / "fw_g4_st" / "link_cta.ld").read_text()
     r = P.check_linker_script(ld, "CMOX_CTA_PROTECTED_DATA")
     assert r.found
     assert r.output_section == ".data"

@@ -933,7 +933,7 @@ def test_an_unexplained_split_is_not_reported_as_a_fill_unit():
 # They are what stops a fix for one part from silently breaking another, and
 # they cost nothing to run: `--raw` re-inference touches no hardware.
 
-_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent  # tests/ is two below the root
+_ROOT = pathlib.Path(__file__).resolve().parent.parent  # tests/ is one below the root
 
 
 def _capture(name):
@@ -1199,6 +1199,8 @@ def test_no_claim_rests_on_a_cell_that_could_not_discriminate(name):
     """
     from flashmap.infer import _discriminating_power
     from flashmap.experiments import cfgname
+    if not (_ROOT / name).exists():
+        pytest.skip(f"{name} not present (capture it with `flashmap map --rawout`)")
     ms = MeasurementSet.from_json(str(_ROOT / name))
     st = infer_all(ms)
     blind = [cfgname(c) for c in ms.configs()
