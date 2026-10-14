@@ -2,7 +2,7 @@
 
 ARIA is an SPN like AES: the final round is  ct = SL(state ^ ek_nr) ^ ek_final,
 so ct[j] = S_j(x[j]) ^ ek_final[j] with x[j] the last-round S-box index. That is
-the AES last-round structure -- the inverse S-box gives a NONLINEAR anchor, so the
+the AES last-round structure - the inverse S-box gives a NONLINEAR anchor, so the
 full final round key is recoverable. ARIA's substitution layer uses 4 separate
 S-box tables (SB1,SB2,IS1,IS2); the last (even) SL maps byte-in-word p -> table
 [IS1,IS2,SB1,SB2][p], so the 4 bytes sharing a table (positions p,p+4,p+8,p+12)

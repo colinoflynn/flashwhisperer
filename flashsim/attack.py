@@ -16,7 +16,7 @@ Primary attack: a Bernstein-style correlation (profiled) attack.
 
 This is model-agnostic: it does not assume any particular cache geometry, only
 that the per-byte timing signature is a function of the state byte. That makes
-it the honest way to ask "is this a *useful* attack?" -- run it and see how many
+it the honest way to ask "is this a *useful* attack?" - run it and see how many
 traces it needs, and whether it needs any at all.
 
 Also provided: `first_round_line_leakage`, an analytic look at exactly what a
@@ -175,7 +175,7 @@ def collision_attack(plaintexts: np.ndarray, cycles: np.ndarray, pairs,
     A collision (same flash line for the two lookups) turns a miss into a hit,
     which *lowers* the encryption time. So for the byte pair (a,b) we group
     traces by the top bits of (p_a XOR p_b) and pick the group with the lowest
-    mean time -- that group is where the lookups landed on the same line, which
+    mean time - that group is where the lookups landed on the same line, which
     happens exactly when (p_a XOR p_b) top bits == (k_a XOR k_b) top bits.
 
     Returns

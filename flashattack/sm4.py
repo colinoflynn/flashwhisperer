@@ -7,7 +7,7 @@ key-schedule inversion.
 
 Reference verified against the GM/T 0002 test vector. Recovery validated on
 synthetic timing (selftest); hardware validation needs an SM4 firmware capture
-(e.g. GmSSL sm4.c) on the same rig -- a follow-on.
+(e.g. GmSSL sm4.c) on the same rig - a follow-on.
 """
 from __future__ import annotations
 import numpy as np
@@ -104,7 +104,7 @@ def recover_rk31_topnibble_diffs(ct, timing, *, line_shift=4, ref=0):
     the last-round S-box index is (X32^X33^X34 ^ rk31) with X32..X34 known from the
     ciphertext, and the S-box OUTPUT is not observable (X31 is unknown). So the
     collision on the lookup index gives only the TOP-NIBBLE DIFFERENCES of the four
-    rk31 bytes -- and you cannot peel further (peeling needs the full round key).
+    rk31 bytes - and you cannot peel further (peeling needs the full round key).
     Contrast AES's SPN last round (ct = SBOX(state)^k10), whose nonlinear anchor
     yields the full key. Requires a single-table / S-box SM4 build (a 4-table build
     puts the 4 lookups in 4 different tables -> no collision at all).

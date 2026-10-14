@@ -41,7 +41,7 @@ def cmd_selftest(args):
         pt = bytes(16); ct = aesref.encrypt_blocks(key, np.frombuffer(pt, np.uint8)[None, :])[0].tobytes()
         res = engine.recover(known, t, direction=direction, verify=(pt, ct), truth=target)
         print(f"[selftest {direction}] rk {res.truth_correct}/16  master_ok={res.master == key}  verified={res.verified}")
-    # protocol oracles (OSCORE / SSH) -- flashsim-backed, same last-round attack
+    # protocol oracles (OSCORE / SSH) - flashsim-backed, same last-round attack
     from .sources import SimulatedProtocolSource
     from .attack import attack as _attack
     pt = bytes(16); ct = aesref.encrypt_blocks(key, np.frombuffer(pt, np.uint8)[None, :])[0].tobytes()

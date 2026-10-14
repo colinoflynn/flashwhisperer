@@ -1,4 +1,4 @@
-"""flashmap.device -- the `memmap/1` protocol driver.
+"""flashmap.device - the `memmap/1` protocol driver.
 
 Speaks exactly what `flashmap/PROTOCOL.md` specifies and nothing else.  The
 driver is deliberately thin and paranoid: it validates the banner, it refuses to
@@ -13,8 +13,8 @@ Three things here are not decoration:
   to move (the L552's `WAYSEL` did exactly that once) must show up as a
   disagreement here, not as an assumption downstream.
 * `Device.timed` returns the checksum alongside the cycle count.  A probe that
-  measured nothing -- loop optimised away, `.ramfunc` not copied, region
-  unmapped -- is then detectable rather than merely fast.
+  measured nothing - loop optimised away, `.ramfunc` not copied, region
+  unmapped - is then detectable rather than merely fast.
 * `Transcript` records every line in both directions, so a `map` run carries its
   own raw evidence and can be replayed offline against a new `infer.py`.
 
@@ -59,7 +59,7 @@ class DeviceReset(DeviceError):
     """The shim printed an out-of-band fault notice instead of a reply.
 
     `PROTOCOL.md` says nothing but replies are printed, and a shim that breaks
-    that rule to report a hard fault is breaking it for a good reason -- a
+    that rule to report a hard fault is breaking it for a good reason - a
     wedged board costs more than the line does.  It is a hard error here rather
     than a skipped line because a faulting shim has usually reset, so every knob
     is back at its power-on value and the configuration the host believes it set
@@ -283,7 +283,7 @@ class Device:
         self._ident: Optional[Ident] = None
         self._regions: Optional[List[Region]] = None
 
-    # -- plumbing ---------------------------------------------------------
+    # - plumbing ---------------------------------------------------------
     def _read_reply(self) -> str:
         reply = self._t.read_line()
         self.transcript.log("<", reply)
@@ -331,7 +331,7 @@ class Device:
     def __exit__(self, *exc):
         self.close()
 
-    # -- V ----------------------------------------------------------------
+    # - V ----------------------------------------------------------------
     def ident(self, refresh: bool = False) -> Ident:
         if self._ident is not None and not refresh:
             return self._ident
@@ -346,7 +346,7 @@ class Device:
                             timer=f[4], timer_hz=_num(f[5]), caps=caps, raw=reply)
         return self._ident
 
-    # -- R ----------------------------------------------------------------
+    # - R ----------------------------------------------------------------
     def regions(self, refresh: bool = False) -> List[Region]:
         if self._regions is not None and not refresh:
             return self._regions
@@ -384,7 +384,7 @@ class Device:
         exact.sort(key=lambda r: order.get(r.kind, 9))
         return exact[0]
 
-    # -- K / S ------------------------------------------------------------
+    # - K / S ------------------------------------------------------------
     def knobs(self) -> List[Knob]:
         out = []
         for ln in self._cmd_list("K"):
@@ -405,7 +405,7 @@ class Device:
             raise ProtocolError(f"S {name} answered for {m.group(1)!r}")
         return _num(m.group(2))
 
-    # -- T / A ------------------------------------------------------------
+    # - T / A ------------------------------------------------------------
     def timed(self, region: str, mode: str, *args: int) -> Tuple[int, int]:
         """One timed primitive.  Returns `(cycles, checksum)`."""
         line = " ".join(["T", region, mode] + [str(a) for a in args])
@@ -416,7 +416,7 @@ class Device:
         return _num(f[0]), _num("0x" + f[1] if not f[1].lower().startswith("0x") else f[1])
 
     def agg(self, region: str, mode: str, *args: int) -> Tuple[int, int, float, int]:
-        """`A` -- the shim's own repeats.  Raises `Unsupported` if absent."""
+        """`A` - the shim's own repeats.  Raises `Unsupported` if absent."""
         line = " ".join(["A", region, mode] + [str(a) for a in args])
         reply = self._cmd(line)
         f = reply.split()
@@ -448,14 +448,14 @@ class Device:
             elif csum != k:
                 raise ProtocolError(
                     f"checksum moved between repeats of {mode} {list(args)} on "
-                    f"{region}: 0x{csum:x} then 0x{k:x} -- the probe is not "
+                    f"{region}: 0x{csum:x} then 0x{k:x} - the probe is not "
                     f"reading what it read last time")
         s = sorted(vals)
         median = s[len(s) // 2] if len(s) % 2 else 0.5 * (s[len(s) // 2 - 1] + s[len(s) // 2])
         return Sample(cycles=median, lo=s[0], hi=s[-1], n=len(s),
                       raw=tuple(vals), checksum=csum)
 
-    # -- C ----------------------------------------------------------------
+    # - C ----------------------------------------------------------------
     def counters(self) -> Optional[Dict[str, int]]:
         """Hardware hit/miss counters, or None where the part has none."""
         try:
@@ -471,7 +471,7 @@ class Device:
                 out[k] = _num(v)
         return out
 
-    # -- X ----------------------------------------------------------------
+    # - X ----------------------------------------------------------------
     def device_selftest(self) -> Tuple[bool, str]:
         reply = self._cmd("X")
         if reply == "ok":

@@ -4,9 +4,9 @@ The engine only needs (known_blocks, timing). This module produces the raw
 (material, timing) from a target; `modes.known_output` turns material into the
 block the engine scans. Two timing sources are provided:
 
-  * collect_oncore  -- device streams its on-chip cycle count per op (fw_f4_modes
+  * collect_oncore  - device streams its on-chip cycle count per op (fw_f4_modes
                        / fw_f4_lib 'X' batch). Low jitter; the calibration oracle.
-  * collect_acklatency -- host times the ACK on its own clock (fw_f4_boot). The
+  * collect_acklatency - host times the ACK on its own clock (fw_f4_boot). The
                        realistic external oracle; supports in-device amplification
                        (K) and host-side min-filtering (R).
 

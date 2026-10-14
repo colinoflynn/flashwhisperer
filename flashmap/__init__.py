@@ -1,4 +1,4 @@
-"""flashmap -- reverse-engineer a microcontroller's memory system.
+"""flashmap - reverse-engineer a microcontroller's memory system.
 
 Measures *structure*, not secrets: flash read width, read latches, data and
 instruction caches, and the configuration knobs that move them.  One firmware
@@ -6,7 +6,7 @@ shim per part (`rigs/fw_map_*`), one host tool; all inference happens here,
 so adding a part means writing a shim, not an analysis.
 
 This package is deliberately standalone.  It must not import `flashsim`,
-`flashattack` or `flashleak` -- it is an instrument that happens to live in the
+`flashattack` or `flashleak` - it is an instrument that happens to live in the
 same repository as a crypto toolkit.  `tests/test_flashmap.py` asserts that.
 
     python -m flashmap selftest --port COM9

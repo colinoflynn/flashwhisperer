@@ -1,13 +1,13 @@
-"""Quick leakage assessment -- a fast go/no-go before committing to full recovery.
+"""Quick leakage assessment - a fast go/no-go before committing to full recovery.
 
 Three tools:
-  * constant_time_check(timing) -- is the timing data-independent (std ~ 0)? The
+  * constant_time_check(timing) - is the timing data-independent (std ~ 0)? The
     decisive test for constant-time / bitsliced code.
-  * exploitability(capture)     -- KEY-FREE. Runs the collision scan on a small
+  * exploitability(capture)     - KEY-FREE. Runs the collision scan on a small
     sample of byte-pairs; the best margin measures the *exploitable* collision
     signal (note: a first-order/Bernstein test is flat here, so we test the pair
     collisions that the attack actually uses) and estimates traces-to-break.
-  * tvla_fixed_random(fixed, random) -- the gold-standard non-specific TVLA
+  * tvla_fixed_random(fixed, random) - the gold-standard non-specific TVLA
     Welch t-test, if a fixed-vs-random capture is available (|t|>4.5 => leaks).
 """
 from __future__ import annotations

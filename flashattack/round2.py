@@ -1,6 +1,6 @@
 """Round-2 collision primitives: the state the second round indexes, and its dip.
 
-The round-2 attack is what finishes a key from ONE side of the cipher -- no
+The round-2 attack is what finishes a key from ONE side of the cipher - no
 known plaintext/ciphertext pair, no verification oracle, and in the decrypt
 direction no plaintext ever observed, which is the bootloader threat model.
 [`ROUND2.md`](ROUND2.md) is its write-up and sits beside this file; what was
@@ -9,9 +9,9 @@ in `research/round2/`, as a private copy per script: five definitions of
 `xtime`, two of `round2_state`, and the column decomposition written out again
 in `results/stm32f4/matrix_f4.py`.
 
-WHY ROUND 2 AT ALL. Round-1 line collisions depend on
+Why round 2 at all? Round-1 line collisions depend on
 `topbits(P ^ k0) == topbits(P) ^ topbits(k0)`. XOR has no carries, so the LOW
-`line_shift` bits of every key byte are invisible to round 1 -- that is exactly
+`line_shift` bits of every key byte are invisible to round 1 - that is exactly
 the residual `recover_round1_keyspace` reports, 2^38 for a 4-byte granularity.
 Round 2's index passes through MixColumns, which mixes those low bits into the
 top bits of the next round's index, so a round-2 collision score CAN separate
@@ -22,7 +22,7 @@ control.
 WHAT IS HERE, and what is deliberately not:
 
   * the state computations, the GF(2^8) helpers, the pooled and per-column dip
-    statistics, and the column decomposition -- the parts every script shared
+    statistics, and the column decomposition - the parts every script shared
     and each had its own copy of;
   * NOT the solvers. `round2_fullsolve.py`, `round2_network.py`,
     `round2_parallel.py`, `round2_rank.py` and `round2_finish.py` are campaign
@@ -32,14 +32,14 @@ WHAT IS HERE, and what is deliberately not:
 
 ONE SIDE EFFECT THIS REMOVES. `round2_column.py` and `round2_nuisance.py`
 imported `round2_state` from `round2_gonogo.py`, which runs its whole analysis
-at module level -- so importing the function re-ran the go/no-go measurement.
+at module level - so importing the function re-ran the go/no-go measurement.
 Nothing was wrong with the numbers; it just cost minutes per import, silently.
 
 WHAT THIS MODULE DOES NOT COVER. The statistics here take a tag array and a
 timing array and nothing else: they assume the traces are already conditioned
 (see `oracle` for a network capture) and that `y` has had no per-trace
 weighting applied. They also assume a row-ALIGNED table, like
-`engine.recover_round1_*` and for the same reason -- the XOR identity the
+`engine.recover_round1_*` and for the same reason - the XOR identity the
 bucketing relies on breaks when an offset is added before the shift, so a
 non-zero row offset needs the pair-wise scorer in `lastround`, not these.
 """
@@ -54,7 +54,7 @@ SINV = aesref.SINV.astype(np.uint8)
 
 #: Which four state bytes each round-2 COLUMN depends on, as positions in the
 #: round-1 input. ShiftRows runs before MixColumns, so a column of round 2 is
-#: fed by one byte from each column of round 1 -- the diagonal. This is what
+#: fed by one byte from each column of round 1 - the diagonal. This is what
 #: makes a per-column search 2^8 rather than 2^32: round 2's state byte 4c+r
 #: depends on exactly one unknown low-bit group per row.
 COLUMN_BYTES = [[4 * c, 4 * ((c + 1) % 4) + 1, 4 * ((c + 2) % 4) + 2,
@@ -62,7 +62,7 @@ COLUMN_BYTES = [[4 * c, 4 * ((c + 1) % 4) + 1, 4 * ((c + 2) % 4) + 2,
 
 
 def xtime(a):
-    """Multiply a uint8 array by x in GF(2^8) -- the AES `xtime`."""
+    """Multiply a uint8 array by x in GF(2^8) - the AES `xtime`."""
     a = np.asarray(a, np.uint8)
     return ((a << 1) ^ (((a >> 7) & 1) * 0x1B)).astype(np.uint8)
 
@@ -108,7 +108,7 @@ def round2_state(P, k0, k1):
 
     `k1` enters only as an additive 6-bit nuisance per relation, so a search
     that scores *differences* between two bytes of the same column can pass
-    zeros here -- which is what `column_score` does.
+    zeros here - which is what `column_score` does.
     """
     P = np.asarray(P, np.uint8)
     k0 = np.asarray(k0, np.uint8)

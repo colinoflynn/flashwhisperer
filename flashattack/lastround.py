@@ -87,7 +87,7 @@ def line_tags(tbl, line_shift=4, line_off=0):
 
     Cached per (table, geometry). The cache holds a reference to `tbl` as well
     as its address, so an array cannot be freed and a later one land at the
-    same address with different contents -- which an address-keyed cache
+    same address with different contents - which an address-keyed cache
     permits and which would be silent.
     """
     tbl = np.asarray(tbl, np.int64)
@@ -104,7 +104,7 @@ def score_surface(ba, bb, y, tbl, *, line_shift=4, line_off=0):
     """The (256, 256) surface a last-round collision attack minimises.
 
     `ba`, `bb` are the two known output bytes per trace; `y` the per-trace
-    timing; `tbl` the predictor table -- SINV for direction "enc" (the attacker
+    timing; `tbl` the predictor table - SINV for direction "enc" (the attacker
     knows the cipher's output) or SBOX for "dec".
 
     Cell (ga, gb) is the MEAN TIME over the traces whose two lookups are
@@ -292,8 +292,8 @@ def pairs_intra_column(rows=None, *, ct_adjacent=False):
       False  SubBytes runs over the state and ShiftRows follows, so consecutive
              reads are state indices `4c+r` and reach the ciphertext through
              `PINV`. This is the byte-S-box build.
-      True   the last round folds ShiftRows into the read -- every T-table
-             build in this repository does -- so the four consecutive reads
+      True   the last round folds ShiftRows into the read - every T-table
+             build in this repository does - so the four consecutive reads
              producing output column c emit ciphertext bytes `4c+0..4c+3`, and
              `PINV` must not be applied.
 
@@ -365,7 +365,7 @@ def recover_k10(ct, cyc, rows, line_shift=4, line_off=0, ct_adjacent=False):
     this pair set covers, and the mean margin in the TIMING'S OWN UNITS
     (median minus winner), which is the convention every archived margin in
     `research/targets/` and the findings ledger was measured in. `engine`
-    votes in `margin="z"` and the two are not interchangeable -- in particular
+    votes in `margin="z"` and the two are not interchangeable - in particular
     the 1/sqrt(n) scaling test that decides whether a partial recovery is
     structural is a statement about THIS margin.
 
@@ -375,14 +375,14 @@ def recover_k10(ct, cyc, rows, line_shift=4, line_off=0, ct_adjacent=False):
       False   SubBytes runs over a state column and ShiftRows follows, so
               consecutive S-box reads are state indices 4c+r and reach the
               ciphertext through PINV. The byte S-box build.
-      True    the last round FOLDS ShiftRows into the read -- every T-table
-              build in this repository does -- so the four consecutive reads
+      True    the last round FOLDS ShiftRows into the read - every T-table
+              build in this repository does - so the four consecutive reads
               producing output column c emit ciphertext bytes 4c+0..4c+3 in
               that order and PINV must not be applied.
 
     GETTING THIS WRONG DOES NOT DEGRADE GRACEFULLY: it tests an adjacency the
     access stream does not have and returns a clean null. It has cost two parts
-    a wrong answer -- the TC234 read as 7/16 in 26 624 traces when it is the
+    a wrong answer - the TC234 read as 7/16 in 26 624 traces when it is the
     cheapest cell on the part at 3 072, and the MPC5606B's T-table builds read
     as 0/16 at 20 000 when they fall at 2 500 and 750.
     """

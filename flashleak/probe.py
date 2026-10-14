@@ -3,8 +3,8 @@
 Every test here answers a question you can ask without knowing the key, the mode,
 or even whether the thing is AES. They are ordered by how much they assume:
 
-  timing_summary     nothing at all -- is the clock even moving?
-  data_dependence    the observed bytes pair with the timings -- does the data
+  timing_summary     nothing at all - is the clock even moving?
+  data_dependence    the observed bytes pair with the timings - does the data
                      change the time? Model-free, permutation-calibrated.
   pair_input_test    the observed block is the cipher's INPUT, and lookups are
                      indexed by (block ^ key). Cheap.
@@ -17,7 +17,7 @@ cipher, and which one fires tells you which side you are looking at. See
 `hypotheses.py`.
 
 **Calibration.** Where a test is cheap enough, the null is established by
-shuffling the timings against the blocks and recomputing -- no distributional
+shuffling the timings against the blocks and recomputing - no distributional
 assumption, and it adapts automatically to trace count and bucket count. The
 expensive output-side test cannot afford many shuffles, so it carries an analytic
 floor (a peak over 65536 cells reads about 4.2 sigma on pure noise) and
@@ -137,7 +137,7 @@ def condition(blocks, timing, outlier_sigma=6.0, sep=4.0):
     t, b = t[k], b[k]
 
     # Find modes by density, not by gap size. A gap-based rule needs a scale,
-    # and the only scales available from pooled data -- its sd or MAD -- are
+    # and the only scales available from pooled data - its sd or MAD - are
     # themselves inflated by the very gap being looked for, so a clean bimodal
     # capture reads as unimodal. (That is not hypothetical: this repo's SNMPv3
     # capture has modes ~1480 apart with a within-mode sigma of ~59, and the
@@ -180,8 +180,8 @@ def data_dependence(blocks, timing, n_shuffle=200, seed=0) -> TestResult:
     For every byte position and value, the mean timing of the traces carrying it.
     Under the null those 16 x 256 means are exchangeable, so the spread of the
     table is the statistic and shuffling the timings gives its null distribution
-    directly. This catches *any* byte-value-dependent timing -- a table lookup, a
-    data-dependent branch, an early-exit memcmp -- without assuming a cipher.
+    directly. This catches *any* byte-value-dependent timing - a table lookup, a
+    data-dependent branch, an early-exit memcmp - without assuming a cipher.
 
     It does NOT catch leakage that only shows up in a *combination* of bytes,
     which is exactly what cache-collision leakage is. A flat result here with a
@@ -227,7 +227,7 @@ def pair_input_test(blocks, timing, line_shift=2, n_shuffle=64, seed=0) -> TestR
     Null by shuffling, because the minimum over many buckets has an
     extreme-value distribution that no textbook formula covers.
 
-    The dip alone is **not specific** -- output-side leakage inflates it too,
+    The dip alone is **not specific** - output-side leakage inflates it too,
     because along a fixed-XOR diagonal the S-box does not spread collisions
     evenly. `detail["concentration"]` is what separates them: input-side leakage
     is a function of `B[a] ^ B[b]` alone, so exactly one bucket is fast and it
@@ -300,12 +300,12 @@ def pair_input_test(blocks, timing, line_shift=2, n_shuffle=64, seed=0) -> TestR
                           # "concentration" is the median over all 120 pairs. It
                           # identifies an input side cleanly when every pair can
                           # collide, and reads ~0 when the layout PARTITIONS the
-                          # channel -- in a 4-table implementation only 24 pairs
+                          # channel - in a 4-table implementation only 24 pairs
                           # can collide and the other 96 drown them. Hold-out
                           # validation caught exactly that: a genuinely
                           # input-side mbedTLS 4-table capture scored 0.56.
                           # "concentration_family" is the best offset family,
-                          # which rescues the partitioned case -- but it is
+                          # which rescues the partitioned case - but it is
                           # raised by partitioning on EITHER side, so it cannot
                           # be used alone. See hypotheses.py for how they combine.
                           "concentration": float(np.median(conc)) if conc else 0.0,
@@ -325,7 +325,7 @@ def pair_output_test(blocks, timing, table="enc", line_shift=4,
     `tbl[B[j] ^ k[j]]`, and a 2^16 search over (k[a], k[b]) finds the guess whose
     predicted collision set is fastest. `table="enc"` uses the inverse S-box (the
     block is an encryption's ciphertext, or a keystream, or either XOR any fixed
-    unknown mask -- the mask is absorbed into the recovered key bytes, so it does
+    unknown mask - the mask is absorbed into the recovered key bytes, so it does
     not affect detection). `table="dec"` uses the forward S-box (the block is a
     decryption's plaintext).
 
@@ -344,7 +344,7 @@ def pair_output_test(blocks, timing, table="enc", line_shift=4,
     vals = np.array(list(per_pair.values()))
     # The statistic is the MEAN peak over the tested pairs, not the max. A max
     # depends on how many pairs were tested, so comparing one to a floor
-    # estimated from a different number of pairs is not like-for-like -- that
+    # estimated from a different number of pairs is not like-for-like - that
     # mismatch made the floor look like it was drifting between 4.34 and 4.52
     # run to run. The mean is stable and pairs with a shuffled mean directly.
     return TestResult(f"pair_output_{table}", float(vals.mean()), floor, 1.0,
@@ -383,7 +383,7 @@ def offset_profile(per_pair: dict) -> dict:
     lookups can only collide if they are in the same table:
 
       every offset        one shared table (a single S-box, or one rotated
-                          T-table) -- the fully exposed case
+                          T-table) - the fully exposed case
       offsets 0 mod 4     four separate tables indexed by row, e.g. mbedTLS's
                           RT0..RT3; the channel is partitioned, not suppressed
       one offset family   an access order that only lets that family meet, e.g.

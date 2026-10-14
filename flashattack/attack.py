@@ -64,7 +64,7 @@ def attack(capture, *, verify=None, full="auto", key_for_truth=None, log=None,
 
     The table GEOMETRY travels with the Capture (`line_shift_*`, `line_off_*`),
     because it is a property of the captured image rather than of the attack.
-    `pairs`/`ct_adjacent` choose the pair coverage -- see `engine.recover`; they
+    `pairs`/`ct_adjacent` choose the pair coverage - see `engine.recover`; they
     apply to the single-round path only, since AES-192/256 full recovery runs
     the 120-pair sweep on both rounds."""
     known, direction = capture.engine_input()

@@ -11,7 +11,7 @@ import os as _os, sys as _sys
 # The five packages live under flashwhisperer/ (REORG_PLAN D2).  Walk up to the
 # .git marker rather than assume a depth: importers of these packages sit at the
 # repository root, in hardware/, results/<campaign>/, demo/<stack>/ and
-# research/<area>/ -- four different depths.  `.git` is a FILE in a worktree, so
+# research/<area>/ - four different depths.  `.git` is a FILE in a worktree, so
 # test existence, not isdir.
 _fw = _os.path.dirname(_os.path.abspath(__file__))
 while _fw != _os.path.dirname(_fw) and not _os.path.exists(_os.path.join(_fw, ".git")):
@@ -128,7 +128,7 @@ def test_td_fingerprints_match_fips_constants():
 
 
 def test_decrypt_only_build_is_detected_without_te():
-    """A bootloader may carry Td and no Te at all — that must still be reported."""
+    """A bootloader may carry Td and no Te at all - that must still be reported."""
     blob = b"\x00" * 64 + fwscan._td_prefix(0, False) * 4 + b"\xff" * 64
     res = fwscan.scan(blob)
     names = {h.name for h in res["hits"]}

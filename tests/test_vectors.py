@@ -5,7 +5,7 @@ Each tests/vectors/*.npz is a real capture (S-box or T-table, various key sizes
 and modes). Success criterion:
   * AES-128  -> full master key recovered and verified;
   * AES-192/256 -> the last round key recovered 16/16 (full master needs the
-    second round key -- see docs).
+    second round key - see docs).
 """
 
 # No sys.path walk: the packages sit at the repository root here.

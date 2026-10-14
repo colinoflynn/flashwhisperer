@@ -5,9 +5,9 @@ Three kinds of test, in increasing distance from the tool's own assumptions:
   * unit tests on the decoders (Thumb literal loads, the copy-loop chain, the
     linker-script dialects, `ar`), against hand-built inputs whose answer is
     arithmetic rather than opinion;
-  * a **synthetic matched pair** -- the same S-box bytes in the same image at
+  * a **synthetic matched pair** - the same S-box bytes in the same image at
     the same offset, once as `.rodata` in flash and once as a `.data`
-    initialiser bound for RAM -- which is the exact discrimination the raw-.bin
+    initialiser bound for RAM - which is the exact discrimination the raw-.bin
     path exists to make, built here so the test needs no toolchain;
   * the repo's own committed firmware, whose leak/no-leak status came off real
     silicon.
@@ -32,7 +32,7 @@ import pytest
 from flashleak import placement as P
 
 # The firmware images and linker scripts these tests read belong to the
-# FIRMWARE repository, not to this one -- this is the host toolkit.  Every use
+# FIRMWARE repository, not to this one - this is the host toolkit.  Every use
 # goes through `_need()`, which SKIPS when the asset is absent, so the suite
 # says what it did not check instead of failing on a tree it does not own.
 # Point FLASHWHISPERER_RIGS at a firmware checkout's rigs/ to run them.
@@ -45,7 +45,7 @@ BASE = 0x0800_0000
 
 
 # --------------------------------------------------------------------------
-# Part memory maps -- the part of this tool that is a judgement call
+# Part memory maps - the part of this tool that is a judgement call
 # --------------------------------------------------------------------------
 
 def test_flash_is_exposed_everywhere():
@@ -228,7 +228,7 @@ def test_copy_chain_rejects_a_bss_shaped_phantom():
 
 
 # --------------------------------------------------------------------------
-# The linker-script check -- easy, exact, and it would have caught ST
+# The linker-script check - easy, exact, and it would have caught ST
 # --------------------------------------------------------------------------
 
 def test_stock_script_does_not_place_the_cta_section():
@@ -342,7 +342,7 @@ def test_own_aes_elf_is_exposed_and_names_the_symbols():
 
 def test_own_aes_elf_hedges_about_the_runtime_pointer_flip():
     """rigs/fw_f4 and fw_f4_ctguard share aes.c, which swaps between a flash
-    table and a .bss copy at run time. The tool cannot decide that -- but it
+    table and a .bss copy at run time. The tool cannot decide that - but it
     must not be quietly confident about it either."""
     rep = P.analyse(str(_need(RIGS / "fw_f4" / "fw.elf")), "f4")
     assert any("RUNTIME decision" in n for n in rep.notes)
@@ -390,7 +390,7 @@ def test_st_archive_is_conditional_and_names_the_rule():
 
 def test_intel_hex_agrees_with_the_same_build_as_a_bin():
     """MCU firmware ships as .hex at least as often as .bin, and the record
-    stream carries the real flash base -- the thing the raw-.bin path most often
+    stream carries the real flash base - the thing the raw-.bin path most often
     lacks."""
     hexf = _need(RIGS / "fw_f3_aes" / "fw.hex")
     raw = _need(RIGS / "fw_f3_aes" / "fw.bin")
@@ -480,7 +480,7 @@ def test_a_corroborating_literal_survives_a_guessed_base():
     the mapped RAM address would not match under a wrong base, so it stands.
 
     The table is deliberately NOT first in .data here, so its run-time address
-    differs from `_sdata` -- otherwise the only RAM literal in the image is the
+    differs from `_sdata` - otherwise the only RAM literal in the image is the
     copy loop's own destination, which proves nothing about where the cipher
     reads.
     """

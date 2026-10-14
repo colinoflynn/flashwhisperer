@@ -3,7 +3,7 @@
 docs/PACKAGING.md stated both of these and said the import graph held
 "because nothing has broken it yet, which is not the same thing". This is the
 something. Writing it immediately found that `flasharb/probe.py` imported
-`serial` at module level -- the rule had been documented and violated at the
+`serial` at module level - the rule had been documented and violated at the
 same time, and the only test that existed (`test_flashmap.py`) covered one
 package's independence and nothing else.
 
@@ -46,7 +46,7 @@ def _sources(pkg: str):
 def test_package_has_sources(pkg):
     """Guard against the glob silently matching nothing, which would make
     every other test in this file pass by checking an empty set."""
-    assert _sources(pkg), f"no sources found for {pkg} -- is the layout flat?"
+    assert _sources(pkg), f"no sources found for {pkg} - is the layout flat?"
 
 
 @pytest.mark.parametrize("pkg", PACKAGES)

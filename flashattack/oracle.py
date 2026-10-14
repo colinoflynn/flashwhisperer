@@ -2,8 +2,8 @@
 
 **This is the surviving copy of what was `demo/oscore/oracle.py`.** It moved
 into the package because three things outside that demo had come to depend on
-it -- `demo/snmpv3/analyse.py`, `demo/tls_https/analyse.py` and most of
-`research/round2/` -- and they reached it with
+it - `demo/snmpv3/analyse.py`, `demo/tls_https/analyse.py` and most of
+`research/round2/` - and they reached it with
 `sys.path.insert(0, "demo/oscore")`, which is the repository's own "a one-off
 that grows a third caller graduates into the toolkit" rule (CLAUDE.md,
 *Conventions*), met and unnoticed. `demo/oscore/oracle.py` is now a shim over
@@ -14,14 +14,14 @@ else: that one is a KNX triage instrument on a socket and a `perf_counter_ns`,
 and it stays where it is.
 
 Related but different: `stats.py` holds the timing preprocessing that needs no
-model of the transport -- trimming, drift detrending, a min-filter over repeats.
+model of the transport - trimming, drift detrending, a min-filter over repeats.
 This module is for a *network* oracle specifically, where the nuisance has
 structure worth fitting.
 
 WHAT IT DOES NOT COVER. Every number below was measured on ST's NO_SYS lwIP
-port on an F4 and an F7 victim timed by an F7 attacker. The METHOD -- fit the
+port on an F4 and an F7 victim timed by an F7 attacker. The METHOD - fit the
 discrete transport artefact, subtract it per mode, then cut outliers on a
-robust scale -- is general; the mode count, the widths and the parity accident
+robust scale - is general; the mode count, the widths and the parity accident
 are that rig's. On any other transport, run `stationary_segments` first and
 read `describe()` before trusting a conditioned capture.
 
@@ -41,7 +41,7 @@ terms that have nothing to do with the key:
    100 ms PHY link poll landing inside an exchange.
 
 Both are independent of the AES output block, so removing them is sound, and the
-modes are ~15 sigma apart while the leak is a few hundredths of a sigma -- the
+modes are ~15 sigma apart while the leak is a few hundredths of a sigma - the
 chance of assigning a trace to the wrong mode *because of* its AES timing is
 around 1e-13, so the label carries no information about the key.
 
@@ -72,7 +72,7 @@ def _robust_sigma(v, p=0.25):
 
     A MAD would do if the distribution were unimodal, but it is not: when the
     two Tx-descriptor modes are close to equal in size the median falls in the
-    gap between them and the MAD reports half the gap -- roughly seven times the
+    gap between them and the MAD reports half the gap - roughly seven times the
     real spread, which then hides the gap it was meant to find. The shortest
     quarter always lies inside one mode, so this estimate stays between 1.0 and
     about 2.1 times the true sigma for every split from 50/50 to unimodal.
@@ -104,7 +104,7 @@ def find_modes(t, lo_q=0.2, hi_q=99.8, min_sep=3.0, min_share=0.02, iters=100):
     reported a single mode on the F7, where the same 1433-cycle offset sits on a
     distribution three times wider. Replacing it with an equal-variance EM fixed
     that but still collapsed on some F7 captures, because the F7's two modes are
-    not the same width at all -- the fast one has sigma ~184 and the slow one
+    not the same width at all - the fast one has sigma ~184 and the slow one
     ~536. Tying them forces a pooled sigma large enough to make the separation
     look insignificant, and the fit gives up.
 
@@ -191,7 +191,7 @@ def condition(t, method="mode", index=None, outlier_sigma=6.0, fast_sigma=4.0):
     if method == "fast":
         # One window, one offset. Splitting it by the fitted mode label and
         # centring each half separately would be removing a difference that is
-        # not physically there -- and it measurably flattens the signal
+        # not physically there - and it measurably flattens the signal
         # (pooled z -8.0 -> -6.6 on the F7 capture).
         y = y - np.median(t[keep])
     elif method != "raw":
@@ -209,7 +209,7 @@ def condition(t, method="mode", index=None, outlier_sigma=6.0, fast_sigma=4.0):
         # cycles in both modes, but one mode is several times wider, so treating
         # their traces alike throws away information. Dividing each mode by its
         # own sigma leaves every trace with unit noise, after which a plain mean
-        # -- which is what the recovery takes -- is the right estimator.
+        # - which is what the recovery takes - is the right estimator.
         ref = float(sigmas.min())
         for k in range(centres.size):
             m = lab == k
@@ -264,7 +264,7 @@ def stationary_segments(t, chunks=10, tol=6.0):
     victim builds, so it is real round-trip time and not a measurement
     artefact. Conditioning is what suffers. A window entirely inside either
     regime fits cleanly (sigma 59-64); one that *straddles* the step has to fit
-    a mode spanning both, sigma goes to 690, and the signal is gone -- pooled z
+    a mode spanning both, sigma goes to 690, and the signal is gone - pooled z
     -0.09 against -4 to -7 for its neighbours. That single bad chunk is why the
     first 100 000 exchanges of that capture recover nothing while a clean 65 000
     recovers the key.

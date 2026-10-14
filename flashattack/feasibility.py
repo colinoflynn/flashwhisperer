@@ -5,7 +5,7 @@ noisy external oracle like ACK latency) how much in-device amplification K to us
 
 The recovery margin grows ~ sqrt(N) in the white-noise regime, so from the pilot's
 weakest per-byte confidence we extrapolate N for a target confidence. This is a
-heuristic guide, not a guarantee (correlated jitter -- see the bootloader result --
+heuristic guide, not a guarantee (correlated jitter - see the bootloader result --
 breaks the sqrt law; that is exactly the case where amplification, not more N, is
 the fix).
 """

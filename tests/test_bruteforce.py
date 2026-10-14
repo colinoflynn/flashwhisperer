@@ -4,7 +4,7 @@ import os as _os, sys as _sys
 # The five packages live under flashwhisperer/ (REORG_PLAN D2).  Walk up to the
 # .git marker rather than assume a depth: importers of these packages sit at the
 # repository root, in hardware/, results/<campaign>/, demo/<stack>/ and
-# research/<area>/ -- four different depths.  `.git` is a FILE in a worktree, so
+# research/<area>/ - four different depths.  `.git` is a FILE in a worktree, so
 # test existence, not isdir.
 _fw = _os.path.dirname(_os.path.abspath(__file__))
 while _fw != _os.path.dirname(_fw) and not _os.path.exists(_os.path.join(_fw, ".git")):
@@ -80,7 +80,7 @@ def test_search_pairs_finds_two_wrong_bytes_anywhere():
     """The guarantee: 14/16 is recovered wherever the two wrong bytes sit.
 
     3 and 11 are neither adjacent nor at an end, and nothing tells the search
-    where they are -- which is the point, since not needing the confidence
+    where they are - which is the point, since not needing the confidence
     ranking to be right about that is why the pair sweep exists.
     """
     key = bytes.fromhex("ffb14e093c94c9cac9471648b4f98710")

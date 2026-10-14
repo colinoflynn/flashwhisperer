@@ -7,18 +7,18 @@ Microcontroller flash is wider than the CPU word (commonly 64 or 128 bits) and
 slower than the core at speed, so it needs wait states. Three *different* things
 reduce that cost, and they are not the same:
 
-1. FLASH DATA WIDTH  +  ROW LATCH  (fundamental where it exists -- NOT universal)
-   The flash array physically reads a whole row at once -- e.g. 128 bits = 16
-   bytes -- into a single output register. A subsequent access whose address
+1. FLASH DATA WIDTH  +  ROW LATCH  (fundamental where it exists - NOT universal)
+   The flash array physically reads a whole row at once - e.g. 128 bits = 16
+   bytes - into a single output register. A subsequent access whose address
    falls in that *same row* is returned straight from the register with no new
    array read, so it is fast; an access to a different row triggers a fresh
-   flash read and pays wait states. It holds exactly ONE row -- only reuse of
+   flash read and pays wait states. It holds exactly ONE row - only reuse of
    the *immediately preceding* row is caught. In this model:
    `FlashModel.row_latch(...)` == ways=1, sets=1.
    -> Where it exists, this alone is enough for the S-box adjacent-collision
       channel, and it CANNOT BE TURNED OFF.
 
-   !! CORRECTED 2026-09-17 -- this block used to say "universal", and that
+   !! CORRECTED 2026-09-17 - this block used to say "universal", and that
    "every wide flash has one current-row register". Both halves were wrong, and
    they were wrong in opposite directions on two parts measured on this bench
    (see research/targets/stm32g474_art_geometry.md and rigs/fw_f3_cache/):
@@ -28,20 +28,20 @@ reduce that cost, and they are not the same:
        intervening access hit the same 64-bit word. The differential is
        *exactly* LATENCY cycles at every wait-state setting (1..15 measured).
        So "accelerator disabled" is NOT "no channel", and the per-collision
-       signal is LATENCY cycles -- the number that sets trace counts.
+       signal is LATENCY cycles - the number that sets trace counts.
 
      * STM32F303 does NOT have it, on the data path. Reading the SAME address
        64 times costs exactly what 64 distinct addresses cost (2.00 cyc/access
        at LATENCY=2); a re-read of the address just fetched pays full latency.
-       Its flash IS 64-bit wide -- a model fit on the *instruction* path gives
-       W=8 bytes with PRFTBE=1 -- so the row register exists but the D-Code
+       Its flash IS 64-bit wide - a model fit on the *instruction* path gives
+       W=8 bytes with PRFTBE=1 - so the row register exists but the D-Code
        path is not wired to it. That is a design choice, not a consequence of
        width. Positive control: the same PRFTBE bit speeds instruction fetch
        33-89% in the same session it moves the data side by exactly zero.
 
    CONSEQUENCE FOR USING THIS MODEL: whether a given part gets `row_latch(...)`
    or no data-side reuse at all is an EMPIRICAL question per family, and the
-   probe is one command -- read A, read B, re-read A, sweep B-A across the word
+   probe is one command - read A, read B, re-read A, sweep B-A across the word
    boundary. Do not infer it from flash width, from the presence of a prefetch
    buffer, or from the absence of ICEN/DCEN bits. `experiments/real_parts.py`
    still assigns `row_latch` to several parts on datasheet wording alone; those
@@ -56,7 +56,7 @@ reduce that cost, and they are not the same:
    evicting the data-side row latch (mechanism 1). In this model: `prefetch=True`
    for the sequential load, and "no Contention" (timing.py) for the offload.
 
-3. DATA CACHE  (tagged, multi-line -- the only real "cache")
+3. DATA CACHE  (tagged, multi-line - the only real "cache")
    A tagged store holding several recently-used rows at once; a hit may come
    from ANY held line, so it catches reuse that is NOT adjacent in time (e.g. the
    four same-Te-table lookups spread across a T-table round). This is what a
@@ -65,7 +65,7 @@ reduce that cost, and they are not the same:
    (`FlashModel.data_cache(...)`).
 
 The side channel: when a table (S-box / T-table) lives in flash, the hit/miss
-pattern -- and thus the total time -- depends on the looked-up values, i.e. on
+pattern - and thus the total time - depends on the looked-up values, i.e. on
 key XOR plaintext.
 
 `FlashModel.run(lines)` takes an (N, L) array of flash *row* numbers (the ordered
@@ -109,7 +109,7 @@ class FlashModel:
         set (line_number % sets), and only `ways` lines can coexist per set.
         Total lines held = sets * ways. Real flash caches are set-associative
         (SAM4E CMCC 4-way, Kinetis FMC 4-way, RP2040 XIP 2-way, ESP32 2/8-way),
-        which changes whether a table stays resident -- so it matters.
+        which changes whether a table stays resident - so it matters.
     prefetch : bool
         If True, a *miss* also loads the sequential next line (line+1) into the
         buffer set, modelling a linear prefetcher. Rarely helps random table
@@ -204,14 +204,14 @@ class FlashModel:
 # --------------------------------------------------------------------------
 # Presets.
 #
-# IMPORTANT: a FlashModel describes only the *data* (D-Code) path -- the flash
+# IMPORTANT: a FlashModel describes only the *data* (D-Code) path - the flash
 # line latch/cache that services table LDRs. It is NOT the whole accelerator.
 # A real STM32 "ART Accelerator" is mostly an *instruction*-side feature:
 #   * a 128-bit prefetch buffer (sequential, for the instruction stream),
 #   * an instruction cache (e.g. 64 x 128-bit lines on F4),
 #   * plus a *small* literal/data cache (e.g. 8 x 128-bit lines on F4).
 # The prefetch buffer and I-cache do nothing for random table *data*. What they
-# do -- and this is the security-relevant part -- is serve instruction fetches
+# do - and this is the security-relevant part - is serve instruction fetches
 # from a separate path so they no longer evict the D-Code data latch. In this
 # model that is expressed by running WITHOUT a Contention stream (see timing.py
 # and the PARTS table in experiments/run_experiments.py), not by a bigger cache.

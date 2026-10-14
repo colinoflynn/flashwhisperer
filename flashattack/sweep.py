@@ -4,7 +4,7 @@
 assumptions". It takes the pair model and the table geometry as given,
 because they are properties of the captured image rather than of the
 attack. In practice nobody knows them, and **guessing wrong returns a
-clean null rather than a degraded answer** -- which reads exactly like a
+clean null rather than a degraded answer** - which reads exactly like a
 target that does not leak.
 
 So this module sweeps them, ladders the trace count, and reports the
@@ -18,8 +18,8 @@ cheapest assumption set that worked.
                  verify=(pt0, ct0), key_for_truth=KEY)
     print(lad.summary_line())
 
-WHY A LADDER AND NOT ONE BIG n. A partial recovery has two causes that
-look identical from a single run, and they want opposite responses:
+A ladder rather than one big n, because a partial recovery has two causes
+that look identical from a single run and want opposite responses:
 
   * the PAIR MODEL cannot express the pairs carrying the signal, in which
     case more traces never help;
@@ -30,19 +30,19 @@ the second. There is also a test that needs no further captures: a real
 margin is in cycles and holds its absolute size as n grows, while a noise
 margin falls as 1/sqrt(n).
 
-WHY BOTH PAIR MODELS BY DEFAULT, AND WHY NEITHER IS "BETTER". The
+Both pair models run by default, and NEITHER of them is better. The
 120-pair vote reaches targets whose consecutive round-10 reads cross a
-column boundary -- which the 24-pair intra-column model cannot express at
-all, and reports as absent. But on a plain byte-S-box cipher the narrow
+column boundary, which the 24-pair intra-column model can't express at
+all and reports as absent. But on a plain byte-S-box cipher the narrow
 model has been measured reaching the exact key from HALF the traces the
 wide one needs. Running one of them is choosing which half of your
 targets to miss.
 
-WHY THE CONTROLS ARE PART OF THIS MODULE. A 120-pair vote has five times
+The controls live in this module because a 120-pair vote has five times
 the freedom of a 24-pair one, and a geometry sweep multiplies that again.
 Both can manufacture a recovery. `controls_clean` scores captures that
-are known to have nothing in them -- a constant-time build, a
-tables-in-RAM twin -- through the IDENTICAL call, and a control that
+are known to have nothing in them - a constant-time build, a
+tables-in-RAM twin - through the IDENTICAL call, and a control that
 scores invalidates the run rather than the build.
 
 WHAT THIS DOES NOT DO:
@@ -50,7 +50,7 @@ WHAT THIS DOES NOT DO:
     read width is a per-part property that nothing on the chip reports.
   * It does not sweep `mode`, `keysize` or direction.
   * `stop_on_exact` stops at the first n that yields the key, so the
-    trials are not a complete grid when it fires -- `exact_at` is an
+    trials are not a complete grid when it fires - `exact_at` is an
     upper bound on the cheapest n, to the ladder's resolution.
   * It says nothing about whether a null is structural. It gives you the
     evidence to decide; `margin_ratio` below is the arithmetic.
@@ -75,7 +75,7 @@ class Geometry:
 
     line_shift   log2 of (flash read width in bytes / table entry size).
                  On an 8-byte read that is 3 for a 1-byte S-box and 1 for
-                 a 4-byte word table -- and WHICH of those a target's last
+                 a 4-byte word table - and WHICH of those a target's last
                  round reads is a property of its implementation.
     line_off     the table's offset within its flash row. Worth 2x to 10x
                  in traces on a table that did not land row-aligned.
@@ -153,7 +153,7 @@ def default_geometries(line_shifts: Sequence[int],
                        models: Sequence[str] = ("all", "intra-column"),
                        ) -> list:
     """The usual grid: each line_shift, each offset, both pair models, and
-    for the narrow model both adjacencies -- because which one a target
+    for the narrow model both adjacencies - because which one a target
     emits is not predictable and guessing returns a clean null.
 
     `line_offs=None` means offset 0 only, which is right for a table the
@@ -231,7 +231,7 @@ def _bytes_correct(rep) -> int:
 
     `RoundKeyInfo.correct` is already a byte count and is None unless
     `key_for_truth` was passed, so this returns the best over the round
-    keys the report carries -- 0 when truth was not supplied, which is
+    keys the report carries - 0 when truth was not supplied, which is
     correct rather than unknown: without truth there is nothing to count.
     """
     vals = []
@@ -245,7 +245,7 @@ def _bytes_correct(rep) -> int:
         # NOT `isinstance(c, int)`: the engine returns numpy integers, and
         # np.int64 is not a Python int. That check silently discarded
         # every real count and reported 0/16 for a recovery that had in
-        # fact got 14 -- a null manufactured by a type test, which is the
+        # fact got 14 - a null manufactured by a type test, which is the
         # worst direction for this number to be wrong in.
         try:
             vals.append(int(c))
@@ -260,7 +260,7 @@ def controls_clean(ladders: dict, control_labels: Iterable[str],
 
     Returns (ok, offenders). A control that recovers the key, or more than
     `byte_threshold` bytes, means the sweep is manufacturing and NO row of
-    the run may be quoted -- not that the control build is broken.
+    the run may be quoted - not that the control build is broken.
     """
     controls = set(control_labels)
     bad = []

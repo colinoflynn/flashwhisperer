@@ -5,7 +5,7 @@ The exploitable condition is a SINGLE-TABLE last round (AES's FSb). These vector
 are counter-examples that must keep failing, so a future engine change cannot
 silently start "recovering" a key that is not actually there:
 
-  * ARIA (mbedtls) -- SPN with AES's exact last-round form, but its substitution
+  * ARIA (mbedtls) - SPN with AES's exact last-round form, but its substitution
     layer uses FOUR separate S-box tables (4 of 16 last-round bytes per table). On
     the F429's 128 B data cache those sparse same-table lines evict between lookups,
     so the within-round collision never survives: recover_final_roundkey scores at
@@ -20,7 +20,7 @@ import os as _os, sys as _sys
 # The five packages live under flashwhisperer/ (REORG_PLAN D2).  Walk up to the
 # .git marker rather than assume a depth: importers of these packages sit at the
 # repository root, in hardware/, results/<campaign>/, demo/<stack>/ and
-# research/<area>/ -- four different depths.  `.git` is a FILE in a worktree, so
+# research/<area>/ - four different depths.  `.git` is a FILE in a worktree, so
 # test existence, not isdir.
 _fw = _os.path.dirname(_os.path.abspath(__file__))
 while _fw != _os.path.dirname(_fw) and not _os.path.exists(_os.path.join(_fw, ".git")):
@@ -47,13 +47,13 @@ def test_aria_resists_last_round_attack():
     ct = aria.encrypt_blocks(key, mat)
     timing = v["timing"].astype(float)
     # sanity: the capture genuinely has data-dependent timing (the cipher leaks
-    # *something* -- this is a resistance result, not a dead/constant channel).
+    # *something* - this is a resistance result, not a dead/constant channel).
     assert timing.std() > 1.0, "expected data-dependent timing in the ARIA capture"
     res = aria.recover_final_roundkey(ct, timing, key_for_truth=key)
     # 4-table last round => no exploitable within-round collision => chance-level.
     # A real recovery would score near 16/16; require well below any partial break.
     assert res["correct"] <= 4, \
-        f"ARIA unexpectedly leaked {res['correct']}/16 -- single-table assumption broke?"
+        f"ARIA unexpectedly leaked {res['correct']}/16 - single-table assumption broke?"
 
 
 def test_resist_vectors_not_in_aes_glob():

@@ -7,7 +7,7 @@ against a structural test: 2^24 candidates through a per-key Python AES is hours
 
 The difference is that `aesref` runs one key over many blocks, and this runs many
 keys over one block. Everything in AES is a table lookup or an XOR, so the second
-shape vectorises just as well as the first -- the round keys simply become an
+shape vectorises just as well as the first - the round keys simply become an
 (n, 11, 16) array instead of an (11, 16) one. 2^24 keys takes minutes.
 
 That matters wherever the leak is uneven. On the F429 OSCORE victim every key
@@ -88,7 +88,7 @@ def search_positions(rk_last, positions, keystreams, *, values=None,
     values     : per-position candidate lists, default the full 0..255.
     known      : optional (plaintext, ciphertext) pair under the target key. If
                  given it replaces the CCM structural test with an exact check,
-                 which is both stronger and cheaper -- a single block settles a
+                 which is both stronger and cheaper - a single block settles a
                  candidate outright. Modes that hand the attacker the cipher's
                  *input* as well as its output provide this for free: TLS-CBC
                  does, because C_i = E(K, P_i ^ C_(i-1)) and both ends are on
@@ -150,8 +150,8 @@ def search_pairs(rk_last, keystreams, *, positions=None, chunk=1 << 18,
     2^24 search over the three weakest positions misses one of them and returns
     nothing after half a minute.
 
-    Sweeping all C(16,2) = 120 pairs at 2^16 each is 7.9 M candidates -- less
-    work than a single 2^24 search -- and replaces the assumption with a
+    Sweeping all C(16,2) = 120 pairs at 2^16 each is 7.9 M candidates - less
+    work than a single 2^24 search - and replaces the assumption with a
     guarantee: **any** vote that is right on 14 of 16 bytes is recovered,
     wherever the two wrong ones happen to sit.
 

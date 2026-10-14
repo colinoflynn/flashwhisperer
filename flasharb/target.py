@@ -1,7 +1,7 @@
 """Per-part descriptions for the flash-arbitration probe.
 
 A `Target` carries only what the host cannot discover over the wire. Everything else --
-kernel addresses, table address, offsets modulo the read word -- is asked of the device,
+kernel addresses, table address, offsets modulo the read word - is asked of the device,
 because a host that assumes those is a host that reports the sweep it meant to run rather
 than the one it ran (`research/targets/stm32g474_arb_probe.md` §5.3).
 """
@@ -27,7 +27,7 @@ class Target:
     #
     # THIS IS THE FIELD THAT SILENTLY BREAKS A PORT. With a 2-entry latch, an index chosen
     # the way it is chosen on a 1-entry part can land in the OTHER entry, where it hits the
-    # word left there by the previous iteration -- so the "miss" case hits, the differential
+    # word left there by the previous iteration - so the "miss" case hits, the differential
     # collapses, and the target is reported clean. `check_indices()` below refuses that.
     latch_entries: int = 1
     latch_index_bit: int = 3
@@ -51,7 +51,7 @@ class Target:
         `ldrb rX,[rB,rI]` (stride **1**, the index is a raw byte offset).
 
         This defaulted to `entry_stride` and silently mis-modelled the unshifted encodings.
-        On the F429 -- 16-byte read word -- indices 0x40/0x41/0x44 are 4, 4 and 4 bytes apart
+        On the F429 - 16-byte read word - indices 0x40/0x41/0x44 are 4, 4 and 4 bytes apart
         under stride 1, so all three land in ONE read word, the "miss" cannot miss, and the
         sweep reported `+0.000` for those encodings even at LATENCY 2, which is impossible.
         The checker existed to catch exactly that and did not, because it was checking the
@@ -153,14 +153,14 @@ TARGETS = {
     ),
     "f429": Target(
         name="f429", port="COM9", board="f429", fw_dir="fw_f4_arb", banner="f4arb",
-        # RM0090 / stm32f4_latch.md: 128-bit read -- read_width is 16 here, NOT the 8 the other
+        # RM0090 / stm32f4_latch.md: 128-bit read - read_width is 16 here, NOT the 8 the other
         # two parts use. Getting this wrong is the quiet way to break the port: with 8, the
         # host would pick idx_miss = 0x42, which on a 16-byte word SHARES idx_a's word, so
         # the "miss" case would hit and the whole target would report clean. The collision
         # predicate on this part is idx >> 2 (four 4-byte entries per read word), not
         # idx >> 1.
         #
-        # ONE latch entry, 16 bytes, measured (stm32f4_latch.md section 3) -- the G474's shape
+        # ONE latch entry, 16 bytes, measured (stm32f4_latch.md section 3) - the G474's shape
         # scaled up, not the L552's 2-entry pair, so latch_entries stays 1 and
         # latch_index_bit is unused.
         read_width=16, entry_stride=4, latch_entries=1,

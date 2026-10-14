@@ -6,13 +6,13 @@ and the line boundaries are set by the table's run-time ADDRESS: a 256-byte
 S-box at `0x...cc` sits 12 bytes into a 16-byte line, so `index >> 4` is the
 wrong partition and the table spans 17 lines rather than 16.
 
-Nothing here needs hardware or a toolchain -- the arithmetic is the point, plus
+Nothing here needs hardware or a toolchain - the arithmetic is the point, plus
 one synthetic ELF to prove the offset is recovered from an image rather than
 hardcoded.
 
 The arithmetic is `flashattack.geometry` and the image half is
 `flashleak.row_offset_from_image`; both used to be `hardware/line_offset.py`,
-which this test reached by putting `hardware/` on `sys.path` -- the one back
+which this test reached by putting `hardware/` on `sys.path` - the one back
 edge out of the packaged suite, and the reason the geometry moved in. See
 PASSIVE_ORACLE.md ("Cache-line alignment").
 
@@ -20,7 +20,7 @@ WHAT THIS FILE DOES NOT COVER: that the scorer USES the offset it is given.
 `test_geometry_agrees_with_the_scorer` below pins the two row counts to each
 other, and `flashattack.lastround.selftest` checks the fast path against the
 reference at a geometry, but neither shows a recovery improving at the right
-offset -- that is a measurement on a capture, in
+offset - that is a measurement on a capture, in
 `results/stm32f4/rescore_rowoffset.py` and a row of
 `research/FINDINGS_LEDGER.md` section D, not a unit test.
 """
@@ -30,7 +30,7 @@ import os as _os, sys as _sys
 # The five packages live under flashwhisperer/ (REORG_PLAN D2).  Walk up to the
 # .git marker rather than assume a depth: importers of these packages sit at the
 # repository root, in hardware/, results/<campaign>/, demo/<stack>/ and
-# research/<area>/ -- four different depths.  `.git` is a FILE in a worktree, so
+# research/<area>/ - four different depths.  `.git` is a FILE in a worktree, so
 # test existence, not isdir.
 _fw = _os.path.dirname(_os.path.abspath(__file__))
 while _fw != _os.path.dirname(_fw) and not _os.path.exists(_os.path.join(_fw, ".git")):
@@ -98,7 +98,7 @@ def test_top_index_needs_the_extra_line():
 
 def test_candidate_offsets_match_arm_gcc_alignment():
     # `const uint8_t sbox[256]` gets 4-byte section alignment on ARM GCC,
-    # so only four offsets are reachable -- cheap to try all of them.
+    # so only four offsets are reachable - cheap to try all of them.
     assert candidate_offsets() == [0, 4, 8, 12]
     assert candidate_offsets(align=1) == list(range(16))
 
@@ -107,7 +107,7 @@ def test_collision_partition_differs_between_offsets():
     """A wrong offset is not a harmless relabelling: it splits real collisions.
 
     Two indices sharing a line under the true partition must not be assumed to
-    share one under a shifted partition -- that is exactly the signal loss.
+    share one under a shifted partition - that is exactly the signal loss.
     """
     same_at_12 = [(i, j) for i in range(256) for j in range(i + 1, 256)
                   if line_index(i, 12) == line_index(j, 12)]
@@ -163,7 +163,7 @@ def test_real_victim_image_if_present():
     """Regression against the actual bench firmware, when it is available.
 
     Skipped on machines without the (out-of-repo) build tree, so the suite still
-    runs anywhere -- but on the bench it pins the value the OTA tools use.
+    runs anywhere - but on the bench it pins the value the OTA tools use.
     """
     elf = pathlib.Path(
         r"C:\Users\cofly\Dropbox (Personal)\academic\claude_research"

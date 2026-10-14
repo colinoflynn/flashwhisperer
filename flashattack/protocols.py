@@ -7,7 +7,7 @@ across a huge number of blocks* (see EXPOSURE.md / the network catalogue):
     CBC-MAC + CTR; the CTR keystream blocks are ``S_i = E(k, A_i)`` where the
     counter block ``A_i`` is built from the *public* OSCORE nonce (Partial IV +
     Sender ID). The AEAD key is derived once from the static master secret and
-    **does not rotate as the Partial IV climbs** -- one key for the life of the
+    **does not rotate as the Partial IV climbs** - one key for the life of the
     security context.
   * **SSH** (RFC 4344 ``aes*-ctr``; RFC 5647 ``aes*-gcm``) encrypts every binary
     packet with an AES-CTR keystream ``E(k, ctr)`` under a data key that is fixed
@@ -31,7 +31,7 @@ from .capture import Capture
 # --------------------------------------------------------------------------
 # Counter-block construction (needed by the simulator/firmware to produce the
 # right E(k, .) inputs; the host attack keys off keystream = P^C and never needs
-# these, which is the point -- no chosen input required).
+# these, which is the point - no chosen input required).
 # --------------------------------------------------------------------------
 
 def ccm_counter_blocks(nonce: bytes, n_blocks: int, *, L: int = 2, start: int = 1):
@@ -137,7 +137,7 @@ def oscore_cycles(resp: bytes) -> int:
 
 
 # ==========================================================================
-# KNX Secure -- three CCM dialects, and only SOME of their AES inputs are
+# KNX Secure - three CCM dialects, and only SOME of their AES inputs are
 # attacker-known. This section is the block math only; the frames, the live
 # probes and the oracles are in demo/knx_secure/.
 #
@@ -146,15 +146,15 @@ def oscore_cycles(resp: bytes) -> int:
 # is WHICH of the blocks an attacker can write down without the key:
 #
 #   * CTR blocks (`*_ctr_blocks`) are built from public, usually chosen fields
-#     -- fully known. With known plaintext the keystream gives the matching AES
+#     - fully known. With known plaintext the keystream gives the matching AES
 #     *output* too, so this is the `ctr` mode the engine already has.
 #   * The FIRST CBC block B0 (`*_b0`) is MAC input number one and is not
-#     chained, so it is also fully known -- and in two of the three dialects it
+#     chained, so it is also fully known - and in two of the three dialects it
 #     is wholly attacker-chosen. First-round ladder material, with no output.
 #   * Every LATER CBC block is `Y(i-1) ^ data`, and Y(i-1) is a key-dependent
 #     unknown. Known data does NOT make those inputs known. A ladder run on
 #     them recovers differences of `Y1 ^ K0`, not of `K0`
-#     (research/exposure/KNX_SECURE.md s3.2) -- which is why
+#     (research/exposure/KNX_SECURE.md s3.2) - which is why
 #     `knxip_mac_data_blocks` returns DATA blocks and is explicit that they are
 #     not AES inputs.
 #
@@ -258,7 +258,7 @@ def knxip_session_response_a_data(session_id: int, pub_xor: bytes) -> bytes:
     The one unauthenticated fixed-key oracle in KNX IP Secure: `SESSION_REQUEST`
     needs no credential and the reply MACs this under the long-lived device
     authentication code. B0 is sixteen zero octets there, so the chain's first
-    AES input is a CONSTANT and everything after it is chained -- read
+    AES input is a CONSTANT and everything after it is chained - read
     research/exposure/KNX_SECURE.md s3.2 before planning a ladder on it.
     """
     if len(pub_xor) != 32:
@@ -293,7 +293,7 @@ def baos_ctr_blocks(seq, n_blocks, *, start=0):
 
     `j = 0` encrypts the MAC, `j >= 1` the ObjectServer service. Note what is
     NOT here: no serial number and no message tag, so a BAOS counter block is
-    six chosen octets and ten constants -- the narrowest chosen-input surface
+    six chosen octets and ten constants - the narrowest chosen-input surface
     of the three dialects, and the only one with no per-device salt in it.
     """
     s = _seq6(seq)
@@ -313,7 +313,7 @@ def baos_sync_b0(seq, challenge, *, payload_len=6, challenge_at=6):
     whose column headers do not survive text extraction; 6 is the only offset
     consistent with the response's B0 (s4.2.2.4), which is
     `random(6) || 0*8 || 0x12 || 12`. Resolve it against a device before
-    quoting a result from it -- demo/knx_secure/README.md says how, and the
+    quoting a result from it - demo/knx_secure/README.md says how, and the
     answer is a yes/no from one frame, because a wrong B0 gets no response at
     all rather than a wrong one.
     """

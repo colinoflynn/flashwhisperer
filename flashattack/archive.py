@@ -123,7 +123,7 @@ def ladder(cap, rungs, pairsets, *, line_shift=4, line_off=0,
     Returns a list of dicts, one per rung, each with the per-pair-set byte
     counts and margins and the rung's total `bytes` out of sixteen. The rungs
     are cumulative prefixes of one capture, which is what every archived trace
-    count on this bench means -- NOT independent captures at each size.
+    count on this bench means - NOT independent captures at each size.
 
     A rung whose count exceeds the capture is skipped and reported as such, so
     a ladder quoted against a short capture cannot silently read as a null.
@@ -162,7 +162,7 @@ def ladder(cap, rungs, pairsets, *, line_shift=4, line_off=0,
                "positions": len(got)}
         if truth is not None:
             # Score against the TRUE round-10 subkey, expanded from the
-            # capture's master key -- not against the master key, which is
+            # capture's master key - not against the master key, which is
             # what k10 inverts to only once all sixteen positions are in hand.
             k10_true = true_k10(bytes(truth.tolist()))
             row["bytes"] = agreement(got, k10_true)
@@ -199,7 +199,7 @@ def screen(cap, *, line_shift=4, line_offs=(0, 4, 8, 12),
     """Find WHICH GEOMETRY recovers, cheaply, before spending a ladder on it.
 
     `line_off` and `ct_adjacent` are per-image and a wrong value returns a
-    clean null, so a survey has to sweep them -- and sweeping them with
+    clean null, so a survey has to sweep them - and sweeping them with
     `recover_k10` costs one full O(n) reduction per combination. This instead
     uses the accumulator: the traces are folded into (256, 256) tables ONCE per
     ciphertext byte pair, and every geometry is then two matmuls whose cost
@@ -267,7 +267,7 @@ def verify_cipher(cap, sample=4096):
     A capture carries plaintexts, ciphertexts and the key, so it can be
     validated after the fact without an on-device self-test: re-encrypt the
     plaintexts in software and compare. This is the check that matters most on
-    this bench, because the failure it catches is silent -- the shared
+    this bench, because the failure it catches is silent - the shared
     `aes_ttable_encrypt` once updated `s[c]` in place in its final round and so
     computed a function that is not AES. A recovery against that returns a
     clean 0/16, indistinguishable from a part that does not leak, and the
@@ -275,15 +275,15 @@ def verify_cipher(cap, sample=4096):
     has none.
 
     Returns {"ok": bool, "checked": n, "mismatch": n, "reason": str}. A
-    capture missing plaintexts or a key cannot be checked and says so -- which
+    capture missing plaintexts or a key cannot be checked and says so - which
     is a finding about the capture, not a pass.
 
     WHAT THIS PROVES DEPENDS ENTIRELY ON WHERE THE CIPHERTEXT COLUMN CAME
     FROM, and the function cannot tell. If `ct` was reported BY THE DEVICE this
     detects a device that is not computing AES. If `ct` was computed on the
-    HOST -- `cts = aesref.encrypt_blocks(KEY, pts)`, which 29 of this
+    HOST - `cts = aesref.encrypt_blocks(KEY, pts)`, which 29 of this
     repository's capture scripts do, including the nRF52840's and the
-    LPC2124's, because their batch commands stream cycle counts alone -- then
+    LPC2124's, because their batch commands stream cycle counts alone - then
     this compares `flashattack.aesref` against `flashsim.aes` and is a
     TAUTOLOGY about the device. It still catches a corrupted or mislabelled
     file, which is worth having, but a pass is not evidence the silicon
@@ -299,7 +299,7 @@ def verify_cipher(cap, sample=4096):
 
     WHAT THIS DOES NOT COVER: it assumes an UNMASKED AES-128 ECB encryption of
     the recorded plaintexts under the recorded key. A masked implementation
-    legitimately fails it -- `results/rsm_f7/` is Rotating S-box Masking and
+    legitimately fails it - `results/rsm_f7/` is Rotating S-box Masking and
     reports every ciphertext as a mismatch, which is correct behaviour for this
     check and says nothing about that campaign. It also cannot check a capture
     with no plaintexts, which 14 archived files are: their recoveries rest on
@@ -333,6 +333,6 @@ def verify_cipher(cap, sample=4096):
                       "if the script computed it on the host this is a check "
                       "of two software implementations against each other",
             "reason": ("every one of %d matches AES(pt, key)" % n) if not bad
-                      else ("%d of %d ciphertexts are NOT AES(pt, key) -- the "
+                      else ("%d of %d ciphertexts are NOT AES(pt, key) - the "
                             "device computed something else and any recovery "
                             "against this file is meaningless" % (bad, n))}

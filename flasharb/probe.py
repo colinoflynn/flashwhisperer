@@ -94,10 +94,10 @@ class ArbDevice:
 
         Negative means the collision is cheaper, i.e. a channel. The quantity is an exact
         multiple of 1/cnt on the device, so `best_of` removes host-side capture jitter and
-        not device variance -- there is none to remove.
+        not device variance - there is none to remove.
 
         `idx_hit`/`idx_miss` override the defaults for kernels whose load does not scale the
-        index by the entry stride -- see `indices_for_stride()`.
+        index by the entry stride - see `indices_for_stride()`.
         """
         ih = self.idx_hit if idx_hit is None else idx_hit
         im = self.idx_miss if idx_miss is None else idx_miss
@@ -111,7 +111,7 @@ class ArbDevice:
         The E4 kernels vary the addressing mode, so the entry-stride indices are wrong for
         two of the three: `ldrb rX,[rB,rI]` treats the index as a raw byte offset. On a
         16-byte read word the entry-stride triple 0x40/0x41/0x44 then lands entirely inside
-        ONE word and the miss cannot miss -- the F429 reported `+0.000` for those encodings
+        ONE word and the miss cannot miss - the F429 reported `+0.000` for those encodings
         even at LATENCY 2. Ask for indices that match the instruction, not the table.
         """
         if stride == self.t.entry_stride:

@@ -9,7 +9,7 @@ LOW turns a real channel into a published null, so it is tested
 directly.
 
 WHAT THIS DOES NOT COVER:
-  * Whether the underlying recovery is correct -- that is
+  * Whether the underlying recovery is correct - that is
     tests/test_flashattack.py and the captured-trace replays.
   * Real timing data. The one end-to-end check here replays a tracked
     vector and is marked slow.
@@ -67,7 +67,7 @@ def test_default_geometries_covers_both_models_and_adjacencies():
     assert "ls=3 off=0 120" in labels
     assert "ls=3 off=0 24/state" in labels
     assert "ls=3 off=0 24/ct" in labels
-    # the wide model has no adjacency axis -- it must not be duplicated
+    # the wide model has no adjacency axis - it must not be duplicated
     assert sum(1 for x in g if x.pairs == "all" and x.line_shift == 3) == 1
 
 

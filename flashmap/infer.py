@@ -1,4 +1,4 @@
-"""flashmap.infer -- raw timings in, a memory-system structure out.
+"""flashmap.infer - raw timings in, a memory-system structure out.
 
 The input is a `MeasurementSet`: a flat bag of `(config, mode, args, cycles)`
 observations, flash and twin.  The output is a `Structure`: a set of `Claim`s,
@@ -10,7 +10,7 @@ The five bespoke probes this replaces each answered one part by printing a table
 a human read.  What is generalised here is the *reasoning*:
 
 * **Read width** is a property of the flash array, not of the accelerator, so it
-  must be invariant across every knob setting -- and the tool checks that rather
+  must be invariant across every knob setting - and the tool checks that rather
   than assuming it.  Where it is *not* invariant, the larger saturation stride is
   a cache line fill and the smaller is the array; both are reported.
 * **The latch** is fitted as a model family, not eyeballed: granularity, depth,
@@ -22,7 +22,7 @@ a human read.  What is generalised here is the *reasoning*:
   sets*line))`.  That single formula separates fully-associative from indexed
   without a special case: a fully-associative cache is `sets = 1`.
 * **Capacity in tags versus capacity in bytes** is tested explicitly, because it
-  is the distinction a naive tool gets wrong -- the G474 evicts when the *line*
+  is the distinction a naive tool gets wrong - the G474 evicts when the *line*
   count crosses 8 -> 9, not when 32 doublewords are touched.
 * **Replacement policy** is attempted and expected to hit a wall.  It does; see
   `policy`'s caveats, which name the primitive that would settle it.
@@ -264,7 +264,7 @@ def _miss_scale(ms: MeasurementSet, cfg: Optional[Config] = None) -> float:
 
     It is deliberately per-configuration.  A single scale pooled over the whole
     knob grid is set by the highest wait-state cell, and a miss at LATENCY 4 is
-    then less than half of a miss at LATENCY 15 and classifies as a *hit* -- so
+    then less than half of a miss at LATENCY 15 and classifies as a *hit* - so
     an entire capacity sweep run at 4 wait states silently reports "no eviction
     at any spacing".  That is not hypothetical; it is what a pooled scale did to
     a G474 capture whose raw data shows a crisp 8-tag transition.
@@ -322,23 +322,23 @@ def _n_evict(series: Dict[int, float], scale: float):
 
 
 def _evict_shape(series: Dict[int, float], scale: float):
-    """What one eviction series says -- and whether the step model holds at all.
+    """What one eviction series says - and whether the step model holds at all.
 
     `N_evict` is only a number if retention is a THRESHOLD in the working-set
     size: fast below it, slow at it and above.  That is an assumption about
     the part, and it has to be checked in the data before any geometry is read
-    off, because every quantity the fit produces -- ways, sets, conflict
-    period, capacity, and the survival floor -- is meaningless without it.
+    off, because every quantity the fit produces - ways, sets, conflict
+    period, capacity, and the survival floor - is meaningless without it.
 
     Four statuses, and only the first is a measurement of `N_evict`:
 
-    * `threshold`      -- fast below n, slow at n and at every larger n tested.
-    * `uncorroborated` -- the ONLY slow reading is the largest n tested.  There
+    * `threshold`      - fast below n, slow at n and at every larger n tested.
+    * `uncorroborated` - the ONLY slow reading is the largest n tested.  There
       is nothing above it to confirm the target stays lost, so this is an
       upper bound (`N_evict <= n`), not a value.  A run that ends on the first
       slow point looks identical to one that ends on a one-off.
-    * `survived`       -- fast at every n tested: a lower bound, `N_evict > n`.
-    * `non_monotone`   -- a FAST reading sits above a slow one.  The threshold
+    * `survived`       - fast at every n tested: a lower bound, `N_evict > n`.
+    * `non_monotone`   - a FAST reading sits above a slow one.  The threshold
       model is falsified by this configuration's own data; the series cannot
       be summarised by one number and must not be fitted as if it could.
 
@@ -366,7 +366,7 @@ def _evict_shape(series: Dict[int, float], scale: float):
 
 
 # ==========================================================================
-# discriminating power -- the positive control every claim consults
+# discriminating power - the positive control every claim consults
 # ==========================================================================
 #
 # THE RULE.  Before a configuration is allowed to contribute evidence *for* or
@@ -375,7 +375,7 @@ def _evict_shape(series: Dict[int, float], scale: float):
 # SILENT; it is not a vote for the thing it happened to display.
 #
 # This is the same principle as a positive control in a bench experiment, and
-# it lives here -- in one place -- rather than in each claim, because five
+# it lives here - in one place - rather than in each claim, because five
 # separate defects in this tool have now been instances of it:
 #
 #   * five six-offset wait-state cells outvoting one 47-offset latch sweep on
@@ -387,7 +387,7 @@ def _evict_shape(series: Dict[int, float], scale: float):
 #   * a `pseudo_random` verdict from a chase whose stride could not produce a
 #     conflict however large the working set;
 #   * and `knob_reaches_it: True` on the H723's latch, from three wait-state
-#     cells at LATENCY 0, 1 and 2 -- where a hit and a miss cost so nearly the
+#     cells at LATENCY 0, 1 and 2 - where a hit and a miss cost so nearly the
 #     same that "no reuse at any offset" is the resolution floor speaking.
 #
 # The rule is deliberately ASYMMETRIC, because the two directions are not
@@ -400,7 +400,7 @@ def _evict_shape(series: Dict[int, float], scale: float):
 #     visible.  That is what the control establishes.
 #
 # The control is measured, never assumed, and it is measured INSIDE the flash
-# column so the twin's own offset cannot manufacture or hide it -- on the H723
+# column so the twin's own offset cannot manufacture or hide it - on the H723
 # the DTCM twin reads +3 to +4 cycles per access at zero wait states, which is
 # exactly the pedestal that turned two resolved cells into "no data-side
 # reuse" and put a register behind them that does not exist.
@@ -427,7 +427,7 @@ def _waitstate_contrast(ms: MeasurementSet, cfg: Config) -> Optional[float]:
     The control has to be INDEPENDENT of the structure it licenses a claim
     about, and this one is: it asks only whether this configuration resolves
     the flash array's own access cost at all.  The obvious alternative --
-    comparing a stride-0 walk with a saturated one in the same cell -- is
+    comparing a stride-0 walk with a saturated one in the same cell - is
     circular for the latch, because a part with no latch reads zero there for
     the very reason the claim is trying to establish (the STM32F303).
 
@@ -436,7 +436,7 @@ def _waitstate_contrast(ms: MeasurementSet, cfg: Config) -> Optional[float]:
     the whole reason three flat cells read as "no data-side reuse".
 
     Returns `None` where the capture has no `waitstates = 0` cell to reference
-    against -- there the flash is never known to be free and the difference is
+    against - there the flash is never known to be free and the difference is
     not a calibrated zero.
     """
     if "waitstates" not in cfg:
@@ -472,7 +472,7 @@ def _discriminating_power(ms: MeasurementSet, cfg: Config) -> Power:
     if value is None:
         # No calibrated zero on the wait-state axis.  Fall back to the twin,
         # which `PROTOCOL.md`'s `R` rule exists to make usable for exactly
-        # this -- and say so, because this capture could not check it.
+        # this - and say so, because this capture could not check it.
         value = _miss_scale(ms, cfg)
         src = "a flash access measured against its own SRAM twin"
         assumed = (" This capture has no `waitstates = 0` cell for this "
@@ -483,7 +483,7 @@ def _discriminating_power(ms: MeasurementSet, cfg: Config) -> Power:
                   "a hit and a miss differ by %.3g cycles here (%s), below the "
                   "%.3g-cycle resolution of an integer counter, so this "
                   "configuration could not have shown a structure whether or "
-                  "not one is present -- at LATENCY 0 in particular every "
+                  "not one is present - at LATENCY 0 in particular every "
                   "flash structure reads flat by construction "
                   "(MEASURING_CHANNELS B3)"
                   % (value, src, _RESOLUTION_CYCLES) + assumed)
@@ -500,7 +500,7 @@ def _replay_disagreements(ms: MeasurementSet, mode: str = "evict"):
     in the opposite order (`default_plan`'s replay control).  A probe whose
     result is a function of its arguments returns the same number both times.
     Where it does not, the measurement depends on what ran BEFORE it, and no
-    amount of repeating one row can reveal that -- repeats of a single command
+    amount of repeating one row can reveal that - repeats of a single command
     leave the same residue behind each time, so they agree while the surface
     as a whole does not.
 
@@ -558,8 +558,8 @@ def _structural_configs(ms: MeasurementSet) -> List[Config]:
     """The cross-product grid, excluding the wait-state sweep's thin cells.
 
     `default_plan` measures two kinds of configuration: a full cross-product of
-    the binary knobs at ONE reference wait state -- that is the structural grid
-    -- and, separately, two corners swept over the whole `waitstates` axis so a
+    the binary knobs at ONE reference wait state - that is the structural grid
+    - and, separately, two corners swept over the whole `waitstates` axis so a
     coefficient can be fitted.  The second kind exists to measure a slope, and
     it includes `waitstates = 0`, where a hit and a miss cost the same cycle and
     every flash structure reads flat by construction (MEASURING_CHANNELS B3).
@@ -614,7 +614,7 @@ def infer_read_width(ms: MeasurementSet) -> Tuple[Claim, Claim]:
                   caveats=["No knob setting produced a resolvable per-access flash "
                            "cost. At LATENCY = 0 a hit and a miss cost the same "
                            "cycle, so every flash structure reads flat "
-                           "(MEASURING_CHANNELS B3) -- over-program the wait "
+                           "(MEASURING_CHANNELS B3) - over-program the wait "
                            "states and re-run."])
         return c, Claim("fill_unit", UNKNOWN, NONE_, "cold stride walk with reuse enabled")
 
@@ -655,7 +655,7 @@ def infer_read_width(ms: MeasurementSet) -> Tuple[Claim, Claim]:
         # Which knob, if any, explains the split?  A line-filling cache makes
         # the walk saturate LATER, and the knob that enables it separates the
         # configurations cleanly.  If no knob does, the split is not a fill
-        # unit -- it is contamination, and the claim must not be dressed up as
+        # unit - it is contamination, and the claim must not be dressed up as
         # a two-number answer.
         small = {cfgkey(c) for c, _ in widths[min(widths)]}
         explain = []
@@ -686,7 +686,7 @@ def infer_read_width(ms: MeasurementSet) -> Tuple[Claim, Claim]:
                 "line size; if it disagrees, one of the two is wrong."
                 % "`, `".join(explain))
                if explain else
-               "NO knob explains the split -- no single knob separates the "
+               "NO knob explains the split - no single knob separates the "
                "configurations that saturate early from the ones that do not. "
                "A fill unit is enabled by a knob, so this is not one; treat "
                "both numbers as suspect and the difference as contamination "
@@ -702,7 +702,7 @@ def infer_read_width(ms: MeasurementSet) -> Tuple[Claim, Claim]:
         caveats.append(
             f"The twin-subtracted saturation ({sorted(widths)}) and the "
             f"stride-0-referenced saturation ({sorted(self_widths)}) disagree. "
-            f"The within-column reference is the build-stable one -- a loose "
+            f"The within-column reference is the build-stable one - a loose "
             f"probe loop inflates the SRAM baseline and understates the flash "
             f"penalty (NRF52_GEOMETRY 1a).")
 
@@ -766,7 +766,7 @@ def _fit_latch(obs: Dict[int, str]):
 
 #: The target's alignment within its own block is searched at BYTE resolution.
 #: It used to be searched in steps of 4, on the reasoning that the probe reads
-#: 4-byte words -- and that was a constant with a fact about the sweep buried
+#: 4-byte words - and that was a constant with a fact about the sweep buried
 #: in it.  A 4-byte read at offset `off` touches bytes `off .. off+3`, so the
 #: block boundary the sweep sees is set by the LAST byte read, which puts the
 #: effective alignment at 3 modulo the granularity.  Every sweep whose offsets
@@ -816,7 +816,7 @@ def _latch_separating_offsets(models, already_swept, want: int = 4) -> str:
     `16 B x 1` and `8 B x 2` still standing, every offset in [8, 16) is a hit
     under BOTH and decides nothing, while [24, 32) separates them cleanly.  So
     the models are simply evaluated against each other, and the offsets where
-    they disagree -- excluding the ones already swept -- are named.
+    they disagree - excluding the ones already swept - are named.
     """
     ms = sorted(models)
     if len(ms) < 2:
@@ -864,7 +864,7 @@ def _classify_reread(ms: MeasurementSet, cfg: Config, rr: Dict[int, float],
     at one and two wait states the flash column splits cleanly (13 vs 14, 13
     vs 15) while both levels sit above `0.5 x scale`, so an absolute test
     called every offset a miss and the configuration reported "no data-side
-    reuse at any offset" -- the exact negation of what it measured.  The
+    reuse at any offset" - the exact negation of what it measured.  The
     `waitstate_scaling` claim already took its differential this way, from the
     same rows, and got 1 and 2 cycles out of them.
 
@@ -919,7 +919,7 @@ def infer_latch(ms: MeasurementSet) -> Claim:
         if uniform:
             # The column showed ONE level.  That is a claim of absence (or of
             # masking), and an absence is only a measurement where the
-            # presence would have been visible -- so the positive control
+            # presence would have been visible - so the positive control
             # decides whether this configuration may say anything at all.
             pw = _discriminating_power(ms, cfg)
             if not pw.ok:
@@ -955,7 +955,7 @@ def infer_latch(ms: MeasurementSet) -> Claim:
                      [f"  {cfgname(v['cfg'])}: slow at every offset including 0"
                       for v in per_cfg.values()],
                      ["Absence of a *data-side* latch. The flash array may still "
-                      "be wider than the access size -- the row register can "
+                      "be wider than the access size - the row register can "
                       "exist without the data path being wired to it (STM32F303). "
                       "The instruction path is not measured here."])
     if not resolved:
@@ -978,7 +978,7 @@ def infer_latch(ms: MeasurementSet) -> Claim:
     # offsets are consistent with, and the answer is the intersection.  A
     # configuration that cannot separate two models is silent on that
     # distinction instead of casting a vote for whichever its tie-break
-    # happened to prefer -- which is what let five six-offset wait-state cells
+    # happened to prefer - which is what let five six-offset wait-state cells
     # outvote one 47-offset sweep on the L552 and report its two 8-byte latch
     # entries as one 16-byte latch.
     for v in resolved:
@@ -991,8 +991,8 @@ def infer_latch(ms: MeasurementSet) -> Claim:
 
     contradiction = False
     if agree:
-        # Order the surviving family by SIMPLICITY -- fewest entries first, then
-        # smallest granularity -- so the representative of an under-determined
+        # Order the surviving family by SIMPLICITY - fewest entries first, then
+        # smallest granularity - so the representative of an under-determined
         # family is the least elaborate model in it, never the most.  The
         # family itself is reported; the representative is only its label.
         pairs = sorted({(gg, kk) for gg, kk, _ in agree}, key=lambda t: (t[1], t[0]))
@@ -1001,7 +1001,7 @@ def infer_latch(ms: MeasurementSet) -> Claim:
         best_cfgs = [v for v in resolved if (g, k, a) in v["consistent"]]
     else:
         # Either nothing in the family explains a sweep, or two configurations
-        # exclude each other's models -- a knob that CHANGES the latch, or a
+        # exclude each other's models - a knob that CHANGES the latch, or a
         # measurement artefact.  Fall back to the single most discriminating
         # sweep and say so rather than pooling contradictory evidence.
         contradiction = True
@@ -1011,7 +1011,7 @@ def infer_latch(ms: MeasurementSet) -> Claim:
         pick = ranked[0]
         f = pick["fit"]
         g, k, a = f["granularity"], f["entries"], f["align"]
-        # The family is what the sweep we fell back on admits -- not empty.
+        # The family is what the sweep we fell back on admits - not empty.
         # An empty family beside `model_determined: False` says both "the
         # answer is undecided" and "there are no candidates", which cannot
         # both be true; the H723's latch claim, which names six candidates
@@ -1040,7 +1040,7 @@ def infer_latch(ms: MeasurementSet) -> Claim:
                     % ", ".join("%dBx%d" % gk for gk in sorted(excl))
                     if len(excl) <= 3 else
                     "  [%d granularity x entries combinations fit it equally "
-                    "well -- it does not discriminate]" % len(excl))
+                    "well - it does not discriminate]" % len(excl))
         ev.append(f"  {cfgname(v['cfg'])}: {f['hits']}/{f['total']} offsets fit "
                   f"granularity {f['granularity']} B x {f['entries']} entr"
                   f"{'y' if f['entries'] == 1 else 'ies'}"
@@ -1068,7 +1068,7 @@ def infer_latch(ms: MeasurementSet) -> Claim:
             "sweep: %d configuration(s) resolved and their consistent-model "
             "sets do not intersect%s. The claim below is the most "
             "discriminating single sweep (%s), and the disagreement itself is "
-            "the finding -- either a knob changes the latch or one sweep is "
+            "the finding - either a knob changes the latch or one sweep is "
             "contaminated."
             % (len(resolved),
                (", and %d admitted no exact model at all" % len(unexplained))
@@ -1099,7 +1099,7 @@ def infer_latch(ms: MeasurementSet) -> Claim:
     else:
         ev.append(f"  aligned-block model {mine:.0%} vs proximity model "
                   f"{rival:.0%} over {len(dense['rr'])} offsets ({n_neg} of them "
-                  f"negative) -- it is a latch holding one aligned {g}-byte "
+                  f"negative) - it is a latch holding one aligned {g}-byte "
                   f"flash word, not a +/-{g} byte neighbourhood")
 
     # Depth, from `evict` at a spacing that lands in the same entry.
@@ -1116,7 +1116,7 @@ def infer_latch(ms: MeasurementSet) -> Claim:
         cands = {n for _, _, n in depth_ev}
         if len(cands) == 1:
             depth = depth_ev[0][2]
-            ev.append(f"  depth: {depth} -- at spacing {g*k} B (which maps to the "
+            ev.append(f"  depth: {depth} - at spacing {g*k} B (which maps to the "
                       f"same entry) the target is lost after {depth} intervening "
                       f"distinct word(s), in {len(depth_ev)} config(s)")
         else:
@@ -1145,7 +1145,7 @@ def infer_latch(ms: MeasurementSet) -> Claim:
     if silent:
         caveats.append(
             "%d configuration(s) are SILENT on this claim rather than evidence "
-            "for or against it: %s. In each the positive control fails -- %s -- "
+            "for or against it: %s. In each the positive control fails - %s - "
             "so the flat column they produced is the resolution floor, not a "
             "register. A configuration that could not have shown the opposite "
             "does not get a vote."
@@ -1159,7 +1159,7 @@ def infer_latch(ms: MeasurementSet) -> Claim:
     flat = [v for v in per_cfg.values() if v["state"] == "flat"]
     if confounded_no_reuse:
         caveats.append(
-            "%d configuration(s) show no data-side reuse at any offset -- but in "
+            "%d configuration(s) show no data-side reuse at any offset - but in "
             "every one of them the probe loop is resident in the memory under "
             "test (%s), so what vanished is the measurement, not the latch. They "
             "are excluded from 'does a register reach it', and they are the "
@@ -1171,7 +1171,7 @@ def infer_latch(ms: MeasurementSet) -> Claim:
     if no_reuse:
         reaches = [cfgname(v["cfg"]) for v in no_reuse]
         knob_note = (f"{len(no_reuse)} knob setting(s) show no data-side reuse at "
-                     f"any offset, including offset 0 -- there a register DOES "
+                     f"any offset, including offset 0 - there a register DOES "
                      f"reach the latch, or disables the path that serves it: "
                      + ", ".join(reaches[:4]))
         caveats.append(knob_note)
@@ -1198,7 +1198,7 @@ def infer_latch(ms: MeasurementSet) -> Claim:
     # An INVARIANT on the assembled claim, not a cosmetic one: `equivalent
     # models` is the family the evidence leaves standing, and `model_determined`
     # says whether that family is a single model.  The two are two readings of
-    # one fact and must never be assembled independently -- the nRF52840
+    # one fact and must never be assembled independently - the nRF52840
     # shipped `model_determined: False` beside an EMPTY family, which asserts
     # both that the answer is undecided and that nothing is a candidate.  The
     # family always contains at least the model being reported.
@@ -1304,7 +1304,7 @@ def _fit_cache(measured, line: int, cap: int = 4096):
     two factors of that product: an N-way cache with S sets of L-byte lines
     behaves identically, under every primitive here, to an N-way cache with S/2
     sets of 2L-byte lines whose fill unit is L.  So the fit is run at the finest
-    line the measurements justify -- the fetch granularity -- and the ambiguity
+    line the measurements justify - the fetch granularity - and the ambiguity
     is reported rather than resolved by preference.
     """
     if not measured:
@@ -1400,13 +1400,13 @@ def _span_capacity(tab: Dict[int, Dict[int, float]], scale: float):
 
     with equality for every spacing that divides the period.  So the smallest
     loss span anywhere on the surface IS the capacity, whatever the (W, S, L)
-    split -- and it is read off the surface directly, with no fit.
+    split - and it is read off the surface directly, with no fit.
 
     That matters because the minimum is robust to exactly what the H723 does
     to a threshold fit: retention just ABOVE capacity is not monotone there
     (the target survives 1025 lines at one spacing and is lost after 64 at
     another), and `N_evict` per spacing is not a number.  The smallest loss
-    span uses none of that -- it uses only the bottom edge, where every
+    span uses none of that - it uses only the bottom edge, where every
     measurement agrees.
 
     Measured: 128 B on the F429, 256 B on the G474, 8192 B on the L552 and
@@ -1553,8 +1553,8 @@ def infer_cache(ms: MeasurementSet, latch: Claim, width: Claim,
     #
     # `N_evict(spacing)` is a number only where retention is a threshold in
     # the working-set size.  Where a FAST reading sits above a slow one the
-    # series is not a step, and every quantity the fit derives from it -- ways,
-    # sets, conflict period, capacity -- is a fit to a model the data has
+    # series is not a step, and every quantity the fit derives from it - ways,
+    # sets, conflict period, capacity - is a fit to a model the data has
     # already falsified.  The H723 is that case: at spacing 4096 B the target
     # is lost at n = 9, present at 10, lost at 11 and present at 12, each
     # reading stable over all seven repeats.  Fitting it anyway produced
@@ -1579,7 +1579,7 @@ def infer_cache(ms: MeasurementSet, latch: Claim, width: Claim,
         caveats.append(
             "The REPLAY CONTROL failed: %d `evict` row(s) re-measured later in "
             "the programme, in the opposite order, did not come back the same "
-            "number -- e.g. %s evict%s read %g and then %g. The probe's result "
+            "number - e.g. %s evict%s read %g and then %g. The probe's result "
             "is therefore not a function of its arguments alone but of what ran "
             "before it, so the eviction surface is not a measurement of a "
             "geometry and none is reported. Protocol rule 2 (a fixed warm-up "
@@ -1616,8 +1616,8 @@ def infer_cache(ms: MeasurementSet, latch: Claim, width: Claim,
             + ("this capture cannot settle it: its own warnings record the "
                "DISCARDED warm-up repetition disagreeing with the kept ones "
                "on `evict` rows, so `min == max` over the stored repeats is a "
-               "statement about a filtered sample. The replay control -- the "
-               "same row re-measured later and in the opposite order -- is "
+               "statement about a filtered sample. The replay control - the "
+               "same row re-measured later and in the opposite order - is "
                "what settles it, not more repeats of one row."
                if agree is None else
                "every repeat of every `evict` row here agrees, which a random "
@@ -1634,7 +1634,7 @@ def infer_cache(ms: MeasurementSet, latch: Claim, width: Claim,
     # `_span_capacity` reads the capacity off the bottom edge of the surface:
     # the smallest working-set SPAN at which the target is ever lost.  That
     # number is the capacity for every (ways, sets, line) split, needs no fit,
-    # and -- crucially -- does not need `N_evict` to be a threshold, because
+    # and it does not need `N_evict` to be a threshold, because
     # it uses only measurements at or below the first loss, where the whole
     # surface agrees.
     #
@@ -1663,7 +1663,7 @@ def infer_cache(ms: MeasurementSet, latch: Claim, width: Claim,
     else:
         # Never lost anywhere: the capacity is not measured, but the largest
         # working set the target lived through is still a floor, and this time
-        # it is one -- nothing above it contradicts it, because there is no
+        # it is one - nothing above it contradicts it, because there is no
         # "above it".
         cap_bytes = None
         cap_min = max((n * sp for sp, ser in top_v["tab"].items()
@@ -1671,7 +1671,7 @@ def infer_cache(ms: MeasurementSet, latch: Claim, width: Claim,
         entries_min = cap_min // line_b
         floor_why = ("not measured: the target was never lost at any working "
                      "set this region admits, so the capacity is bounded only "
-                     "below, at more than %d B -- the largest span the probe "
+                     "below, at more than %d B - the largest span the probe "
                      "could reach" % cap_min)
 
     # Where the (ways, sets) fit also held, the two instruments must agree.
@@ -1695,7 +1695,7 @@ def infer_cache(ms: MeasurementSet, latch: Claim, width: Claim,
               "uniform-stride walk revisits a single set: %d conflicts in an "
               "S-set cache and %d in a 2S-set cache land at the same walk index. "
               "Separating them needs a walk of %d addresses at spacing %d B, "
-              "i.e. a probe region of at least %d B -- larger than the one this "
+              "i.e. a probe region of at least %d B - larger than the one this "
               "shim exposes."
             % (need_n, need_n // 2 if need_n > 1 else 1, need_n, need_sp,
                need_n * need_sp + need_sp))
@@ -1715,7 +1715,7 @@ def infer_cache(ms: MeasurementSet, latch: Claim, width: Claim,
     elif period == fetch:
         fully = True
         ev.append("  fully associative: the conflict period (%d B) equals the "
-                  "fetch granularity, so one line IS the whole index space -- "
+                  "fetch granularity, so one line IS the whole index space - "
                   "N_evict is flat at %d for every spacing from %d B upward and "
                   "no address bits select a set" % (period, ways, fetch))
     elif period > MAX_PLAUSIBLE_LINE:
@@ -1737,7 +1737,7 @@ def infer_cache(ms: MeasurementSet, latch: Claim, width: Claim,
             "every primitive in this protocol: " % (period, period)
             + ", ".join("%d-way x %d sets x %d B line" % (ways, s, l)
                         for s, l in family)
-            + " -- including '%d fully-associative %d B tags'. Separating them "
+            + " - including '%d fully-associative %d B tags'. Separating them "
               "needs a probe that distinguishes 'two words of one line' from "
               "'two lines of one set', e.g. a random-access working set swept "
               "across its alignment (the G474 'tent' measurement), and "
@@ -1776,8 +1776,8 @@ def infer_cache(ms: MeasurementSet, latch: Claim, width: Claim,
                   % (fetch, period, ways))
 
     # Configurations that fit nothing bigger than the latch have no cache in
-    # them at all -- that is the cache-enable knob doing its job, not a rival
-    # geometry -- so they are separated out before anything is called a clash.
+    # them at all - that is the cache-enable knob doing its job, not a rival
+    # geometry - so they are separated out before anything is called a clash.
     geoms, off_cfgs = {}, []
     for v, f in fits:
         if f["capacity_entries"] <= max(1, latch_depth) and f["period"] <= max(latch_g, fetch):
@@ -1818,7 +1818,7 @@ def infer_cache(ms: MeasurementSet, latch: Claim, width: Claim,
                             for (w, pd, cap), vs in sorted(geoms.items()))
         caps = {g[2] for g in geoms}
         if selector and len(caps) == 1:
-            ev.append("  `%s` selects between %s -- same capacity, different "
+            ev.append("  `%s` selects between %s - same capacity, different "
                       "index: the knob RE-INDEXES the cache rather than "
                       "resizing it. The headline geometry is the one measured "
                       "in %s" % (selector, listing, cfgname(top_v["cfg"])))
@@ -1865,7 +1865,7 @@ def infer_cache(ms: MeasurementSet, latch: Claim, width: Claim,
             "however the two factors divide it. Separating them needs a "
             "spacing ABOVE the largest candidate period (%d B), where the "
             "loss lands at n = ways directly: `evict n %d` with n reaching "
-            "%d, i.e. a probe region of at least %d B -- or %d B to separate "
+            "%d, i.e. a probe region of at least %d B - or %d B to separate "
             "only the associativities an L1 plausibly has (<= %d-way, an "
             "architectural prior, stated here rather than applied silently). "
             "This shim's `evict` reaches %d B. The published geometry of this "
@@ -1923,8 +1923,8 @@ def infer_cache(ms: MeasurementSet, latch: Claim, width: Claim,
                  ev, caveats,
                  {"fit": top_f, "fetch_granularity": fetch,
                   # Only configurations whose own eviction surface IS a step
-                  # function export a geometry.  Everything downstream -- the
-                  # replacement-policy claim, the knob map -- reads this table,
+                  # function export a geometry.  Everything downstream - the
+                  # replacement-policy claim, the knob map - reads this table,
                   # and a falsified fit handed on from here is how "1-way"
                   # became "every configuration is direct-mapped, so there is
                   # no policy to infer" at HIGH confidence on the H723.
@@ -1991,7 +1991,7 @@ def _lru_fifo_probe(ms: MeasurementSet, cache: Claim):
         FIFO loses it at         n >= ways + 1
 
     The two predictions differ by exactly k, so a single sweep over n decides
-    it -- provided `k < ways` (otherwise the target is already gone before the
+    it - provided `k < ways` (otherwise the target is already gone before the
     re-touch happens), the walk spacing is a multiple of the conflict period of
     THAT configuration (otherwise the walk addresses do not land in the
     target's set at all), and the shim really honoured the third argument,
@@ -2090,7 +2090,7 @@ def _chase_knee(ms: MeasurementSet, cache: Claim, cfgs):
         # A working set FAR past the knee is the 1.0 reference.  Without it the
         # "one line over" rate has to be compared against a miss cost taken
         # from a different loop body, and that ratio is only good to a few tens
-        # of a percent -- on the L552 a genuinely thrashing 3-line set over a
+        # of a percent - on the L552 a genuinely thrashing 3-line set over a
         # 2-way cache normalises to 0.75, close enough to the pseudo-random
         # band to be decided by the normalisation rather than by the part.
         # "Far" is measured from the KNEE, not from the fitted associativity:
@@ -2122,7 +2122,7 @@ def _repeats_agree(ms: MeasurementSet) -> Optional[bool]:
     """
     # The kept repeats are a FILTERED sample.  `Bench` discards a warm-up
     # repetition before taking the median and records the disagreement as a
-    # capture warning -- but the discarded value is not in `obs[].raw`, so a
+    # capture warning - but the discarded value is not in `obs[].raw`, so a
     # row can read min == max here while the capture's own warnings say the
     # first reading of it was different.  On the H723 that is true of 16
     # distinct (n, spacing) pairs, in both directions, and it includes rows
@@ -2150,7 +2150,7 @@ def infer_policy(ms: MeasurementSet, cache: Claim, width: Claim) -> Claim:
         "`chase` a cyclic one, and on a cyclic string over capacity+1 lines LRU "
         "and FIFO evict exactly the same line at every step. Separating them "
         "needs a reference string that re-touches an already-resident line "
-        "before bringing in a new one -- which is what the optional third "
+        "before bringing in a new one - which is what the optional third "
         "`evict` argument provides, and what a shim that does not implement it "
         "leaves unreachable.",
     ]
@@ -2190,7 +2190,7 @@ def infer_policy(ms: MeasurementSet, cache: Claim, width: Claim) -> Claim:
                      "carries no repeat information"))
         caveats.append(
             "The cache claim reports no geometry here, so nothing below is "
-            "sized from a measured associativity -- the probes are sized from "
+            "sized from a measured associativity - the probes are sized from "
             "a provisional fit and fire only if it happens to be close. Read "
             "a negative result as 'the instrument did not run', not as a "
             "property of the part."
@@ -2199,8 +2199,8 @@ def infer_policy(ms: MeasurementSet, cache: Claim, width: Claim) -> Claim:
                "warm-up repetition disagreeing with the kept ones on several "
                "`evict` rows, so `min == max` over the kept sample is not "
                "evidence that the measurement is reproducible. What settles "
-               "it is the replay control -- the same row re-measured later "
-               "and in the opposite order -- not more repeats of one row."
+               "it is the replay control - the same row re-measured later "
+               "and in the opposite order - not more repeats of one row."
                if agree is None else
                " And note what the repeats say: every non-monotone row is "
                "bit-identical across all its repeats, which a random victim "
@@ -2379,7 +2379,7 @@ def infer_policy(ms: MeasurementSet, cache: Claim, width: Claim) -> Claim:
             "configuration.")
         if random_evidence:
             ev.append("  -> a cyclic working set one line over the knee still "
-                      "hits part of the time -- %.0f%% of what the same probe "
+                      "hits part of the time - %.0f%% of what the same probe "
                       "costs far past the knee, in an isolated configuration at "
                       "a conflicting stride. Neither LRU nor FIFO nor an address "
                       "index can do that: all three are deterministic functions "
@@ -2477,7 +2477,7 @@ def _metric_geometry(ms: MeasurementSet, cfg: Config, scale: float = 0.0,
                 reuse = max(reuse, n)
     if broken:
         # The geometry model is falsified here, so this configuration cannot
-        # report a triple -- but it can still say whether there is reuse at
+        # report a triple - but it can still say whether there is reuse at
         # all, which is what a cache-enable knob moves.  Reporting the
         # falsified triple instead is how the H723's `dcache` came to be
         # credited with switching on a 65536 B direct-mapped cache.
@@ -2546,7 +2546,7 @@ def infer_knob_map(ms: MeasurementSet, width: Optional[Claim] = None,
     # test attributes the confound to the register: on the L552 exactly one
     # such cell turns `waysel` from "re-indexes at constant capacity" into
     # "controls the capacity".  The instrument knob's own rows still use every
-    # configuration -- showing that difference is the whole point of them.
+    # configuration - showing that difference is the whole point of them.
     device_cfgs = [c for c in configs if _is_isolated(ms, c)]
     if len(device_cfgs) < 2:
         device_cfgs = configs
@@ -2609,7 +2609,7 @@ def infer_knob_map(ms: MeasurementSet, width: Optional[Claim] = None,
                     "pairs": len(pairs), "changed": len(changed),
                     "from": lo, "to": hi,
                     "why": (f"{len(changed)} of {len(pairs)} matched pairs "
-                            f"moved, {lo} -> {hi} -- but this knob is the "
+                            f"moved, {lo} -> {hi} - but this knob is the "
                             f"probe loop's own residence, not a register of "
                             f"the memory system"
                             if changed else
@@ -2663,7 +2663,7 @@ def infer_knob_map(ms: MeasurementSet, width: Optional[Claim] = None,
                 "from": lo, "to": hi,
                 "why": (f"{len(changed)} of {len(pairs)} matched pairs "
                         f"moved, {lo} -> {hi}"
-                        + (" -- the probe reads uniformly fast, which "
+                        + (" - the probe reads uniformly fast, which "
                            "hides the latch rather than removing it"
                            if masks else ""))}
 
@@ -2737,7 +2737,7 @@ def infer_knob_map(ms: MeasurementSet, width: Optional[Claim] = None,
         if k in ("dcache", "unified"):
             # A knob that enables a cache the data-side probe CAN see, reaching
             # nothing, is far likelier to be a classifier problem than a part
-            # with an inert enable bit -- that is exactly what a pooled
+            # with an inert enable bit - that is exactly what a pooled
             # miss-cost threshold did to the G474 once.
             caveats.append(
                 "`%s` is a canonical enable knob for a structure this probe can "
@@ -2754,7 +2754,7 @@ def infer_knob_map(ms: MeasurementSet, width: Optional[Claim] = None,
             ev.append("  -> `icache` moved none of the three metrics. Every "
                       "primitive here is a data access, so an instruction cache "
                       "that does not share a structure with the data path is "
-                      "invisible to this probe by construction -- this is the "
+                      "invisible to this probe by construction - this is the "
                       "expected reading for a separate I-cache, and it is not "
                       "evidence that the register is inert. The instruction side "
                       "is not measured: see the cache claim's caveats.")
@@ -2906,7 +2906,7 @@ def infer_twin_calibration(ms: MeasurementSet, width: Claim) -> Claim:
     The twin rule says every flash measurement is subtracted against the same
     probe function over an identically shaped buffer.  That cancels the loop's
     framing only if the twin's buffer stands in the same relationship to the
-    loop's own instruction fetch as the flash buffer does -- and on a part where
+    loop's own instruction fetch as the flash buffer does - and on a part where
     the two buffers sit on different bus ports, it does not.  At `waitstates = 0`
     a flash access costs no more than an SRAM one, so whatever `flash - twin`
     reads there is the instrument, not the silicon.
@@ -3000,8 +3000,8 @@ def infer_twin_calibration(ms: MeasurementSet, width: Claim) -> Claim:
                 "RAM (%s). That is not noise: `loopmem` decides which memory "
                 "shares a bus port with instruction fetch, so averaging over it "
                 "averages a quantity with its own negation. The figure above is "
-                "the isolated configuration alone -- the one every structural "
-                "claim in this report is measured in -- and the confounded value "
+                "the isolated configuration alone - the one every structural "
+                "claim in this report is measured in - and the confounded value "
                 "is listed in the evidence, never mixed in."
                 % (", ".join("%+.3f" % v
                              for v in sorted(set(round(x, 3) for x in cvals))),
@@ -3051,7 +3051,7 @@ def infer_twin_calibration(ms: MeasurementSet, width: Claim) -> Claim:
                % tkind
                if per_access < 0 else
                "A POSITIVE value means the flash path costs more than the %s "
-               "twin even where the flash is free of wait states -- a fixed "
+               "twin even where the flash is free of wait states - a fixed "
                "access cost that is not a flash structure. It is what a "
                "tightly-coupled twin looks like: a DTCM or similar zero-wait "
                "memory is not on the same fabric as the flash, so the "
@@ -3119,7 +3119,7 @@ def infer_all(ms: MeasurementSet) -> Structure:
             if cv.get("capacity_bytes") is not None:
                 st.notes.append(
                     "UNDETERMINED: capacity is measured at %d B, but the split "
-                    "between ways and sets is not -- candidates %s way. See the "
+                    "between ways and sets is not - candidates %s way. See the "
                     "cache caveats for the measurement that would settle it."
                     % (cv["capacity_bytes"], cands))
             elif not cv.get("threshold_model_holds", True):
@@ -3150,7 +3150,7 @@ def infer_all(ms: MeasurementSet) -> Structure:
                    cv["conflict_period_bytes"], cv["capacity_bytes"], cv["ways"]))
         if fill.known and cv["line_bytes"] == fill.value and width.known                 and fill.value != width.value:
             st.notes.append(
-                "Cross-check: the cache's fill unit (%d B) is confirmed twice -- "
+                "Cross-check: the cache's fill unit (%d B) is confirmed twice - "
                 "by the stride at which a warm walk saturates and by the eviction "
                 "surface." % fill.value)
     if latch.known and latch.value.get("present") and width.known:
@@ -3170,7 +3170,7 @@ def infer_all(ms: MeasurementSet) -> Structure:
         st.notes.append(
             "INSTRUMENT: in %s the %s twin is offset by %+.3f cycles per "
             "access at zero wait states, so every twin-subtracted figure "
-            "measured in that configuration carries that bias -- correcting "
+            "measured in that configuration carries that bias - correcting "
             "means subtracting it. The offset is NOT the same in every "
             "configuration and is not pooled; see the twin_calibration claim "
             "for the per-configuration table."
@@ -3198,7 +3198,7 @@ def infer_all(ms: MeasurementSet) -> Structure:
             "INSTRUMENT: %d warning(s) record the DISCARDED warm-up repetition "
             "disagreeing with the kept ones. That reading is not in `obs[].raw`, "
             "so `min == max` over the stored repeats is not evidence that those "
-            "rows are reproducible -- the disagreeing sample is the one that was "
+            "rows are reproducible - the disagreeing sample is the one that was "
             "filtered out. A shim capture should carry the warm-up reading in "
             "`obs[]` rather than in prose." % len(warmup))
     if ms.meta.get("warnings"):
@@ -3206,8 +3206,8 @@ def infer_all(ms: MeasurementSet) -> Structure:
     if "counters" in (ms.meta.get("caps") or []) and not any(
             o.mode == "counters" for o in ms.obs):
         st.notes.append(
-            "GAP: this part advertises `counters` -- hardware hit/miss "
-            "registers that `PROTOCOL.md` calls an independent instrument -- "
+            "GAP: this part advertises `counters` - hardware hit/miss "
+            "registers that `PROTOCOL.md` calls an independent instrument - "
             "and the capture contains no counter reading. Every claim here "
             "rests on timing alone, with a cross-check available and unused.")
     ws_vals = ms.knob_values("waitstates")

@@ -17,7 +17,7 @@ without touching hardware:
        four T-tables .......... resists round 2; the last round still falls
                                 if the final round reads a single table
        no tables at all ....... possibly constant-time (BearSSL aes_ct,
-                                OpenSSL CT) -- or just compressed, check that
+                                OpenSSL CT) - or just compressed, check that
 
 The scanner reports where the tables sit relative to the flash base, because a
 table in `.rodata` is the whole precondition; mbedTLS without
@@ -222,35 +222,35 @@ def verdict(res: dict) -> list[str]:
     if not (names & {"AES S-box", "AES inverse S-box"}) and not te and not td:
         lines.append("no AES lookup tables in flash" +
                      (" (but Rcon is present, so AES is compiled in)" if "Rcon" in names else "") +
-                     " -- consistent with a constant-time/bitsliced core "
+                     " - consistent with a constant-time/bitsliced core "
                      "(BearSSL aes_ct, OpenSSL CT: both measured 0/16 here), or "
                      "with tables built into RAM at startup (mbedTLS without "
                      "MBEDTLS_AES_ROM_TABLES). Either way, not exposed. If the "
                      "image is packed, re-run with --decompress before believing it.")
         return lines
     if len(te) >= 4:
-        lines.append(f"four T-tables present ({', '.join(te)}) -- the 4-table "
+        lines.append(f"four T-tables present ({', '.join(te)}) - the 4-table "
                      "layout. Round 2 resists; the LAST round still falls if the "
                      "final round reads one table (measured: mbedTLS, wolfSSL, "
                      "OpenSSL, Nettle all 16/16 on the F429).")
     elif te:
-        lines.append(f"single T-table ({', '.join(te)}) -- the compact build. "
+        lines.append(f"single T-table ({', '.join(te)}) - the compact build. "
                      "Leaks the full key AND is round-2 recoverable from one side "
                      "of the cipher (mbedTLS FEWER_TABLES shape).")
     if "AES S-box" in names and not te:
-        lines.append("byte S-box only -- the tiny-AES / TinyCrypt / GmSSL shape. "
+        lines.append("byte S-box only - the tiny-AES / TinyCrypt / GmSSL shape. "
                      "Leaks the full key on any part whose flash data cache is "
                      "smaller than 256 B (F2/F4 = 128 B; F1/F3 = no data cache).")
     elif "AES S-box" in names:
         lines.append("S-box also present (used by the key schedule and, in most "
-                     "builds, the final round -- that is the round the attack reads).")
+                     "builds, the final round - that is the round the attack reads).")
     if "gfm2_sb (Gladman)" in names and "gfm3_sb (Gladman)" in names:
         lines.append("sbox + gfm2_sb + gfm3_sb -> the Gladman compact AES table "
                      "triple. That is the layout of LoRaMac-node's soft-se "
                      "(Semtech's reference LoRaWAN end-device stack), which we "
                      "compiled and broke on the F429: 16/16 at 400 k traces.")
     if td:
-        lines.append(f"decryption T-table(s) present ({', '.join(td)}) -- {len(td)} KB of "
+        lines.append(f"decryption T-table(s) present ({', '.join(td)}) - {len(td)} KB of "
                      "inverse tables in flash. Bigger than the F2/F4 128 B and the G4/L4 256 B "
                      "ART data cache alike, so this leaks on every measured band, unlike a lone "
                      "256 B S-box which fits the 256 B cache.")
@@ -267,7 +267,7 @@ def render(path: str, res: dict, base_override: int | None = None) -> str:
         out.append(f"  Cortex-M vector table: flash base ~{vec[0]:#010x}, "
                    f"reset {vec[1]:#010x}  -> XIP MCU image (in scope)")
     else:
-        out.append("  no Cortex-M vector table at offset 0 -- either not a raw "
+        out.append("  no Cortex-M vector table at offset 0 - either not a raw "
                    "flash image, or not an MCU target (packed/ELF/Linux?)")
     base = base_override if base_override is not None else (vec[0] if vec else None)
     for h in res["hits"]:

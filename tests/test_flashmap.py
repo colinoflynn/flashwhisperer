@@ -1,4 +1,4 @@
-"""Host-only tests for `flashmap.infer` -- no hardware, no serial port.
+"""Host-only tests for `flashmap.infer` - no hardware, no serial port.
 
 Two kinds of test, and the distinction matters:
 
@@ -25,7 +25,7 @@ import os as _os, sys as _sys
 # The five packages live under flashwhisperer/ (REORG_PLAN D2).  Walk up to the
 # .git marker rather than assume a depth: importers of these packages sit at the
 # repository root, in hardware/, results/<campaign>/, demo/<stack>/ and
-# research/<area>/ -- four different depths.  `.git` is a FILE in a worktree, so
+# research/<area>/ - four different depths.  `.git` is a FILE in a worktree, so
 # test existence, not isdir.
 _fw = _os.path.dirname(_os.path.abspath(__file__))
 while _fw != _os.path.dirname(_fw) and not _os.path.exists(_os.path.join(_fw, ".git")):
@@ -57,7 +57,7 @@ class MemModel:
       actually fetched as valid.  That split is the G474's behaviour and is what
       makes "capacity in tags" different from "capacity in bytes".
     * A cache hit never reaches the flash controller, so it does not touch the
-      latch -- which is why a large enough cache *masks* the latch rather than
+      latch - which is why a large enough cache *masks* the latch rather than
       removing it.
     """
 
@@ -86,7 +86,7 @@ class MemModel:
             self._miss = waitstates
         self.reset_all()
 
-    # -- state ------------------------------------------------------------
+    # - state ------------------------------------------------------------
     def reset_all(self):
         self._latch = {}        # entry index -> block tag
         self._tags = {}         # set -> list of [tag, {valid word offsets}]
@@ -104,7 +104,7 @@ class MemModel:
         self._rng = (1103515245 * self._rng + 12345) & 0x7FFFFFFF
         return self._rng % n
 
-    # -- one access -------------------------------------------------------
+    # - one access -------------------------------------------------------
     def access(self, addr):
         self._clock += 1
         wordblk = addr // self.width
@@ -117,7 +117,7 @@ class MemModel:
                 if e[0] == tag:
                     if wordblk in e[1]:
                         # A hit renews the line under LRU and is invisible under
-                        # FIFO -- which is the only difference between the two
+                        # FIFO - which is the only difference between the two
                         # and the thing the 3-argument `evict` probe exploits.
                         if self.policy == "lru":
                             e[2] = self._clock
@@ -164,7 +164,7 @@ class MemModel:
         blk = addr // self.gran
         return self._latch.get(blk % self.entries) == blk
 
-    # -- probes, exactly as the shim defines them -------------------------
+    # - probes, exactly as the shim defines them -------------------------
     @property
     def scratch(self):
         return self.BASE + self.size - 16
@@ -331,13 +331,13 @@ def nrf52_factory(cfg):
 
 def f303_factory(cfg):
     """STM32F303: 64-bit flash whose D-Code path is NOT wired to the row
-    register -- no data-side reuse of any kind."""
+    register - no data-side reuse of any kind."""
     return MemModel(width=8, gran=8, entries=1, latch=False, cache=None,
                     waitstates=cfg.get("waitstates", 4))
 
 
 # ==========================================================================
-# tests -- synthetic parts
+# tests - synthetic parts
 # ==========================================================================
 
 def test_f429_recovered():
@@ -371,7 +371,7 @@ def test_f429_recovered():
     assert km["prefetch"]["data_reuse"]["verdict"] == "no effect"
     assert km["icache"]["latch"]["verdict"] == "no effect"
     assert km["dcache"]["read_width"]["verdict"] == "no effect"
-    # DCEN does not switch the latch off, it hides it -- a different claim, and
+    # DCEN does not switch the latch off, it hides it - a different claim, and
     # the one stm32f4_latch.md makes ("no register reaches it").
     assert km["dcache"]["latch"]["verdict"] == "masks"
 
@@ -499,7 +499,7 @@ def test_f303_no_data_side_reuse_at_all():
 
 
 # ==========================================================================
-# tests -- honesty: what must come out `unknown`
+# tests - honesty: what must come out `unknown`
 # ==========================================================================
 
 def test_zero_wait_states_yields_unknown_not_a_guess():
@@ -535,7 +535,7 @@ def test_unknown_survives_json_round_trip():
 
 
 def test_replacement_policy_reports_the_wall():
-    """LRU vs FIFO is not decidable with these primitives -- and must say so."""
+    """LRU vs FIFO is not decidable with these primitives - and must say so."""
     grid = [{"icache": 0, "dcache": 1, "prefetch": 0, "waitstates": 5}]
     ms = build("STM32F429ZI", f429_factory, grid,
                chase_sizes=(4, 8, 9, 16), chase_line=16)
@@ -562,7 +562,7 @@ def test_replacement_policy_detects_pseudo_random():
 
 
 # ==========================================================================
-# tests -- the published numbers, fed in literally
+# tests - the published numbers, fed in literally
 # ==========================================================================
 
 def _ms_from_tables(part, walk_row, reread_rows, evict_rows, twin_walk=None,
@@ -675,7 +675,7 @@ def test_published_nrf52_icache_is_direct_mapped():
 def test_published_h723_probe_disagrees_with_ccsidr():
     """stm32h723.md section 3: `CCSIDR` says 4-way, the conflict probe says a
     single 8192-byte-away access evicts.  The tool must report what it measured
-    (1-way) rather than the register value -- the disagreement is the result."""
+    (1-way) rather than the register value - the disagreement is the result."""
     measured = {32: (256, True), 8192: (1, True), 16384: (1, True)}
     fit = _fit_cache(measured, 32, cap=2048)
     assert fit["ways"] == 1
@@ -709,7 +709,7 @@ def test_published_h7_aligned_block_not_a_distance():
 
 
 # ==========================================================================
-# tests -- machinery
+# tests - machinery
 # ==========================================================================
 
 def test_levels_refuses_to_split_noise():
@@ -763,7 +763,7 @@ def test_report_renders_without_hardware():
 
 
 # ==========================================================================
-# tests -- regressions
+# tests - regressions
 # ==========================================================================
 
 def test_miss_cost_is_per_configuration_not_pooled():
@@ -867,7 +867,7 @@ def test_one_waitstate_sweep_cell_cannot_set_the_read_width():
 
     `flashmap/h723.json` reported `read_width = 8` against a published 32, on
     evidence of 37 configurations saturating at stride 32 and exactly one
-    saturating at stride 8 -- and that one was `waitstates = 0`, a cell the plan
+    saturating at stride 8 - and that one was `waitstates = 0`, a cell the plan
     emits to fit a slope, not to resolve a structure. `min(widths)` then took
     the outlier as the array's width and filed the real answer as a "fill unit".
 
@@ -920,7 +920,7 @@ def test_an_unexplained_split_is_not_reported_as_a_fill_unit():
 
 
 # ==========================================================================
-# tests -- the REAL captures, re-inferred
+# tests - the REAL captures, re-inferred
 # ==========================================================================
 #
 # The synthetic tests above check that the inference can recover a geometry it
@@ -1002,7 +1002,7 @@ def test_real_l552_capture():
     assert st.value("read_width") == 8
     assert st.value("fill_unit") == 16
 
-    # 1. two 8-byte entries indexed on A[3] -- NOT one 16-byte latch. The right
+    # 1. two 8-byte entries indexed on A[3] - NOT one 16-byte latch. The right
     #    fit is in the dense sweep and used to be outvoted by five six-offset
     #    wait-state cells that cannot tell the two models apart.
     latch = st.value("latch")
@@ -1095,7 +1095,7 @@ def test_real_h723_capture():
     # 2. the capacity is MEASURED, and it is the CCSIDR number.
     assert c["capacity_bytes"] == 32768, "L1-D is 32 KB (CCSIDR 0xF01FE019)"
     assert c["capacity_bytes_min"] <= 32768, "a floor must be a floor"
-    # ... and the (ways, sets) split is NOT, so it is a family -- which must
+    # ... and the (ways, sets) split is NOT, so it is a family - which must
     # contain the register truth rather than sit beside it.
     assert c["ways"] is None and c["sets"] is None
     assert "4-way x 256 sets x 32 B line" in c["geometry_candidates"]
@@ -1105,7 +1105,7 @@ def test_real_h723_capture():
     assert "NOT a step function" in joined
 
     # 3. `not_applicable` ("every configuration is direct-mapped") was read off
-    #    four dcache=0 cells -- the cache switched OFF, where the only thing
+    #    four dcache=0 cells - the cache switched OFF, where the only thing
     #    left is the 1-entry latch, which of course fits 1-way.  A claim about
     #    a victim may not be taken from a configuration that has no victim.
     pol = st.get("replacement_policy")
@@ -1191,8 +1191,8 @@ def test_every_real_capture_keeps_its_claims_self_consistent(name):
 def test_no_claim_rests_on_a_cell_that_could_not_discriminate(name):
     """The general rule, checked against every capture.
 
-    A configuration may only contribute a NEGATIVE finding -- "no structure
-    here" -- once it is established that it could have shown a positive one.
+    A configuration may only contribute a NEGATIVE finding - "no structure
+    here" - once it is established that it could have shown a positive one.
     Every `waitstates = 0` cell fails that test by construction, so none of
     them may appear in the evidence or the caveats as a knob setting that
     removed something.
@@ -1228,7 +1228,7 @@ def test_replay_control_refuses_a_geometry_when_a_row_does_not_reproduce():
     assert clean.value("cache")["capacity_bytes"] == 128
     assert clean.value("cache")["threshold_model_holds"] is True
 
-    # replay one row with a different answer -- the same (config, mode, args)
+    # replay one row with a different answer - the same (config, mode, args)
     row = [o for o in ms.rows("evict", "flash")
            if len(o.args) == 2 and o.args[1] == 16][3]
     ms.add(row.config, "flash", "evict", row.args, row.cycles + 6.0,

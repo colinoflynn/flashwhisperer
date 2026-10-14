@@ -1,4 +1,4 @@
-"""flashmap.experiments -- the probe primitives, and the discipline around them.
+"""flashmap.experiments - the probe primitives, and the discipline around them.
 
 Everything in this module exists to stop one of the traps in
 `MEASURING_CHANNELS.md` from being re-paid:
@@ -24,7 +24,7 @@ Everything in this module exists to stop one of the traps in
   fast zero.
 
 The output is a `MeasurementSet`: a flat list of `(config, region, kind, mode,
-args, cycles)` observations.  That -- and only that -- is what `infer.py`
+args, cycles)` observations.  That - and only that - is what `infer.py`
 consumes, which is why `tests/test_flashmap.py` can exercise the whole inference
 without a board.
 """
@@ -96,7 +96,7 @@ class MeasurementSet:
     """A flat, queryable bag of `Obs`, plus the metadata needed to read them.
 
     Constructed either by `Bench.run()` (from a board) or by hand (from
-    published tables, or from a synthetic model -- which is how the inference is
+    published tables, or from a synthetic model - which is how the inference is
     tested without hardware).
     """
 
@@ -105,7 +105,7 @@ class MeasurementSet:
         self.obs: List[Obs] = list(obs or [])
         self._index: Optional[dict] = None
 
-    # -- building ---------------------------------------------------------
+    # - building ---------------------------------------------------------
     def add(self, config: Config, kind: str, mode: str, args: Sequence[int],
             cycles: float, region: str = "", **kw) -> Obs:
         o = Obs(config=dict(config), region=region or kind, kind=kind, mode=mode,
@@ -121,7 +121,7 @@ class MeasurementSet:
         self.obs.extend(others)
         self._index = None
 
-    # -- querying ---------------------------------------------------------
+    # - querying ---------------------------------------------------------
     def _idx(self) -> dict:
         if self._index is None:
             self._index = {}
@@ -187,7 +187,7 @@ class MeasurementSet:
         seen = {tuple(o.args) for o in self.rows(mode, kind, config)}
         return sorted(seen)
 
-    # -- serialisation ----------------------------------------------------
+    # - serialisation ----------------------------------------------------
     def to_json(self, path: str) -> None:
         with open(path, "w", encoding="utf-8", newline="\n") as fh:
             json.dump({"meta": self.meta, "obs": [o.to_dict() for o in self.obs]},
@@ -233,8 +233,8 @@ def _binary_knobs(knobs: Sequence[Knob]) -> List[Knob]:
 
 
 #: How many cycles a missed flash access must cost before hit and miss are
-#: separable at all.  This is a property of the INSTRUMENT -- the counter is
-#: integer-valued and the twin can be offset by a cycle -- not of any part, and
+#: separable at all.  This is a property of the INSTRUMENT - the counter is
+#: integer-valued and the twin can be offset by a cycle - not of any part, and
 #: `Bench.calibrate_waitstates` measures which wait-state setting delivers it
 #: rather than assuming which number does.
 _MIN_MISS_CYCLES = 4.0
@@ -244,7 +244,7 @@ def _reference_waitstates(knobs: Sequence[Knob]) -> Optional[int]:
     """Fallback reference `LATENCY` when nothing has been measured yet.
 
     At `LATENCY = 0` a flash hit and a miss cost the same cycle, so every flash
-    structure reads flat -- not because it is absent but because it is worth
+    structure reads flat - not because it is absent but because it is worth
     nothing (MEASURING_CHANNELS B3).  The structural grid therefore runs
     over-programmed.
 
@@ -284,8 +284,8 @@ def default_plan(knobs: Sequence[Knob], region_size: int,
     """The measurement programme.
 
     `depth`:
-      * `full`  -- everything (the default for `map`)
-      * `quick` -- enough to name the structures, not enough to bound them
+      * `full`  - everything (the default for `map`)
+      * `quick` - enough to name the structures, not enough to bound them
 
     The programme is generated from the *knobs the shim advertises*, never from
     a part number, so a new shim gets the same treatment without touching this
@@ -316,7 +316,7 @@ def default_plan(knobs: Sequence[Knob], region_size: int,
     # candidate model draws: for a granularity g the models disagree around
     # +/- g, 2g, 3g, 4g, and a sweep that lands only on one side of a boundary
     # cannot tell "one aligned 2g block" from "two g blocks indexed on the next
-    # address bit" -- which is the L552 latch, and exactly the distinction a
+    # address bit" - which is the L552 latch, and exactly the distinction a
     # six-offset sweep misses.
     #
     # Signed on both sides, because an aligned block and a "within +/- g bytes"
@@ -339,8 +339,8 @@ def default_plan(knobs: Sequence[Knob], region_size: int,
         offs = [0, 4, 8, 12, 15, 16, 24, 32, 64, 128]
 
     # `evict` N values, GENERATED rather than listed.  The hand-written list
-    # this replaces contained 29 and 513 -- the G474's and the L552's published
-    # transition points -- which is a fact about two chips smuggled into the
+    # this replaces contained 29 and 513 - the G474's and the L552's published
+    # transition points - which is a fact about two chips smuggled into the
     # plan.  `N_evict` has to be located exactly (the geometry fit compares
     # predicted and measured n, not a bracket), so the schedule is contiguous
     # through the small numbers, where a cache's capacity in lines lives, and
@@ -376,7 +376,7 @@ def default_plan(knobs: Sequence[Knob], region_size: int,
         for off in offs:
             steps.append(Step(cfg, "reread", (off,), "latch granularity"))
         # `alt` gives 1/reps-cycle resolution on the same question, so it is
-        # swept over the same granularity ladder the model family admits -- the
+        # swept over the same granularity ladder the model family admits - the
         # inference picks whichever of these its fitted model calls a miss.
         for off in (0,) + tuple(LATCH_GRANULARITIES):
             steps.append(Step(cfg, "alt", (off, alt_reps), "latch, sub-cycle"))
@@ -401,7 +401,7 @@ def default_plan(knobs: Sequence[Knob], region_size: int,
                     steps.append(Step(cfg, "chase", (n, sp, 8), "cyclic reuse"))
 
     # Wait-state sweep.  Only the two extreme binary configs and only the cheap
-    # probes -- this axis is about a coefficient, not a structure.
+    # probes - this axis is about a coefficient, not a structure.
     if ws_ref is not None:
         wsk = next(k for k in knobs if k.name == "waitstates")
         ws_vals = [v for v in wsk.values if v in (0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15)]
@@ -448,9 +448,9 @@ class Bench:
             raise BenchError(
                 "shim reports timer=none: its counter does not advance. "
                 "Every probe would be identical and every structure would look "
-                "absent -- the archetypal silent pass. Fix the shim first.")
+                "absent - the archetypal silent pass. Fix the shim first.")
 
-    # -- configuration ----------------------------------------------------
+    # - configuration ----------------------------------------------------
     def apply(self, cfg: Config) -> Config:
         """Set every knob and return the **readbacks**.
 
@@ -469,7 +469,7 @@ class Bench:
         self._cur = actual
         return actual
 
-    # -- measurement ------------------------------------------------------
+    # - measurement ------------------------------------------------------
     def measure(self, region: Region, mode: str, args: Sequence[int]) -> Sample:
         n = self.reps + self.warm_discard
         try:
@@ -506,7 +506,7 @@ class Bench:
         t = self.measure(self.twin, mode, args)
         return f, t
 
-    # -- running a plan ---------------------------------------------------
+    # - running a plan ---------------------------------------------------
     def calibrate_waitstates(self) -> Optional[int]:
         """Measure which wait-state setting makes a miss resolvable, not assume.
 
@@ -514,7 +514,7 @@ class Bench:
         and a miss cost the same cycle and every flash structure reads flat
         (MEASURING_CHANNELS B3).  The question is which setting to pick, and
         "the smallest advertised value >= 4" answers it only on a part where one
-        wait state is worth one cycle -- an assumption about the silicon, made
+        wait state is worth one cycle - an assumption about the silicon, made
         before anything has been measured.
 
         So measure it.  For each advertised setting, ascending, take the
@@ -598,14 +598,14 @@ class Bench:
         What it tests is whether the probe's result is a function of its
         arguments at all.  `PROTOCOL.md` rule 2 says a fixed warm-up access
         precedes every timed access so that each probe enters from the same
-        state -- and one warm-up access cannot restore tens of kilobytes of L1
+        state - and one warm-up access cannot restore tens of kilobytes of L1
         data cache.  On the H723, `evict n 8192` measured twice in the same
         order is bit-identical and measured in the opposite order moves, which
         no number of repeats of a single row can reveal: repeats of one command
         leave the same residue behind each time, so they agree while the
         surface as a whole does not.
 
-        Emitted whether or not a geometry was fitted -- on the part that needs
+        Emitted whether or not a geometry was fitted - on the part that needs
         it most, no geometry is.
         """
         steps: List[Step] = []
@@ -636,7 +636,7 @@ class Bench:
 
         Both the **spacing** and the **re-touch positions** come from the first
         pass.  The spacing must be a multiple of the measured conflict period or
-        the walk never reaches the target's set at all -- a fixed 16/32/64 B
+        the walk never reaches the target's set at all - a fixed 16/32/64 B
         spacing reaches it on a fully-associative 32 B ART and never on a part
         whose period is 4 KB, which is how the L552 came to have no re-touch row
         in its evidence.  And `k` must be strictly below the measured
@@ -699,7 +699,7 @@ class Bench:
                 msg = str(e)
                 if "range" in msg:
                     # "the probe's addresses would leave the region" is "not
-                    # measurable here", not a failure -- record it once.
+                    # measurable here", not a failure - record it once.
                     tag = f"{st.mode}: some arguments out of region range"
                     if tag not in self.warnings:
                         self.warnings.append(tag)
@@ -721,13 +721,13 @@ class Bench:
             if len(vals) == 1 and mode in ("walk", "reread", "evict", "chase", "alt"):
                 self.warnings.append(
                     f"checksum for {mode} on {kind} took one value "
-                    f"(0x{next(iter(vals)):x}) across the whole sweep -- the "
+                    f"(0x{next(iter(vals)):x}) across the whole sweep - the "
                     f"probe may not be varying its addresses")
         ms.meta["warnings"] = list(self.warnings)
         ms.meta["elapsed_s"] = round(ms.meta.get("elapsed_s", 0) + time.time() - t0, 1)
         return ms
 
-    # -- metadata ---------------------------------------------------------
+    # - metadata ---------------------------------------------------------
     def metadata(self) -> dict:
         return {
             "protocol": "memmap/1",
@@ -774,7 +774,7 @@ def selftest(dev: Device, verbose=print) -> Tuple[bool, List[str]]:
     ident = dev.ident()
     verbose(f"V  {ident}")
     if not ident.timer_live:
-        bad("timer=none -- the shim's counter does not advance")
+        bad("timer=none - the shim's counter does not advance")
     if ident.timer_hz <= 0:
         bad(f"timer_hz={ident.timer_hz}")
     if ident.clk_hz <= 0:
@@ -802,7 +802,7 @@ def selftest(dev: Device, verbose=print) -> Tuple[bool, List[str]]:
     for k in knobs:
         verbose(f"K  {k}")
 
-    # X -- the shim's own checks.
+    # X - the shim's own checks.
     try:
         good, detail = dev.device_selftest()
         (ok if good else bad)(f"X: {detail}")
@@ -845,7 +845,7 @@ def selftest(dev: Device, verbose=print) -> Tuple[bool, List[str]]:
     # The twin must be a real, distinct memory: same probe, different region.
     tw, kt = dev.timed(twin.name, "walk", 64, 64)
     if kt == k2 and tw == w:
-        bad(f"twin {twin.name} returns the same cycles AND checksum as flash -- "
+        bad(f"twin {twin.name} returns the same cycles AND checksum as flash - "
             f"is it actually a different region?")
     else:
         ok(f"twin distinguishable: flash {w}/0x{k2:x} vs twin {tw}/0x{kt:x}")

@@ -1,6 +1,6 @@
 # Two tiers, same as locally: the quick suite and the slow one. The slow tier
 # runs in CI because it is three minutes rather than three hours, and it is
-# the tier that replays the captured trace vectors -- the half that would
+# the tier that replays the captured trace vectors - the half that would
 # notice a scoring regression.
 #
 # WHAT A GREEN RUN HERE DOES NOT CHECK, which matters more than that it is
@@ -9,8 +9,8 @@
 # replays a flashmap capture, because none of those live in this repository.
 # Read the skip count, not just the colour.
 #
-# The structural rules -- no module-level `import serial`, no back edges in
-# the package graph -- are tests/test_layering.py, so they run here and
+# The structural rules - no module-level `import serial`, no back edges in
+# the package graph - are tests/test_layering.py, so they run here and
 # locally rather than only in a workflow nobody runs by hand.
 name: tests
 

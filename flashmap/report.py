@@ -1,4 +1,4 @@
-"""flashmap.report -- render a `Structure` as a measured datasheet.
+"""flashmap.report - render a `Structure` as a measured datasheet.
 
 Every line of the summary is a claim; every claim can be expanded into the
 measurements that produced it.  An `unknown` is printed as prominently as a
@@ -57,15 +57,21 @@ def _fmt_value(name: str, v: Any) -> str:
                     % ("capacity not determined" if floor is None
                        else ">= %d B (capacity not determined)" % floor,
                        assoc, v["line_bytes"]))
-        return ("%d B, %s; %d entries of %d B fetched; capacity counted in %s"
+        # The unit clause only says something when the unit is known; it used
+        # to render as "capacity counted in not applicable".
+        unit = v.get("capacity_unit")
+        tail = ("" if unit in (None, "unknown", "not applicable",
+                               "not_applicable")
+                else "; capacity counted in %s" % unit)
+        return ("%d B, %s; %d entries of %d B fetched%s"
                 % (v["capacity_bytes"], assoc, v["capacity_entries"],
-                   v["line_bytes"], v.get("capacity_unit", "unknown")))
+                   v["line_bytes"], tail))
     if name == "replacement_policy":
-        return {"lru_or_fifo": "LRU or FIFO (not separable -- see caveats)",
+        return {"lru_or_fifo": "LRU or FIFO (not separable - see caveats)",
                 "lru": "LRU (measured against FIFO, not assumed)",
                 "fifo": "FIFO (measured against LRU, not assumed)",
                 "pseudo_random": "pseudo-random",
-                "not_applicable": ("not applicable -- every configuration is "
+                "not_applicable": ("not applicable - every configuration is "
                                    "direct-mapped, so the index chooses the "
                                    "victim")}.get(v, str(v))
     if name == "waitstate_scaling":
@@ -95,7 +101,7 @@ def render(st: Structure, evidence: bool = True, width: int = 78) -> str:
     L: List[str] = []
     m = st.meta
     L.append("=" * width)
-    L.append(f"  MEASURED DATASHEET -- {st.part}")
+    L.append(f"  MEASURED DATASHEET - {st.part}")
     L.append("=" * width)
     if m:
         L.append(f"  core        {m.get('core','?')}   clock {m.get('clk_hz',0)/1e6:g} MHz")
@@ -182,7 +188,7 @@ def to_json(st: Structure, path: Optional[str] = None) -> str:
 
 def markdown(st: Structure) -> str:
     """A table suitable for pasting next to the repo's hand-written write-ups."""
-    L = [f"# Measured memory system -- {st.part}", ""]
+    L = [f"# Measured memory system - {st.part}", ""]
     m = st.meta
     L.append(f"`{m.get('banner','')}`" if m.get("banner") else "")
     L.append("")

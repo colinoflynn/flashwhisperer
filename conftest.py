@@ -8,7 +8,7 @@ Long  : `pytest --runslow`  -> also the synthetic engine scans and the replay
 In the repository this was extracted from, this file sat at the root because
 `demo/oscore/` needed the same `--runslow` option and registering it in two
 conftests is an error. Here there is only one test tree, so this copy is the
-only one -- which is what docs/PACKAGING.md said a standalone package would
+only one - which is what docs/PACKAGING.md said a standalone package would
 need.
 
 Nothing is inserted on sys.path: the five packages sit at the repository root,

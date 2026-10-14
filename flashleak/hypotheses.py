@@ -25,7 +25,7 @@ different things:
 A fixed unknown XOR mask on the observed data does not hide the output side: for
 a guess `g`, `tbl[B[j] ^ g]` with `B = out ^ m` is `tbl[out ^ (m ^ g)]`, so the
 mask is absorbed into the recovered bytes. That is why a CTR keystream, a
-ciphertext, and a ciphertext XOR some constant header all look alike here -- and
+ciphertext, and a ciphertext XOR some constant header all look alike here - and
 why detection does not require knowing the mode.
 
 What *does* break the output side is a mask that VARIES per block and is unknown,
@@ -43,12 +43,12 @@ from . import probe
 
 #: Mean-peak excess over the shuffled floor that a capture known to yield a key
 #: showed. On the F429 OSCORE capture the per-offset peaks were
-#: 4.31 4.23 6.40 4.38 4.37 4.36 4.27 4.21 -- mean 4.57 against a 4.33 floor, so
+#: 4.31 4.23 6.40 4.38 4.37 4.36 4.27 4.21 - mean 4.57 against a 4.33 floor, so
 #: an excess of about 0.24, and that capture recovered a key at 200 k traces.
 #:
 #: Careful with this number: it is calibrated for the MEAN peak over pairs, not
 #: a single pair's peak. An earlier version used 2.0, which is the right scale
-#: for one strong pair and roughly eight times too big for the mean -- it turned
+#: for one strong pair and roughly eight times too big for the mean - it turned
 #: a 250 k capture that really is breakable into an estimate of 96 million
 #: traces.
 #:
@@ -100,7 +100,7 @@ class Finding:
     evidence: str
 
     def __str__(self):
-        return f"{self.question}: {self.answer}  [{self.confidence}] -- {self.evidence}"
+        return f"{self.question}: {self.answer}  [{self.confidence}] - {self.evidence}"
 
 
 @dataclass
@@ -136,7 +136,7 @@ def granularity_sweep(blocks, timing, shifts=(1, 2, 3, 4), n_shuffle=32):
 
     Cheap input-side test at several assumed line widths. The finest shift that
     still shows structure bounds the effective granularity, which in turn hints
-    at the table's entry size -- 1-byte entries in a 16-byte line give 4-byte
+    at the table's entry size - 1-byte entries in a 16-byte line give 4-byte
     resolution when there is sub-line structure, 4-byte T-table entries give the
     same from a different cause. Mostly this exists so the expensive tests can be
     run at a sensible width instead of a guessed one.
@@ -168,12 +168,12 @@ def assess(blocks, timing, *, quick=False, seed=0) -> Assessment:
                 f"and found {cond['modes']} timing mode(s), centring each on its "
                 f"own median. Sigma went {cond['sigma_raw']:.1f} -> "
                 f"{cond['sigma_conditioned']:.1f}. Raw multi-mode timing hides "
-                "this channel completely -- every statistic below is measured in "
+                "this channel completely - every statistic below is measured in "
                 "units of that sigma.")
 
     # ---- 0. is there anything to measure? -------------------------------
     if a.timing["constant_time"]:
-        a.add("data-dependent timing", "NO -- constant time", "strong",
+        a.add("data-dependent timing", "NO - constant time", "strong",
               f"{a.timing['distinct']} distinct timing values in "
               f"{a.timing['n']} measurements")
         a.notes.append("Nothing downstream can leak if the clock never moves. "
@@ -182,7 +182,7 @@ def assess(blocks, timing, *, quick=False, seed=0) -> Assessment:
                        "safe.")
         return a
     if a.timing["n"] < 2000:
-        a.notes.append(f"only {a.timing['n']} traces -- treat every result below "
+        a.notes.append(f"only {a.timing['n']} traces - treat every result below "
                        "as provisional; this channel usually needs 1e4-1e6")
 
     # ---- 1. model-free: does the data move the clock? -------------------
@@ -237,7 +237,7 @@ def assess(blocks, timing, *, quick=False, seed=0) -> Assessment:
               f"no finer than {1 << shift} bytes", "weak",
               "the width where the XOR bucketing concentrates most: "
               + ", ".join(f"{1<<s}B:{c:.2f}" for s, c in conc.items())
-              + ". This is an UPPER bound and biased coarse -- wider buckets "
+              + ". This is an UPPER bound and biased coarse - wider buckets "
               "hold more traces and so dip harder. On a capture where the "
               "round-1 difference sweep resolves 4-byte granularity, this "
               "statistic still peaks at 16. For the real number, sweep "
@@ -346,7 +346,7 @@ def _conclude(a: Assessment, inp, enc, dec, shift, input_side_already=False,
               f"order {need:,.0f}", "weak",
               f"mean-peak excess {excess:.2f} now, scaling as sqrt(n) toward "
               f"~{RECOVERY_EXCESS}. An attacker who knows the key is "
-              "confirming rather than searching, and gets there sooner -- "
+              "confirming rather than searching, and gets there sooner - "
               "read this as an upper bound on their cost, not a lower one")
         # Layout has to come from the SAME side the leak is on, over ALL 120
         # pairs. Two ways of getting this wrong were tried first: the output
@@ -354,7 +354,7 @@ def _conclude(a: Assessment, inp, enc, dec, shift, input_side_already=False,
         # target "four tables" because offset 4 beat offset 3; and the cheap
         # input-side profile, which is blind to an output-side leak, put a
         # TinyCrypt-style offset-3 family at offset 7. So pay for the full scan
-        # on the winning direction -- about 120 pair searches.
+        # on the winning direction - about 120 pair searches.
         side = "enc" if "encryption" in label else "dec"
         full = probe.pair_output_test(a_blocks, a_timing, side, shift)
         a.tests[f"pair_output_{side}_full"] = full
@@ -385,7 +385,7 @@ def _conclude(a: Assessment, inp, enc, dec, shift, input_side_already=False,
     else:
         # A positive-but-small excess is worth saying out loud. The key-free
         # tests here are strictly weaker than a key-known attack on the same
-        # traces -- this repo's SNMPv3 capture yields a key, and reads only
+        # traces - this repo's SNMPv3 capture yields a key, and reads only
         # +0.7 over the floor to a detector that does not know the key. Calling
         # that "clean" would be the most damaging thing this tool could do.
         best_excess = max([(r.statistic - floor) for r in (enc, dec)
@@ -393,7 +393,7 @@ def _conclude(a: Assessment, inp, enc, dec, shift, input_side_already=False,
         if best_excess / max(se, 1e-9) > 1.5:
             need = a.timing["n"] * (RECOVERY_EXCESS / best_excess) ** 2
             a.add("cache-collision leakage",
-                  "SUGGESTIVE -- above the floor but below the firing threshold",
+                  "SUGGESTIVE - above the floor but below the firing threshold",
                   "weak",
                   f"best output-side excess {best_excess:+.2f} over a measured "
                   f"floor of {floor:.2f}. Excess grows as sqrt(n), so order "
@@ -431,15 +431,15 @@ def _layout(profile: dict, invert=False) -> str:
     other = [vals[x] for x in vals if x % 4]
     if len(mod4) >= 2 and other:
         # every 0-mod-4 offset must beat every other one, and by more than the
-        # spread among the others -- otherwise this is just a ranking
+        # spread among the others - otherwise this is just a ranking
         gap = min(vals[d] for d in mod4) - max(other)
         if gap > 0 and gap > (max(other) - min(other)):
             return ("four separate tables indexed by row (only offsets 0 mod 4 "
-                    "can collide) -- the channel is partitioned, not suppressed")
+                    "can collide) - the channel is partitioned, not suppressed")
     if lead > 3 * spread:
         return (f"one access family dominates (offset {top} in OBSERVED byte "
-                "order) -- a single table reached in an order that only lets "
+                "order) - a single table reached in an order that only lets "
                 "that family meet. Note ShiftRows permutes state positions "
                 "before they become observable bytes, so this offset need not "
                 "equal the one in the implementation's own coordinates")
-    return "one shared table across all offsets -- the fully exposed case"
+    return "one shared table across all offsets - the fully exposed case"

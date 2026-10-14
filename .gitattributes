@@ -2,7 +2,7 @@
 #
 # `eol=lf` IS LOAD-BEARING AND IS NOT THE DEFAULT. `text=auto` on its own
 # stores LF in the object database but converts on CHECKOUT to `core.eol`,
-# which defaults to `native` -- CRLF on Windows. `core.autocrlf=false` does NOT
+# which defaults to `native` - CRLF on Windows. `core.autocrlf=false` does NOT
 # prevent that: autocrlf is the legacy fallback and is ignored once a path has
 # an explicit `text` attribute. So the checkout side is pinned rather than left
 # to the platform.
@@ -13,7 +13,7 @@
 * text=auto eol=lf
 
 # Test vectors: timing arrays with seed-regenerated material. Small and
-# tracked on purpose so the replay tests travel with the package -- but never
+# tracked on purpose so the replay tests travel with the package - but never
 # converted, and never diffed as text.
 *.npz binary
 *.npy binary

@@ -1,16 +1,16 @@
 """Capture: the target-agnostic container the attack runs on.
 
-A Capture is *observed* data — per-trace plaintext and/or ciphertext plus the
-timing — and the metadata needed to interpret it (mode, key size, cache-line
+A Capture is *observed* data - per-trace plaintext and/or ciphertext plus the
+timing - and the metadata needed to interpret it (mode, key size, cache-line
 granularity). It contains **no key**: `engine_input()` derives the block-cipher
 output the attacker knows purely from observation, so the same object works for a
 live hardware interface or a recorded file, and other agents can produce one
 without touching the engine.
 
 Getting a Capture:
-  * from a live interface — implement a `TraceSource` (one method, `capture()`),
+  * from a live interface - implement a `TraceSource` (one method, `capture()`),
     see `sources.py`;
-  * from recorded data — `Capture.from_npz` / `Capture.from_csv`, or build one
+  * from recorded data - `Capture.from_npz` / `Capture.from_csv`, or build one
     directly with numpy arrays.
 
 What the attacker must observe, per mode (no key needed):

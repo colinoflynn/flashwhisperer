@@ -25,8 +25,8 @@ Two things become possible that observation alone cannot do:
   question to ask of an unknown target.
 * **amplification.** If the target is deterministic and resettable, the same
   input can be measured K times and the minimum kept. That removes measurement
-  jitter -- not the target's own input-dependent variation, which is the signal
-  -- and is what makes a coarse oracle usable.
+  jitter - not the target's own input-dependent variation, which is the signal
+  - and is what makes a coarse oracle usable.
 """
 from __future__ import annotations
 
@@ -64,7 +64,7 @@ def _gmul(a, c):
 
 
 # --------------------------------------------------------------------------
-# simulated target -- ground truth for testing the detector
+# simulated target - ground truth for testing the detector
 # --------------------------------------------------------------------------
 @dataclass
 class SimulatedTarget:
@@ -73,8 +73,8 @@ class SimulatedTarget:
     Faithful enough to exercise every branch of the detector, and adjustable so
     each conclusion the detector can draw has a corresponding ground truth:
 
-    direction   "enc" or "dec" -- what the device does to what you send it
-    observe     "input" or "output" -- which side the assessor gets to see
+    direction   "enc" or "dec" - what the device does to what you send it
+    observe     "input" or "output" - which side the assessor gets to see
     layout      "single"  all 16 lookups share one table (any pair may collide)
                 "four"    lookup j uses table j mod 4 (only offsets 0 mod 4)
                 "family3" only (i, i+3) pairs ever meet, as TinyCrypt's order does
@@ -105,7 +105,7 @@ class SimulatedTarget:
         self._k10 = np.frombuffer(bytes(rk[-1]), np.uint8).astype(np.int64)
         self.calls = 0
 
-    # -- the cipher ---------------------------------------------------------
+    # - the cipher ---------------------------------------------------------
     def _transform(self, blocks):
         b = np.asarray(blocks, np.uint8).reshape(-1, 16)
         if self.direction == "enc":
@@ -165,7 +165,7 @@ class SimulatedTarget:
         visits the encryption's states but looks them up through the *inverse*
         S-box, at the InvShiftRows-permuted positions. Getting this wrong makes
         the simulated decryption's first modelled round linear in the observed
-        plaintext, which is exactly the signature of an INPUT-side target -- so
+        plaintext, which is exactly the signature of an INPUT-side target - so
         the detector would be graded against a target that is lying about which
         side it is.
         """
@@ -207,7 +207,7 @@ class SimulatedTarget:
                 total += (tag[:, a] == tag[:, b])
         return total
 
-    # -- the interface ------------------------------------------------------
+    # - the interface ------------------------------------------------------
     def measure_many(self, blocks):
         """Vectorised: the same model as `measure`, for generating test data."""
         b = np.asarray(blocks, np.uint8).reshape(-1, 16)
@@ -272,7 +272,7 @@ def determinism(target, trials=200, repeats=5, seed=0):
     Returns the median spread across repeats of one input, next to the spread
     across different inputs. If the within-input spread is a large fraction of
     the between-input spread, the oracle is jitter-dominated and `repeats` (or a
-    better timing method) is the first thing to fix -- no amount of modelling
+    better timing method) is the first thing to fix - no amount of modelling
     will make up for it.
     """
     rng = np.random.default_rng(seed)

@@ -19,7 +19,7 @@ Two table layouts are supported:
               1 KiB tables of 4-byte entries; the final round uses the S-box.
               Because each entry is 4 bytes, a 128-bit flash line holds only 4
               entries and the flash line index equals the top 6 bits of the
-              lookup index -- i.e. a T-table leaks *more* per lookup than an
+              lookup index - i.e. a T-table leaks *more* per lookup than an
               S-box does.
 
 Only SubBytes / T-table lookups are treated as flash *data* accesses. The

@@ -1,22 +1,22 @@
-"""Where will the AES tables *be* at run time -- flash, or RAM?
+"""Where will the AES tables *be* at run time - flash, or RAM?
 
 `fwscan` answers "does this image contain AES lookup tables, and of what
 shape?".  That is a property of the **library**.  Every break in this repo,
 though, rests on a property of the **build**: the tables are read out of flash,
 through a wide slow array with wait states and a row latch.  The same library,
-the same source, the same ciphertext -- one linker line apart -- is either a
+the same source, the same ciphertext - one linker line apart - is either a
 full key in 20 000 timings or a flat line
 (`hardware/ST_CRYPTOLIB.md` §4).  No functional test can see the difference.
 
 This module asks the placement question, from three kinds of artefact, with
 three very different degrees of certainty:
 
-  1. **Linked ELF (+ map)** -- exact.  Section headers carry the run-time
+  1. **Linked ELF (+ map)** - exact.  Section headers carry the run-time
      address (`sh_addr`) even for `.data`, whose *contents* live in flash but
      whose *address* is RAM.  Find the table bytes inside an allocatable
      section, add `sh_addr`, classify the address against a part memory map.
 
-  2. **Raw `.bin`** -- inference, and the interesting case.  A table destined
+  2. **Raw `.bin`** - inference, and the interesting case.  A table destined
      for RAM is *still in the flash image*, as a `.data` initialiser that the
      reset handler copies.  "The table bytes are in the image" therefore does
      not separate safe from broken.  Four signals do, in the order they are
@@ -38,19 +38,19 @@ three very different degrees of certainty:
 
      Each alone has a failure mode; §"the aliasing trap" below is the one that
      cost a false positive here.  When none of the four fires, the verdict is
-     UNDETERMINED -- never EXPOSED by default.
+     UNDETERMINED - never EXPOSED by default.
 
-  3. **Object / archive (`.o`, `.a`)** -- before linking, the address does not
+  3. **Object / archive (`.o`, `.a`)** - before linking, the address does not
      exist yet.  The only correct verdict is conditional: *safe iff the
      integrator adds a linker rule*.  A tool can say which rule, and can check
-     a supplied linker script for it -- which is exactly the check that would
+     a supplied linker script for it - which is exactly the check that would
      have caught ST shipping 2 277 linker scripts, none of which maps
      `CMOX_CTA_PROTECTED_DATA`.
 
 ### The aliasing trap
 
 The reset handler's `_sidata` (the load address of `.data`) is a flash address
-literal, and it points at the *first byte of the .data initialiser* -- which is
+literal, and it points at the *first byte of the .data initialiser* - which is
 frequently the first table, when the tables are the thing that was moved to
 RAM.  A naive "is there a literal equal to base+offset?" therefore fires on the
 copy loop itself and calls the fixed build broken.  Measured on
@@ -78,7 +78,7 @@ from . import fwscan
 # "Is the address 0x08xxxxxx?" is the wrong rule, and it is wrong on exactly
 # the parts that matter.  Three levels, because two are not enough:
 #
-#   EXPOSED     read through the flash interface -- wait states, a 64/128-bit
+#   EXPOSED     read through the flash interface - wait states, a 64/128-bit
 #               row latch, and whatever ART/prefetch sits on top.  This is the
 #               channel this project measures; it is present even with every
 #               cache bit cleared (research/targets/stm32g474_art_geometry.md).
@@ -124,7 +124,7 @@ class Part:
     # the wrong knob: on most parts here disabling the accelerator reduces the
     # channel without closing it, and on the CC1352 it makes it STRONGER.
     # Printed with an EXPOSED verdict.  Empty means "not measured on this part"
-    # and nothing is printed -- silence rather than a plausible guess.
+    # and nothing is printed - silence rather than a plausible guess.
     mitigation: str = ""
 
     def classify(self, addr: int) -> Region | None:
@@ -159,7 +159,7 @@ _F2 = Part("stm32f2", (
     Region("SRAM1/2", 0x2000_0000, 128 * _K, SAFE),
 ), note="no CCM")
 
-# STM32G4 (G474RE): ART with a 256-byte data cache -- exactly the size of the
+# STM32G4 (G474RE): ART with a 256-byte data cache - exactly the size of the
 # S-box, which is why the S-box goes resident and a 1 KB T-table cannot.  CCM
 # lives at 0x10000000 and is also mirrored into 0x20000000 on this family.
 _G4 = Part("stm32g4", (
@@ -171,7 +171,7 @@ _G4 = Part("stm32g4", (
 ), note="ST's own cryptolib broke here with prefetch, I-cache and D-cache all off")
 
 # STM32F3 (F303): no data cache at all, and hardware/FLASH_READ_LATCH work
-# found no read latch either -- but it still has wait states, so a table in
+# found no read latch either - but it still has wait states, so a table in
 # flash is still EXPOSED as a matter of policy.  The F3 data path measured
 # bit-exactly constant time; the instruction path did not.
 _F3 = Part("stm32f3", (
@@ -204,7 +204,7 @@ _L4 = Part("stm32l4", (
 ))
 
 # STM32F7: this is where "0x20000000 means RAM means safe" breaks down in the
-# *other* direction.  0x20000000 is DTCM -- tightly coupled, never cached, the
+# *other* direction.  0x20000000 is DTCM - tightly coupled, never cached, the
 # genuinely safe place.  0x20010000 onwards is SRAM1/2, which IS cacheable by
 # the Cortex-M7 L1 D-cache.  Flash appears twice: at 0x08000000 through the AXI
 # (cacheable, ART) and at 0x00200000 through the ITCM bus.
@@ -221,7 +221,7 @@ _F7 = Part("stm32f7", (
     Region("DTCM (F746: 64 KB)", 0x2000_0000, 64 * _K, SAFE,
            "tightly coupled, bypasses the L1 D-cache entirely"),
     Region("SRAM1", 0x2001_0000, 240 * _K, CACHED_RAM,
-           "cacheable by the M7 L1 D-cache -- not the flash channel, but not flat either"),
+           "cacheable by the M7 L1 D-cache - not the flash channel, but not flat either"),
     Region("SRAM2", 0x2004_C000, 16 * _K, CACHED_RAM),
 ), note="F746 map; on an F76x the DTCM is 128 KB and 0x20010000 is DTCM instead")
 
@@ -242,7 +242,7 @@ _H7 = Part("stm32h7", (
     Region("flash (AXIM)", 0x0800_0000, 2 * _M, EXPOSED,
            "wait states + 256-bit read; L1 cacheable"),
     Region("DTCM", 0x2000_0000, 128 * _K, SAFE,
-           "tightly coupled, not cached -- the safe destination on this part"),
+           "tightly coupled, not cached - the safe destination on this part"),
     Region("AXI SRAM (D1)", 0x2400_0000, 512 * _K, CACHED_RAM,
            "cacheable by the M7 L1 D-cache"),
     Region("SRAM1/2 (D2)", 0x3000_0000, 288 * _K, CACHED_RAM),
@@ -256,14 +256,14 @@ _H7 = Part("stm32h7", (
 # flash base is **0x00000000**, so "is it 0x08xxxxxx?" says SAFE about a table
 # sitting in flash.  The nRF52840's NVMC cache is an *instruction* cache (2-way,
 # 2 x 512 B); data reads go to the array with wait states, which is the F3-shaped
-# case: no data cache, still a channel.  Not measured on this bench -- the
+# case: no data cache, still a channel.  Not measured on this bench - the
 # classification is from the memory map, and the exposure from the mechanism.
 _NRF52 = Part("nrf52", (
     Region("flash (NVMC)", 0x0000_0000, 1 * _M, EXPOSED,
            "wait states; the NVMC cache is instruction-side only"),
     Region("RAM", 0x2000_0000, 256 * _K, SAFE),
 ), note="flash at 0x00000000: an address-prefix rule fails on this part",
-   mitigation="No register reaches the read latch on this part -- there is no "
+   mitigation="No register reaches the read latch on this part - there is no "
               "FLASH_ACR equivalent and no wait-state field anywhere. Every "
               "ICACHECNF setting leaks identically. Tables in RAM is the only "
               "measured fix.")
@@ -301,7 +301,7 @@ _RA2A1 = Part("ra2a1", (
     Region("SRAM", 0x2000_0000, 32 * _K, SAFE),
 ), note="flash at 0x00000000: an address-prefix rule fails on this part. "
         "measured: research/targets/ra2a1.md",
-   mitigation="FCACHEE.FCACHEEN=0 closes it completely -- no latch survives "
+   mitigation="FCACHEE.FCACHEEN=0 closes it completely - no latch survives "
               "behind the register, unlike every ST part here. MEMWAIT=0 "
               "(requires ICLK<=32 MHz) also works. But on this Cortex-M23 the "
               "cipher must ALSO avoid a branching xtime(), which no flash "
@@ -334,7 +334,7 @@ _CC13X2 = Part("cc13x2", (
    mitigation="DO NOT just clear VIMS_CTL.MODE: MODE=OFF leaves the 16 B line "
               "buffer and makes the S-box channel STRONGER (sigma 1.539 -> 4.289, "
               "full key in 5 000 traces instead of 10 000). What closes it is "
-              "MODE=OFF *plus* VIMS_CTL.IDCODE_LB_DIS=1 -- both, and the second "
+              "MODE=OFF *plus* VIMS_CTL.IDCODE_LB_DIS=1 - both, and the second "
               "is inert on its own. Alternatives: PRCM_CPUCLKDIV=/2 (bit-exact "
               "in CACHE mode only), or tables in SRAM.")
 
@@ -347,7 +347,7 @@ _GENERIC = Part("generic", (
     Region("code region (boot alias / XIP)", 0x0000_0000, 0x1000_0000, EXPOSED,
            "the Cortex-M Code region: flash or an XIP alias on every part seen here"),
     Region("SRAM region", 0x2000_0000, 0x2000_0000, UNKNOWN,
-           "the Cortex-M SRAM region -- but DTCM, CCM and CACHED AXI-SRAM all "
+           "the Cortex-M SRAM region - but DTCM, CCM and CACHED AXI-SRAM all "
            "live here on different parts; pass --part to decide"),
     Region("external QSPI XIP", 0x9000_0000, 256 * _M, EXPOSED),
 ), note="no part given: the SRAM region cannot be classified without one")
@@ -639,8 +639,8 @@ def find_copy_regions(data: bytes, base: int, part: Part,
       * `len` is a multiple of 4 and smaller than the RAM region.
 
     That filter alone is not enough, and the failure is instructive.  The
-    *bss-clear* loop has the same shape -- `(_sbss, _ebss)` are two RAM words in
-    the same literal pool -- so any nearby flash word completes a plausible
+    *bss-clear* loop has the same shape - `(_sbss, _ebss)` are two RAM words in
+    the same literal pool - so any nearby flash word completes a plausible
     triple, and on `rigs/fw_f7` one such phantom region swallowed the S-box
     and turned a flash table into a "SAFE" verdict: a **false negative**, the
     worst kind of error this tool can make.
@@ -742,7 +742,7 @@ def find_copy_regions(data: bytes, base: int, part: Part,
 # --------------------------------------------------------------------------
 
 def find_zero_regions(data: bytes, part: Part, window: int = 12) -> list[tuple[int, int]]:
-    """Recover `(_sbss, _ebss)` pairs -- the zero-fill loop -- from literals.
+    """Recover `(_sbss, _ebss)` pairs - the zero-fill loop - from literals.
 
     Worth having for one reason: a build whose tables are in flash *and* which
     owns a table-sized zeroed RAM buffer may be copying the tables there at
@@ -827,7 +827,7 @@ def analyse_elf(data: bytes, part: Part, path: str = "<elf>") -> Report:
         return analyse_object(data, part, path)
 
     rep = Report(path, "elf", part.name, "NO-TABLES")
-    rep.confidence = ("exact -- the run-time address is in the section header; "
+    rep.confidence = ("exact - the run-time address is in the section header; "
                       "the only judgement left is which region is safe on this part")
 
     # Symbol lookup by address, for naming.
@@ -912,7 +912,7 @@ def analyse_bin(data: bytes, part: Part, base: int | None = None,
             rep.notes.append("no Cortex-M vector table at offset 0: assuming flash "
                              f"base {base:#010x}. If this image is a partial dump, an "
                              "XIP image from external QSPI, or position-independent, "
-                             "every address below is wrong -- pass --base.")
+                             "every address below is wrong - pass --base.")
 
     hits = find_tables(data)
     if not hits:
@@ -950,17 +950,17 @@ def analyse_bin(data: bytes, part: Part, base: int | None = None,
     # without knowing anything about the start-up code.
     #
     # This is what catches a section given `> CCM AT > FLASH` with no copy loop
-    # -- a real and easy mistake, and the one in ST's own published snippet.
+    # - a real and easy mistake, and the one in ST's own published snippet.
     loaded = (set(lits) | set(movs)) - copy_srcs - copy_dsts
 
     # Veto: if ANY table in the group is demonstrably read where it is stored --
-    # a PC-relative literal holding its own flash address -- then the group did
+    # a PC-relative literal holding its own flash address - then the group did
     # not move, and any delta that seems to fit the others is a coincidence.
     #
     # `rigs/fw_f4` is the case that forced this.  `aes.c` keeps
     # `te0_ram[256] .. te3_ram[256]` in .bss at exactly the same 1 KB spacing as
     # `Te0..Te3` in flash, so those four .bss addresses look like a perfect
-    # four-table relocation -- while `SBOX`'s own flash address sits in a
+    # four-table relocation - while `SBOX`'s own flash address sits in a
     # literal two instructions away.  Without the veto the tool reported the
     # four T-tables at their .bss shadow addresses.
     stored_in_place = any((base + h.offset) in loaded for h in hits)
@@ -976,7 +976,7 @@ def analyse_bin(data: bytes, part: Part, base: int | None = None,
     best_delta = None
     if delta_support:
         # Ties happen, and they are not random: when the tables are laid out
-        # end to end, `d` and `d + table_size` fit equally well -- one maps each
+        # end to end, `d` and `d + table_size` fit equally well - one maps each
         # table onto its own address, the other onto its neighbour's.  Break the
         # tie on the tightest packing (the lowest highest-mapped address), which
         # is the un-shifted reading; then prefer "nothing moved" (d = 0).
@@ -1063,8 +1063,8 @@ def analyse_bin(data: bytes, part: Part, base: int | None = None,
         # A literal need not hold the table's own address.  GCC merges adjacent
         # `.rodata` and addresses the lot from one anchor, reaching the table
         # with a constant displacement: `LDRB.W Rt,[Rn,#imm12]` covers 0..4095.
-        # Without this, TinyCrypt-shaped code -- `ldr r4,<.rodata>` then
-        # `ldrb r3,[r4,#44]` -- produces no literal match at all, and three
+        # Without this, TinyCrypt-shaped code - `ldr r4,<.rodata>` then
+        # `ldrb r3,[r4,#44]` - produces no literal match at all, and three
         # builds whose keys fell on silicon came back UNDETERMINED.
         anchors = [v for v in loaded
                    if 0 < load_addr - v <= 4095 and
@@ -1084,7 +1084,7 @@ def analyse_bin(data: bytes, part: Part, base: int | None = None,
         confident = True
         if (rn_ldr or rn_mov) and run_addr != load_addr:
             addr, why = run_addr, ("the copy loop maps it to RAM AND code loads that "
-                                   "RAM address -- two independent signals agreeing")
+                                   "RAM address - two independent signals agreeing")
         elif fl_ldr or fl_mov:
             addr, why = load_addr, "code loads the flash address"
         elif run_addr != load_addr:
@@ -1134,7 +1134,7 @@ def analyse_bin(data: bytes, part: Part, base: int | None = None,
             region=reg.name if reg else "unmapped", exposure=exposure, evidence=ev))
 
     rep.verdict = _roll_up(rep.placements)
-    rep.confidence = ("inferred -- the run-time address is reconstructed from the "
+    rep.confidence = ("inferred - the run-time address is reconstructed from the "
                       "start-up copy loop and the literal pool, not read off a "
                       "section header")
 
@@ -1145,7 +1145,7 @@ def analyse_bin(data: bytes, part: Part, base: int | None = None,
         if biggest >= need:
             where = ", ".join(f"{s:#010x}+{n_}" for s, n_ in zeros[:3])
             rep.notes.append(
-                f"zero-filled RAM of at least {biggest} bytes ({where}) -- enough to "
+                f"zero-filled RAM of at least {biggest} bytes ({where}) - enough to "
                 f"hold the {need} bytes of tables found. If this build copies them "
                 "there at start-up and reads them through a pointer, the run-time "
                 "placement is a RUNTIME decision and the EXPOSED verdict above is "
@@ -1182,7 +1182,7 @@ def analyse_object(data: bytes, part: Part, path: str = "<obj>") -> Report:
     """A relocatable .o: section names and flags are visible, addresses are not."""
     elf = parse_elf(data)
     rep = Report(path, "object", part.name, "NO-TABLES")
-    rep.confidence = ("conditional -- a relocatable object has no addresses. "
+    rep.confidence = ("conditional - a relocatable object has no addresses. "
                       "The verdict is a function of the linker script.")
     for sec in elf.sections:
         if not sec.alloc or not sec.has_bytes:
@@ -1211,7 +1211,7 @@ def analyse_object(data: bytes, part: Part, path: str = "<obj>") -> Report:
         elif s not in (".rodata", ".data", ".text") and not s.startswith((".rodata.", ".data.", ".text.")):
             rep.notes.append(
                 f"{s}: a non-standard section name holding AES tables. That is the "
-                "signature of a library that EXPECTS to be placed -- check the "
+                "signature of a library that EXPECTS to be placed - check the "
                 "vendor's documentation, and then check your linker script.")
     if secs:
         rep.notes.append("required rule (GNU ld): put " +
@@ -1255,7 +1255,7 @@ def iter_archive(data: bytes):
 
 def analyse_archive(data: bytes, part: Part, path: str = "<archive>") -> Report:
     rep = Report(path, "archive", part.name, "NO-TABLES")
-    rep.confidence = ("conditional -- an archive has no addresses; the verdict is a "
+    rep.confidence = ("conditional - an archive has no addresses; the verdict is a "
                       "function of the linker script that consumes it")
     members = 0
     for name, body in iter_archive(data):
@@ -1293,7 +1293,7 @@ def check_linker_script(text: str, section: str, dialect: str | None = None) -> 
       Arm/Keil (.sct) `*(CMOX_CTA_PROTECTED_DATA)` inside an execution region.
 
     Returns whether it was mentioned and, for GNU ld, which output section and
-    memory region it lands in -- because mentioning it is not enough: ST's own
+    memory region it lands in - because mentioning it is not enough: ST's own
     published snippet places it at a fixed RAM address with **no load region and
     no copy**, which leaves the tables uninitialised (see
     rigs/fw_g4_st/link_cta.ld).
@@ -1464,7 +1464,7 @@ def row_offset_from_image(path, part="stm32f4", granule=None):
         note = "%s %s @ 0x%08x (%s, %s)" % (
             p.table, p.symbol or "", addr, p.section or "?", p.exposure)
         if p.exposure != EXPOSED:
-            return None, addr, note + "  -- not flash-resident, no row channel"
+            return None, addr, note + "  - not flash-resident, no row channel"
         return _geo.row_offset(addr, granule), addr, note
     return None, None, "no S-box table found in %s" % path
 
@@ -1508,7 +1508,7 @@ _VERDICT_TEXT = {
                    "table sections in RAM. Supply one with --ld to check.",
     "UNDETERMINED": "-- the artefact does not settle it. Say so rather than guessing.",
     "NO-TABLES": "-- no AES lookup tables found (constant-time core, tables built at "
-                 "run time, or a packed image -- fwscan --decompress first).",
+                 "run time, or a packed image - fwscan --decompress first).",
 }
 
 
@@ -1583,13 +1583,13 @@ def main(argv=None) -> int:
                     print(f"  ld {ld}: PLACES {sec} in output section {where} "
                           f"-> region {reg}")
                     if "AT" not in reg and reg not in ("?",) and not reg.startswith("RAM"):
-                        print("     (region is not obviously RAM -- check by hand)")
+                        print("     (region is not obviously RAM - check by hand)")
                     if reg != "?" and "AT" not in reg and reg.upper().startswith("RAM"):
                         print("     WARNING: placed in RAM with no `AT >` load region. "
                               "ST's own published snippet has this bug: the tables "
                               "arrive uninitialised unless something copies them.")
                 else:
-                    print(f"  ld {ld}: does NOT mention {sec} -- the section falls "
+                    print(f"  ld {ld}: does NOT mention {sec} - the section falls "
                           "through to the read-only region next to .text, i.e. FLASH")
                     # Escalate only when the section is one somebody *asked* to be
                     # placed: named with --section, or a non-standard name, which

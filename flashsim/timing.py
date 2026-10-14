@@ -34,7 +34,7 @@ class Contention:
     lookups.
 
     This models the case where instruction fetches reach the same flash
-    structure the table data uses -- i.e. a single shared flash latch, or a
+    structure the table data uses - i.e. a single shared flash latch, or a
     UNIFIED cache holding both code and data. It does NOT apply when instructions
     are served separately (a dedicated instruction cache / prefetch buffer, split
     I/D caches, or code executed from RAM): in those cases pass contention=None,

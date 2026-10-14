@@ -1,4 +1,4 @@
-"""Trace sources: where a Capture comes from. The engine/attack never care — they
+"""Trace sources: where a Capture comes from. The engine and the attack never care - they
 consume a Capture. To add a new hardware interface or data format, implement one
 method:
 
@@ -128,7 +128,7 @@ class SimulatedProtocolSource:
         # deterministic per-block AES time carrying the last-round line collision
         aes_cyc, _ = encrypt_and_time(counters, rk, "sbox", PRESETS[self.preset], noise_sigma=0.0)
         # in-device amplification (K encryptions of the same block) scales the
-        # signal but NOT the fixed network jitter -- exactly the boot_attack trick.
+        # signal but NOT the fixed network jitter - exactly the boot_attack trick.
         signal = self.K * aes_cyc.astype(float)
         if self.sigma > 0:
             reps = rng.normal(0.0, self.sigma, (self.R, self.n))

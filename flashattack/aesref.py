@@ -3,7 +3,7 @@ inversion. Pure NumPy; the attack engine uses this to (a) compute the known
 block-cipher output per mode and (b) invert a recovered round key to the master
 key. State byte order j = row + 4*col (column-major), matching flashsim.
 
-This is the single source of AES truth for the host tooling -- verified against
+This is the single source of AES truth for the host tooling - verified against
 FIPS-197 in tests/.
 """
 from __future__ import annotations
@@ -93,7 +93,7 @@ def encrypt_blocks_rk(rk, blocks: np.ndarray) -> np.ndarray:
     """AES encrypt from ROUND KEYS rather than a master key.
 
     `rk` is (Nr+1, 16) uint8, as `key_expansion` returns. Separated out because
-    a recovery has round keys in hand before it has a master -- the last-round
+    a recovery has round keys in hand before it has a master - the last-round
     attack recovers rk[Nr], and verifying a candidate rk[Nr-1] against a known
     pair needs this and not `encrypt_blocks`. `hardware/aes_ref.py`'s
     `encrypt(key, block, rk=...)` is this function with a bytes interface.
@@ -184,7 +184,7 @@ def invert_from_roundkeys(round_keys, keysize=128):
     missing = [w for w in needed if w not in words]
     if missing:
         raise ValueError(f"AES-{keysize} master needs schedule words {list(needed)}; "
-                         f"missing {missing} -- supply the last {Nk//4 if Nk%4==0 else 2} round keys "
+                         f"missing {missing} - supply the last {Nk//4 if Nk%4==0 else 2} round keys "
                          f"(rounds {(total-Nk)//4}..{Nr})")
     final = [b for w in needed for b in words[w]]
     return invert_key_schedule(final, keysize)

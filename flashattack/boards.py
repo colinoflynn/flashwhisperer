@@ -58,7 +58,7 @@ BOARDS = {
         data_cache_bytes=128,                              # 128 B: holds neither S-box nor T-tables
         drive_label="NOD_F429ZI",
         notes="Nucleo-144 -> VCP on USART3 (not USART2); F4 USART uses SR/DR; LED LD1=PB0."),
-    "f303": Board(   # ChipWhisperer CW308 UFO target / future -- for power/EM, not flash-timing
+    "f303": Board(   # ChipWhisperer CW308 UFO target / future - for power/EM, not flash-timing
         name="ChipWhisperer STM32F303", mcu="STM32F303", core="cortex-m4",
         gcc_define="STM32F303xC",
         cpu_flags="-mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16",

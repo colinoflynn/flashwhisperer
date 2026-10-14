@@ -4,7 +4,7 @@ The simulator is the point of this file: it leaks from every round, like a real
 cipher, and its decryption walks a real InvCipher. Both matter. A one-round
 simulator makes the input-vs-output discriminator read ~6 where hardware reads
 ~1.4, and walking the encryption from the plaintext to model a decryption makes
-the target look input-side when it is not -- either shortcut would have graded
+the target look input-side when it is not - either shortcut would have graded
 the detector against a target that flatters it.
 """
 
@@ -12,7 +12,7 @@ import os as _os, sys as _sys
 # The five packages live under flashwhisperer/ (REORG_PLAN D2).  Walk up to the
 # .git marker rather than assume a depth: importers of these packages sit at the
 # repository root, in hardware/, results/<campaign>/, demo/<stack>/ and
-# research/<area>/ -- four different depths.  `.git` is a FILE in a worktree, so
+# research/<area>/ - four different depths.  `.git` is a FILE in a worktree, so
 # test existence, not isdir.
 _fw = _os.path.dirname(_os.path.abspath(__file__))
 while _fw != _os.path.dirname(_fw) and not _os.path.exists(_os.path.join(_fw, ".git")):

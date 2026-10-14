@@ -8,10 +8,10 @@ search, not more traces**, and the unit a recovery should be quoted in is
 therefore **(traces, candidate keys)** rather than a byte count.
 
 This module is the shared part of that search. It was written independently
-four times -- `results/harmony_snmpv3/enumerate_key.py`,
+four times - `results/harmony_snmpv3/enumerate_key.py`,
 `results/sstimer_jitter/enumerability.py`,
 `results/mpc5606b/enumerability.py` (same idea, same metric name, arrived at in
-a parallel session) and `research/round2/round2_finish.py` -- plus the
+a parallel session) and `research/round2/round2_finish.py` - plus the
 packaged-but-unused `bruteforce.search_pairs`.
 
 HOW IT RELATES TO `bruteforce`. That module runs **many keys over one block**:
@@ -25,7 +25,7 @@ TWO THINGS THAT ARE EASY TO GET WRONG, both measured:
   * **Sum overlapping surfaces; do not filter them for agreement.** Where three
     pair sets touch the same four key bytes, each byte is constrained twice.
     Summing the three standardised surfaces put the true quartet at rank 2313,
-    2, 1, 2 for the four columns -- 2^13.2 for the whole key. An earlier version
+    2, 1, 2 for the four columns - 2^13.2 for the whole key. An earlier version
     ranked by ONE list and kept the quartets the others agreed with: 51 000 per
     column and nothing found in 4 M tries. Agreement is a weaker use of the
     same data than addition.
@@ -36,8 +36,8 @@ TWO THINGS THAT ARE EASY TO GET WRONG, both measured:
 WHAT THIS MODULE DOES NOT COVER. It does not know what a surface means, so it
 cannot tell a real ranking from a noise one: a `best_first` walk over surfaces
 with no channel in them enumerates 2^k rubbish just as happily. The guard is
-the negative control -- run the same walk on a shuffled or wrong-key surface
-and check it finds nothing -- not anything here. And the overlap trick needs
+the negative control - run the same walk on a shuffled or wrong-key surface
+and check it finds nothing - not anything here. And the overlap trick needs
 the victim's READ ORDER, which is a property of the compiled image: the
 specialised quartet enumeration for one such order stays in
 `results/harmony_snmpv3/enumerate_key.py`, where the image it was read from is
@@ -95,8 +95,8 @@ def candidate_lists(surfaces, depth, *, cost="score"):
     """The `depth` best cells of each surface, ascending, as (cost, payload) lists.
 
     `surfaces` is an iterable of `(ja, jb, S)`. Each payload is
-    `(ja, ka, jb, kb)` -- the two key-byte positions and their candidate values
-    -- which is what a verifier needs to assemble a round key.
+    `(ja, ka, jb, kb)` - the two key-byte positions and their candidate values
+    - which is what a verifier needs to assemble a round key.
 
     `cost="score"`  the surface's own value, standardised by its spread and
                     taken relative to its best cell. Comparable across pair
@@ -107,9 +107,9 @@ def candidate_lists(surfaces, depth, *, cost="score"):
                     of the capture: `results/mpc5606b/enumerability.py` carries
                     both for that reason.
     `cost="raw"`    the surface value as it stands, unshifted and unscaled.
-                    NOT comparable across pair sets -- a surface with a larger
+                    NOT comparable across pair sets - a surface with a larger
                     absolute mean dominates the walk regardless of its
-                    confidence -- and kept only because
+                    confidence - and kept only because
                     `results/sstimer_jitter/enumerability.py`'s archived
                     residual-bit numbers were measured with it. Reproducing an
                     archived count needs it; a new attack wants "score".
@@ -142,7 +142,7 @@ def best_first(lists, limit):
 
     `lists` is one ascending `[(cost, payload), ...]` per group. Yields payload
     tuples in increasing total, which is the order an attacker with a
-    verification oracle tries them in -- so the index at which the true one
+    verification oracle tries them in - so the index at which the true one
     appears IS the attack's candidate count, and the heap only ever holds the
     frontier, so the cost is the budget rather than the product.
 
@@ -200,7 +200,7 @@ def best_first_indices(vals, limit):
 def best_first_verified(lists, verify, max_pops=10**6):
     """Walk the product and stop at the first candidate that VERIFIES.
 
-    Returns `(pops, payload)` -- the number of candidates tried and the one
+    Returns `(pops, payload)` - the number of candidates tried and the one
     that worked, or `(pops, None)` if the budget ran out. `pops` is the
     attack's candidate count, which is the second half of the
     **(traces, candidate keys)** pair a recovery should be quoted as; a byte
@@ -208,8 +208,8 @@ def best_first_verified(lists, verify, max_pops=10**6):
 
     `verify(payload_tuple)` does the assembling and the checking, because what
     a payload means is the caller's: a round key here, a delta vector there.
-    It must use only what the attacker has -- a captured plaintext/ciphertext
-    pair off the wire, not the key from the capture file -- or the pop count is
+    It must use only what the attacker has - a captured plaintext/ciphertext
+    pair off the wire, not the key from the capture file - or the pop count is
     a rank estimate dressed up as a recovery.
     """
     pops = 0

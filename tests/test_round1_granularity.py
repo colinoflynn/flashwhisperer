@@ -11,7 +11,7 @@ and 2^68 is a keyspace reduction while 2^38, against one known (P, C) pair, is a
 break. So the exponent is the whole result and it is worth a regression test.
 
 Measured on tests/vectors/sbox_tinyaes_ecb-enc_128.npz (F429, ART on, 250 k
-blocks): the channel resolves 4 bytes, not the 16-byte cache line -- there is
+blocks): the channel resolves 4 bytes, not the 16-byte cache line - there is
 sub-line structure, consistent with 32-bit flash data reads inside a 128-bit
 line. See flashattack/EXPERIMENTAL.md.
 """
@@ -20,7 +20,7 @@ import os as _os, sys as _sys
 # The five packages live under flashwhisperer/ (REORG_PLAN D2).  Walk up to the
 # .git marker rather than assume a depth: importers of these packages sit at the
 # repository root, in hardware/, results/<campaign>/, demo/<stack>/ and
-# research/<area>/ -- four different depths.  `.git` is a FILE in a worktree, so
+# research/<area>/ - four different depths.  `.git` is a FILE in a worktree, so
 # test existence, not isdir.
 _fw = _os.path.dirname(_os.path.abspath(__file__))
 while _fw != _os.path.dirname(_fw) and not _os.path.exists(_os.path.join(_fw, ".git")):
@@ -71,7 +71,7 @@ def test_finer_than_four_bytes_does_not_resolve():
 @pytest.mark.slow
 def test_coarser_granularity_still_works():
     """Coarser information is implied by finer, so the line-level answer must
-    also come out -- this is the 2^68 reading the docs used to quote."""
+    also come out - this is the 2^68 reading the docs used to quote."""
     assert _correct_at(4) == 16
 
 

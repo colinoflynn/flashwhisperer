@@ -5,7 +5,7 @@ per part. A new target needs no changes here: describe it with a `Target` and th
 differencing and reporting all work unmodified. See `hardware/ARB_PORTING.md`.
 
 What this measures, in one line: at zero wait states, how many cycles a table load saves by
-COLLIDING with the previous load in the flash read word -- as a function of where the code
+COLLIDING with the previous load in the flash read word - as a function of where the code
 sits modulo the read word and how far apart the two loads are in the instruction stream.
 
     from flasharb import TARGETS, ArbDevice, align_spacing_map

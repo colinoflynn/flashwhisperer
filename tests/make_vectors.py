@@ -6,7 +6,7 @@ Run once per firmware (flash the board first). Example:
       --acr 00000705 --spec ecb-enc/2b7e151628aed2a6abf7158809cf4f3c/120000 \
       --spec ecb-dec/2b7e151628aed2a6abf7158809cf4f3c/120000
 
-Vectors are tiny (timing only, uint16, seed-regenerated material) -- see
+Vectors are tiny (timing only, uint16, seed-regenerated material) - see
 flashattack/vectors.py. The long test replays them (pytest --runslow).
 """
 
@@ -14,7 +14,7 @@ import os as _os, sys as _sys
 # The five packages live under flashwhisperer/ (REORG_PLAN D2).  Walk up to the
 # .git marker rather than assume a depth: importers of these packages sit at the
 # repository root, in hardware/, results/<campaign>/, demo/<stack>/ and
-# research/<area>/ -- four different depths.  `.git` is a FILE in a worktree, so
+# research/<area>/ - four different depths.  `.git` is a FILE in a worktree, so
 # test existence, not isdir.
 _fw = _os.path.dirname(_os.path.abspath(__file__))
 while _fw != _os.path.dirname(_fw) and not _os.path.exists(_os.path.join(_fw, ".git")):

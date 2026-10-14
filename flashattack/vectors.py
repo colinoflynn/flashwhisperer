@@ -33,7 +33,7 @@ def to_capture(path):
     """Build a key-agnostic Capture (capture.Capture) from a compact vector:
     regenerate the material and derive the OBSERVED plaintext/ciphertext the
     attacker would see. The key is used only to synthesise the observation and is
-    NOT stored in the Capture -- so the attack runs exactly as on real data."""
+    NOT stored in the Capture - so the attack runs exactly as on real data."""
     from .capture import Capture
     v = load(path)
     key = bytes.fromhex(v["key_hex"]); n = int(v["n"]); mode = v["mode"]

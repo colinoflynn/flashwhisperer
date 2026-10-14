@@ -41,7 +41,7 @@ def detrend(timing, window=None):
 
 def min_filter(timing, groups):
     """Given repeated measurements (an integer group id per trace), return the
-    per-group minimum time (kills positive-going jitter -- the Brumley-Boneh
+    per-group minimum time (kills positive-going jitter - the Brumley-Boneh
     remote-timing trick). Returns (group_ids_sorted, min_time)."""
     t = np.asarray(timing, float); g = np.asarray(groups)
     order = np.argsort(g, kind="stable")

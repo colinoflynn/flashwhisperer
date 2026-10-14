@@ -1,4 +1,4 @@
-"""flashleak -- is this black-box target leaking through its flash timing?
+"""flashleak - is this black-box target leaking through its flash timing?
 
 Built for someone who knows only that bytes go in or out of something doing
 crypto: not the mode, not whether they are watching plaintext or ciphertext, not
@@ -7,12 +7,12 @@ outcome differs between the answers.
 
 Two ways in.
 
-**Observation only** -- you have blocks and times, no control:
+**Observation only** - you have blocks and times, no control:
 
     from flashleak import assess, render
     print(render(assess(blocks, timing)))
 
-**Controlled input** -- you can send data and time the response:
+**Controlled input** - you can send data and time the response:
 
     from flashleak import fixed_vs_random, determinism, collect, assess, render
     print(determinism(tgt))            # is averaging worth anything?

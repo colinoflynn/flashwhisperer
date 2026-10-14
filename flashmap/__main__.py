@@ -1,4 +1,4 @@
-"""flashmap CLI -- `selftest`, `map`, `compare`.
+"""flashmap CLI - `selftest`, `map`, `compare`.
 
     python -m flashmap selftest --port COM9
     python -m flashmap map      --port COM9 --out f429.json
@@ -25,7 +25,7 @@ def _policy_config(st, ms):
 
     Not the headline one.  The headline geometry is the configuration with the
     most reuse, and on a part whose associativity is itself a knob that can be
-    the DIRECT-MAPPED setting -- which has no victim to choose, so every
+    the DIRECT-MAPPED setting - which has no victim to choose, so every
     re-touch probe sized from it is empty (`k < ways` has no solutions at
     ways = 1).  Pick instead the isolated configuration with the largest
     measured associativity, and take the spacing from that configuration's own
@@ -85,7 +85,7 @@ def cmd_selftest(a) -> int:
         ok, problems = host_selftest(dev)
     print()
     if ok:
-        print("SELFTEST PASS -- the shim is usable for `map`.")
+        print("SELFTEST PASS - the shim is usable for `map`.")
         return 0
     print(f"SELFTEST FAIL ({len(problems)} problem(s)):")
     for p in problems:
@@ -167,7 +167,7 @@ def cmd_map(a) -> int:
             # on what ran before it is visible in the capture rather than
             # indistinguishable from a structure.  It is sized from the first
             # pass because where retention is marginal is not known until the
-            # capacity has been measured -- and on the H723, where no geometry
+            # capacity has been measured - and on the H723, where no geometry
             # is fitted at all, this is the only control that fires.
             cv = first.value("cache")
             cap = (cv or {}).get("capacity_bytes") or (cv or {}).get("capacity_bytes_min")

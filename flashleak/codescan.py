@@ -1,6 +1,6 @@
 """Find table lookups by the CODE that reads them, not by the table's contents.
 
-`fwscan` and `placement` find a table by recognising its *bytes* -- the AES
+`fwscan` and `placement` find a table by recognising its *bytes* - the AES
 S-box, the four `Te`, the Gladman `gfm` set. That works, it is checked against
 builds whose keys came out on silicon, and it is the right tool for the job it
 was built for. It cannot help with a table nobody has a signature for, which is
@@ -14,7 +14,7 @@ past it:
 This module asks the other question. A table lookup has a *shape* in the
 instruction stream regardless of what is in the table:
 
-    LDR   r3, [pc, #N]        ; or MOVW/MOVT -- materialise a base address
+    LDR   r3, [pc, #N]        ; or MOVW/MOVT - materialise a base address
     ...
     LDRB  r0, [r3, r0]        ; register-offset load from that base
 
@@ -39,7 +39,7 @@ Written here per the repo convention, and the first entry is the important one:
 * **It finds a table READ, not a SECRET-dependent table read.** The index
   register's provenance is not traced. An S-box lookup and a lookup indexed by
   a loop counter have the same shape, so a hit is a candidate and the question
-  of whether the index carries a secret is left to the reader -- or to
+  of whether the index carries a secret is left to the reader - or to
   `tools/secret_index_audit.py` if source is available. Expect hits on
   jump tables, `__aeabi` helpers, character classes and font data.
 * **It decodes, it does not disassemble.** There is no control-flow or
@@ -60,7 +60,7 @@ Written here per the repo convention, and the first entry is the important one:
   Over a long window a dead value therefore gets attributed to a later load.
   This is why bases appear that land in no region at all; they are printed as
   `?`/`unmapped` and never make the verdict `EXPOSED`. Widening `--window` past
-  the default trades recall for exactly this noise -- the default is the widest
+  the default trades recall for exactly this noise - the default is the widest
   setting that stayed clean on the in-tree corpus.
 * **It says nothing about timing.** A table in flash is a precondition, not a
   channel; `research/mechanism/MEASURING_CHANNELS.md` is what decides that, and
@@ -81,7 +81,7 @@ from .placement import EXPOSED, SAFE, UNKNOWN, Part, is_elf, parse_elf, resolve_
 #: How far back to look for the instruction that set up the base register.
 #:
 #: Calibrated, not guessed. On `rigs/fw_f4_lib/fw.elf` a 64-byte window finds
-#: only `sbox` and misses `gfm2_sbox` and `gfm3_sbox` entirely -- two of the
+#: only `sbox` and misses `gfm2_sbox` and `gfm3_sbox` entirely - two of the
 #: three tables `placement` reports, in a build whose key came out on the F429.
 #: 192 finds all three by symbol. 512 finds more loads per table but starts
 #: attributing stale register values and inventing unmapped bases, because the
@@ -362,13 +362,13 @@ def render(rep: CodeReport, top: int = 12) -> str:
         if len(groups) > top:
             out.append(f"   ... {len(groups) - top} more base(s)")
     out.append(f"  => VERDICT: {rep.verdict}" + {
-        "EXPOSED": "  -- at least one table read resolves into flash. Whether the"
+        "EXPOSED": "  - at least one table read resolves into flash. Whether the"
                    " INDEX carries a secret is a separate question this tool does"
                    " not answer.",
-        "SAFE": "  -- every resolved base is in RAM for this part.",
-        "UNDETERMINED": "  -- load sites found but no base resolved; try a larger"
+        "SAFE": "  - every resolved base is in RAM for this part.",
+        "UNDETERMINED": "  - load sites found but no base resolved; try a larger"
                         " --window, or pass --base for a raw image.",
-        "NO-LOOKUPS": "  -- no register-offset loads at all (fully unrolled, or"
+        "NO-LOOKUPS": "  - no register-offset loads at all (fully unrolled, or"
                       " not Thumb-2 code).",
     }[rep.verdict])
     return "\n".join(out)
@@ -398,7 +398,7 @@ def selftest() -> int:
     from . import placement as pl
 
     root = Path(__file__).resolve().parents[2]
-    print("codescan selftest -- agreement with placement's byte-signature finder\n")
+    print("codescan selftest - agreement with placement's byte-signature finder\n")
     bad = skipped = 0
     for rel, part in SELFTEST_ARTEFACTS:
         p = root / rel

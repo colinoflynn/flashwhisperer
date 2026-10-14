@@ -11,7 +11,7 @@ WHAT THESE TESTS DO NOT COVER, which is most of what can go wrong:
   * that a geometry is the RIGHT one for a target. That is read off the image
     (`flashleak.row_offset_from_image`) or swept, and what it is worth is
     measured on captures with a known key in
-    `results/stm32f4/rescore_rowoffset.py` -- 2x to 10x in traces, which is a
+    `results/stm32f4/rescore_rowoffset.py` - 2x to 10x in traces, which is a
     row of `research/FINDINGS_LEDGER.md` section D. Nothing here would notice a
     wrong offset; it would just recover less.
   * that an adjacency convention is right. A wrong one returns a clean null,
@@ -107,7 +107,7 @@ def test_coverage_sets():
 
 
 def test_engine_recover_accepts_a_geometry_and_a_coverage():
-    """Not a recovery test -- 2000 random traces carry no channel. It checks the
+    """Not a recovery test - 2000 random traces carry no channel. It checks the
     parameters reach the scorer and the surfaces come back when asked."""
     blocks, y = _blocks(n=2000, seed=3)
     surfaces = {}
@@ -133,7 +133,7 @@ def test_round2_state_matches_the_packages_own_aes():
 
 def test_round2_decrypt_state_is_one_invcipher_round():
     """`round2_state_dec` is the bootloader direction, and it must be exactly
-    the state after ONE round of `aesref`'s InvCipher -- checked against that
+    the state after ONE round of `aesref`'s InvCipher - checked against that
     loop rather than against itself."""
     blocks, _ = _blocks(n=64, seed=8)
     key = bytes.fromhex("2b7e151628aed2a6abf7158809cf4f3c")

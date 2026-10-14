@@ -1,4 +1,4 @@
-"""flashattack -- flash-accelerator AES timing side-channel toolkit.
+"""flashattack - flash-accelerator AES timing side-channel toolkit.
 
 Target-agnostic key-recovery engine plus transports, mode mapping, feasibility
 estimation and a CLI. The exploitation engine is independent of any particular
@@ -14,7 +14,7 @@ Two modules carry the parts that used to live outside the package, in
 `hardware/`, where the packaged tests could not reach them and two copies of
 one scoring rule drifted apart:
 
-    lastround   the scoring rule itself -- surface, fast path, equality
+    lastround   the scoring rule itself - surface, fast path, equality
                 selftest, and which byte pairs to cover
     geometry    where the table sits inside the flash row, which the scorer
                 needs and which no number here is quotable without

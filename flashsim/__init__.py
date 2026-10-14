@@ -1,5 +1,5 @@
 """
-flashsim -- A simulator for flash-accelerator (wide-flash / line-buffer / prefetch)
+flashsim - A simulator for flash-accelerator (wide-flash / line-buffer / prefetch)
 timing side channels on microcontroller AES.
 
 Modules

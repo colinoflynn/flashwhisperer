@@ -15,7 +15,7 @@ Robustness (the key improvement over the old per-script attacks):
     touch it (not first-pair-wins), so one bad pair cannot corrupt a byte;
   * keeps a ranked candidate list per byte and, if a known plaintext/ciphertext
     pair is supplied, VERIFIES the assembled key and BRUTE-FORCES the few lowest-
-    confidence bytes over their top candidates until it verifies -- turning the
+    confidence bytes over their top candidates until it verifies - turning the
     old 13/16 and 15/16 near-misses into exact recovery.
 """
 from __future__ import annotations
@@ -49,7 +49,7 @@ def col_attack_scored(ba, bb, y, tbl, line_shift=4, line_off=0):
     one scorer and this is a wrapper over it.
 
     `line_off` is the table's start offset inside the flash row, in table
-    ENTRIES, and it is a per-image property -- `flashleak.row_offset_from_image`
+    ENTRIES, and it is a per-image property - `flashleak.row_offset_from_image`
     reads it, `flashattack.geometry.candidate_row_offsets` lists what to sweep.
     The default 0 is the textbook case and reproduces every number this
     function returned before it took the parameter.
@@ -82,7 +82,7 @@ class Result:
                      + (f"  brute-forced positions {self.bruteforced}" if self.bruteforced else ""))
         elif self.keysize != 128:
             s.append(f"(AES-{self.keysize}: master needs the last two round keys; this attack "
-                     f"gives rk[{self.roundkey_index}] only -- combine with a second round key "
+                     f"gives rk[{self.roundkey_index}] only - combine with a second round key "
                      f"via master_from_results, or see docs on the second-round attack)")
         if self.truth_correct is not None:
             s.append(f"round-key bytes correct vs truth: {self.truth_correct}/16")
@@ -110,12 +110,12 @@ def _roundkey_to_master(rkbytes, direction, keysize):
 
 def leaking_offsets(known_blocks, timing, *, direction="enc", line_shift=4,
                     line_off=0, margin=1.0, ratio=3.0):
-    """Which byte offsets carry the collision channel -- **without the key**.
+    """Which byte offsets carry the collision channel - **without the key**.
 
     NOTE the two senses of "offset", which have already been confused once.
     This function's return value is a set of byte-pair DISTANCES (which pairs of
     output bytes can collide). Its `line_off` argument is where the table starts
-    inside the flash row, in table entries -- see `geometry`. They are
+    inside the flash row, in table entries - see `geometry`. They are
     unrelated, and this one needs that one to be right: at the wrong `line_off`
     the peaks are computed on a partition the victim does not have, so a real
     family can fail to stand out.
@@ -133,24 +133,24 @@ def leaking_offsets(known_blocks, timing, *, direction="enc", line_shift=4,
     Returns (offsets, peaks): the offsets that stand *apart* from the rest, and
     the full {offset: mean peak} map. Needs more traces than the attack itself
     (about 450 k where the attack needs 200 k), which is why it is normally done
-    once on a device the attacker owns -- it is a property of the library and
+    once on a device the attacker owns - it is a property of the library and
     the part, not of the key.
 
     Two conditions, not one. Standing `margin` above the median is necessary but
-    not sufficient: a target that leaks *uniformly* (mbedTLS -- see the SNMPv3
+    not sufficient: a target that leaks *uniformly* (mbedTLS - see the SNMPv3
     and TLS demos) produces a gently decreasing ramp of peaks with offset, whose
     largest member can clear a median-plus-margin bar by a hair without meaning
     anything. Selecting it then restricts the vote to 15 of the 120 pairs and
     throws away the other 105, which is fatal: measured on one SNMPv3 draw,
     peaks ran 5.75 / 5.39 / 5.09 / 4.78 / ... , offset 1 cleared the bar by
-    0.14, and the vote fell from 15/16 to 8/16 -- a recovery turned into a
+    0.14, and the vote fell from 15/16 to 8/16 - a recovery turned into a
     failure by the detector meant to accelerate it.
 
     So the selected offset must also be a *spike* rather than the top of a ramp:
     measuring each offset's excess over the median, the ones kept must carry at
     least `ratio` times the excess of the best one rejected. That encodes the
-    actual physical claim -- one family carries the channel and the others sit
-    at the noise floor -- instead of merely ranking them. Measured:
+    actual physical claim - one family carries the channel and the others sit
+    at the noise floor - instead of merely ranking them. Measured:
 
         capture                     top / next excess      ratio   selected
         OSCORE F429 TinyCrypt 600k   6.40 / 4.38           ~80x    [3]
@@ -163,7 +163,7 @@ def leaking_offsets(known_blocks, timing, *, direction="enc", line_shift=4,
 
     Found by the trace-count ladder, not by inspection: on the SNMPv3 capture
     the old rule fired on offset 1 and the vote fell from 15/16 to 8/16. It got
-    *worse* with more traces -- at 130 k all five draws misfired identically --
+    *worse* with more traces - at 130 k all five draws misfired identically --
     so the effect was a deterministic ceiling on that target, not bad luck.
     """
     known = np.asarray(known_blocks, np.int64)
@@ -185,7 +185,7 @@ def select_offsets(peaks, *, margin=1.0, ratio=3.0):
 
     Split out from `leaking_offsets` so the decision can be tested against
     recorded peak maps without re-running the 120-pair scan that produces them
-    (see tests/test_offsets.py) -- the scan is a fixed ~50 s and the rule is
+    (see tests/test_offsets.py) - the scan is a fixed ~50 s and the rule is
     where the bug was.
     """
     base = float(np.median(list(peaks.values())))
@@ -196,7 +196,7 @@ def select_offsets(peaks, *, margin=1.0, ratio=3.0):
     # Excess is measured over the median so the comparison is against the noise
     # floor; without this an offset can be chosen for being marginally the
     # largest of a smooth ramp, which is how a uniformly-leaking target is
-    # misread -- and restricting the vote to it discards 105 of 120 good pairs.
+    # misread - and restricting the vote to it discards 105 of 120 good pairs.
     while sel:
         worst_kept = min(peaks[d] for d in sel) - base
         best_cut = (max(rest) - base) if rest else 0.0
@@ -212,8 +212,8 @@ def recover(known_blocks, timing, *, direction="enc", keysize=128, line_shift=4,
             surfaces=None):
     """Recover the key from (known block-cipher output blocks, timing).
 
-    known_blocks : (N,16) uint8 -- the AES *output* block the attacker knows.
-    timing       : (N,) float   -- per-trace timing (any monotone oracle).
+    known_blocks : (N,16) uint8 - the AES *output* block the attacker knows.
+    timing       : (N,) float   - per-trace timing (any monotone oracle).
     line_off     : where the table starts inside the flash row, in table
                    ENTRIES. A per-image property, not a constant of the attack:
                    a byte S-box at `0x...cc` is 12, a 4-byte T-table 12 bytes
@@ -227,7 +227,7 @@ def recover(known_blocks, timing, *, direction="enc", keysize=128, line_shift=4,
                    `hardware/atk_lastround.py` trace count was measured with;
                    a row-pairing name such as "r1r2" is that pairing's 4; or
                    pass an explicit list of (ja, jb). A wider vote is not
-                   automatically better -- see `lastround` -- and
+                   automatically better - see `lastround` - and
                    `leaking_offsets` is how to choose without the key.
     ct_adjacent  : only meaningful with a non-"all" `pairs`: the adjacency
                    convention of the victim's last round. See
@@ -235,12 +235,12 @@ def recover(known_blocks, timing, *, direction="enc", keysize=128, line_shift=4,
     surfaces     : optional dict; if given, it is filled with
                    {(ja, jb): score surface} so a caller can rank candidates or
                    sum overlapping surfaces without re-scoring. The surfaces
-                   are (256, 256) float64 each -- 120 of them is ~63 MB, so
+                   are (256, 256) float64 each - 120 of them is ~63 MB, so
                    this is opt-in.
     pair_offsets : restrict the vote to byte pairs this far apart (mod 16).
                    Default None scans all 120 pairs. Passing the offsets that
-                   actually leak -- see `leaking_offsets`, which finds them
-                   without the key -- drops the 104 noise pairs from the vote
+                   actually leak - see `leaking_offsets`, which finds them
+                   without the key - drops the 104 noise pairs from the vote
                    and is worth a large fraction of the trace count: on the
                    F429 OSCORE capture the vote goes 11/16 -> 15/16 at 250 k,
                    and the scan is 7x faster for scanning 16 pairs not 120.
@@ -342,7 +342,7 @@ def recover_round1_diffs(plaintext, timing, *, ref=0, line_shift=4):
     subset (measured ~10/15 for a pure S-box, ~3/15 for a 4-table T-table) and
     yields differences, not absolute key bytes. Kept as a research primitive; not
     wired into attack(). A robust version would select leaking pairs by margin and
-    needs an absolute anchor -- marked future.
+    needs an absolute anchor - marked future.
 
     Round-1 lookup index = pt ^ k0, and topbits(pt^k0) = topbits(pt) ^ topbits(k0)
     (XOR is bitwise), so two positions collide iff
@@ -350,7 +350,7 @@ def recover_round1_diffs(plaintext, timing, *, ref=0, line_shift=4):
     Bucket by the left side; the bucket with the shortest mean time is the
     difference. `line_shift`=4 (S-box) or 2 (4-byte T-table). Returns a list of 16
     difference values (ref entry is 0); these are PARTIAL (differences, top bits
-    only) -- combine with one absolute anchor for a full key."""
+    only) - combine with one absolute anchor for a full key."""
     pt = np.asarray(plaintext, np.int64)
     y = np.asarray(timing, float); y = y - y.mean()
     hp = pt >> line_shift
@@ -376,7 +376,7 @@ def recover_round1_keyspace(plaintext, timing, *, line_shift=4, conf_threshold=3
     This is the honest ceiling of a known-plaintext-only attack on this channel:
     pairwise collisions carry only top-bit differences (the cache line is 16 bytes
     -> nibble resolution for an S-box), so the low bits and one reference offset
-    remain -- a keyspace reduction, not a full key. Combine with ANY output
+    remain - a keyspace reduction, not a full key. Combine with ANY output
     observation (the last-round attack) for the full key.
 
     Returns a dict: reldiff (topbits(k0[j]^k0[ref]) or None if unresolved),
@@ -431,7 +431,7 @@ def recover_round1_keyspace(plaintext, timing, *, line_shift=4, conf_threshold=3
 # Second-to-last round recovery -> full AES-192/256 master, on FULL (unmodified,
 # no round-reduction) firmware, from the SAME traces. MixColumns is linear, so we
 # push it onto the known peeled state and the round Nr-1 S-box/T-table lookups
-# become byte-wise in a transformed key K' -- an ordinary last-round-style scan.
+# become byte-wise in a transformed key K' - an ordinary last-round-style scan.
 # --------------------------------------------------------------------------
 
 def peel_last_round(ct, rk_last):
@@ -442,7 +442,7 @@ def peel_last_round(ct, rk_last):
     return aesref.SINV[v]
 
 def _second_round_known(a):
-    """X' = SR^{-1}(MC^{-1}(a)) -- the known input for the round Nr-1 scan."""
+    """X' = SR^{-1}(MC^{-1}(a)) - the known input for the round Nr-1 scan."""
     X = aesref._mix(a.astype(np.uint8), inv=True)          # InvMixColumns
     return X[:, aesref._ISR].astype(int)
 
@@ -455,7 +455,7 @@ def recover_second_round(ct, timing, rk_last, *, keysize, line_shift=4, truth=No
                          line_off=0):
     """Recover rk[Nr-1] on full firmware, given ct, timing and the recovered
     last round key. `line_shift` matches round Nr-1's table (4 = S-box, 2 = 4-byte
-    T-table), and `line_off` that table's row offset in entries -- which is the
+    T-table), and `line_off` that table's row offset in entries - which is the
     round Nr-1 table's, not necessarily the last round's: a build with a
     separate `te4` has two tables at two addresses."""
     a = peel_last_round(ct, rk_last)
