@@ -1,0 +1,219 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="520" viewBox="0 0 680 520" role="img">
+<title>Flash row register holding one S-box row</title>
+<desc>The AES S-box in flash as aligned 16-byte rows. A lookup copies one whole row into the row register. Within that row the byte the lookup asked for is one colour and the fifteen that came with it another, while the rest of the S-box still in flash is a third. A later lookup landing in the resident row is fast; anywhere else reloads the register.</desc>
+<style>
+svg{--ink:#3d3d3a;--line:#73726c}
+text{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.th{font-size:14px;font-weight:500}
+.ts{font-size:12px;font-weight:400}
+.r-gray{fill:#F1EFE8;stroke:#5F5E5A;stroke-width:.5}
+.r-teal{fill:#E1F5EE;stroke:#0F6E56;stroke-width:.5}
+.r-coral{fill:#FAECE7;stroke:#993C1D;stroke-width:1}
+.x-gray{fill:#2C2C2A}
+.x-teal{fill:#04342C}
+.x-coral{fill:#4A1B0C}
+.ink{fill:var(--ink)}
+.arr{fill:none;stroke:var(--line);stroke-width:1.5}
+.leader{fill:none;stroke:var(--line);stroke-width:.5;stroke-dasharray:3 3}
+@media (prefers-color-scheme:dark){
+svg{--ink:#c2c0b6;--line:#9c9a92}
+.r-gray{fill:#444441;stroke:#B4B2A9}
+.r-teal{fill:#085041;stroke:#5DCAA5}
+.r-coral{fill:#712B13;stroke:#F0997B}
+.x-gray{fill:#D3D1C7}
+.x-teal{fill:#9FE1CB}
+.x-coral{fill:#F5C4B3}
+}
+</style>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect class="r-gray" x="36" y="36" width="588" height="198" rx="20"/>
+<text class="th x-gray" x="56" y="58" dominant-baseline="central">Flash array</text>
+<text class="ts x-gray" x="56" y="76" dominant-baseline="central">S-box: 256 B as 16 aligned rows of 16 B</text>
+<text class="ts ink" x="56" y="103" dominant-baseline="central">0x00</text>
+<rect class="r-gray" x="92" y="92" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="108" y="103" text-anchor="middle" dominant-baseline="central">63</text>
+<rect class="r-gray" x="124" y="92" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="140" y="103" text-anchor="middle" dominant-baseline="central">7C</text>
+<rect class="r-gray" x="156" y="92" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="172" y="103" text-anchor="middle" dominant-baseline="central">77</text>
+<rect class="r-gray" x="188" y="92" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="204" y="103" text-anchor="middle" dominant-baseline="central">7B</text>
+<rect class="r-gray" x="220" y="92" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="236" y="103" text-anchor="middle" dominant-baseline="central">F2</text>
+<rect class="r-gray" x="252" y="92" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="268" y="103" text-anchor="middle" dominant-baseline="central">6B</text>
+<rect class="r-gray" x="284" y="92" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="300" y="103" text-anchor="middle" dominant-baseline="central">6F</text>
+<rect class="r-gray" x="316" y="92" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="332" y="103" text-anchor="middle" dominant-baseline="central">C5</text>
+<rect class="r-gray" x="348" y="92" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="364" y="103" text-anchor="middle" dominant-baseline="central">30</text>
+<rect class="r-gray" x="380" y="92" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="396" y="103" text-anchor="middle" dominant-baseline="central">01</text>
+<rect class="r-gray" x="412" y="92" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="428" y="103" text-anchor="middle" dominant-baseline="central">67</text>
+<rect class="r-gray" x="444" y="92" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="460" y="103" text-anchor="middle" dominant-baseline="central">2B</text>
+<rect class="r-gray" x="476" y="92" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="492" y="103" text-anchor="middle" dominant-baseline="central">FE</text>
+<rect class="r-gray" x="508" y="92" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="524" y="103" text-anchor="middle" dominant-baseline="central">D7</text>
+<rect class="r-gray" x="540" y="92" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="556" y="103" text-anchor="middle" dominant-baseline="central">AB</text>
+<rect class="r-gray" x="572" y="92" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="588" y="103" text-anchor="middle" dominant-baseline="central">76</text>
+<text class="ts ink" x="56" y="128" dominant-baseline="central">0x10</text>
+<rect class="r-gray" x="92" y="117" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="108" y="128" text-anchor="middle" dominant-baseline="central">CA</text>
+<rect class="r-gray" x="124" y="117" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="140" y="128" text-anchor="middle" dominant-baseline="central">82</text>
+<rect class="r-gray" x="156" y="117" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="172" y="128" text-anchor="middle" dominant-baseline="central">C9</text>
+<rect class="r-gray" x="188" y="117" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="204" y="128" text-anchor="middle" dominant-baseline="central">7D</text>
+<rect class="r-gray" x="220" y="117" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="236" y="128" text-anchor="middle" dominant-baseline="central">FA</text>
+<rect class="r-gray" x="252" y="117" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="268" y="128" text-anchor="middle" dominant-baseline="central">59</text>
+<rect class="r-gray" x="284" y="117" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="300" y="128" text-anchor="middle" dominant-baseline="central">47</text>
+<rect class="r-gray" x="316" y="117" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="332" y="128" text-anchor="middle" dominant-baseline="central">F0</text>
+<rect class="r-gray" x="348" y="117" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="364" y="128" text-anchor="middle" dominant-baseline="central">AD</text>
+<rect class="r-gray" x="380" y="117" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="396" y="128" text-anchor="middle" dominant-baseline="central">D4</text>
+<rect class="r-gray" x="412" y="117" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="428" y="128" text-anchor="middle" dominant-baseline="central">A2</text>
+<rect class="r-gray" x="444" y="117" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="460" y="128" text-anchor="middle" dominant-baseline="central">AF</text>
+<rect class="r-gray" x="476" y="117" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="492" y="128" text-anchor="middle" dominant-baseline="central">9C</text>
+<rect class="r-gray" x="508" y="117" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="524" y="128" text-anchor="middle" dominant-baseline="central">A4</text>
+<rect class="r-gray" x="540" y="117" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="556" y="128" text-anchor="middle" dominant-baseline="central">72</text>
+<rect class="r-gray" x="572" y="117" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="588" y="128" text-anchor="middle" dominant-baseline="central">C0</text>
+<text class="ts ink" x="56" y="153" dominant-baseline="central">0x20</text>
+<rect class="r-gray" x="92" y="142" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="108" y="153" text-anchor="middle" dominant-baseline="central">B7</text>
+<rect class="r-gray" x="124" y="142" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="140" y="153" text-anchor="middle" dominant-baseline="central">FD</text>
+<rect class="r-gray" x="156" y="142" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="172" y="153" text-anchor="middle" dominant-baseline="central">93</text>
+<rect class="r-gray" x="188" y="142" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="204" y="153" text-anchor="middle" dominant-baseline="central">26</text>
+<rect class="r-gray" x="220" y="142" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="236" y="153" text-anchor="middle" dominant-baseline="central">36</text>
+<rect class="r-gray" x="252" y="142" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="268" y="153" text-anchor="middle" dominant-baseline="central">3F</text>
+<rect class="r-gray" x="284" y="142" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="300" y="153" text-anchor="middle" dominant-baseline="central">F7</text>
+<rect class="r-gray" x="316" y="142" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="332" y="153" text-anchor="middle" dominant-baseline="central">CC</text>
+<rect class="r-gray" x="348" y="142" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="364" y="153" text-anchor="middle" dominant-baseline="central">34</text>
+<rect class="r-gray" x="380" y="142" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="396" y="153" text-anchor="middle" dominant-baseline="central">A5</text>
+<rect class="r-gray" x="412" y="142" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="428" y="153" text-anchor="middle" dominant-baseline="central">E5</text>
+<rect class="r-gray" x="444" y="142" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="460" y="153" text-anchor="middle" dominant-baseline="central">F1</text>
+<rect class="r-gray" x="476" y="142" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="492" y="153" text-anchor="middle" dominant-baseline="central">71</text>
+<rect class="r-gray" x="508" y="142" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="524" y="153" text-anchor="middle" dominant-baseline="central">D8</text>
+<rect class="r-gray" x="540" y="142" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="556" y="153" text-anchor="middle" dominant-baseline="central">31</text>
+<rect class="r-gray" x="572" y="142" width="32" height="22" rx="4"/>
+<text class="ts x-gray" x="588" y="153" text-anchor="middle" dominant-baseline="central">15</text>
+<text class="ts ink" x="56" y="178" dominant-baseline="central">0x30</text>
+<rect class="r-teal" x="92" y="167" width="32" height="22" rx="4"/>
+<text class="ts x-teal" x="108" y="178" text-anchor="middle" dominant-baseline="central">04</text>
+<rect class="r-teal" x="124" y="167" width="32" height="22" rx="4"/>
+<text class="ts x-teal" x="140" y="178" text-anchor="middle" dominant-baseline="central">C7</text>
+<rect class="r-teal" x="156" y="167" width="32" height="22" rx="4"/>
+<text class="ts x-teal" x="172" y="178" text-anchor="middle" dominant-baseline="central">23</text>
+<rect class="r-teal" x="188" y="167" width="32" height="22" rx="4"/>
+<text class="ts x-teal" x="204" y="178" text-anchor="middle" dominant-baseline="central">C3</text>
+<rect class="r-teal" x="220" y="167" width="32" height="22" rx="4"/>
+<text class="ts x-teal" x="236" y="178" text-anchor="middle" dominant-baseline="central">18</text>
+<rect class="r-teal" x="252" y="167" width="32" height="22" rx="4"/>
+<text class="ts x-teal" x="268" y="178" text-anchor="middle" dominant-baseline="central">96</text>
+<rect class="r-teal" x="284" y="167" width="32" height="22" rx="4"/>
+<text class="ts x-teal" x="300" y="178" text-anchor="middle" dominant-baseline="central">05</text>
+<rect class="r-teal" x="316" y="167" width="32" height="22" rx="4"/>
+<text class="ts x-teal" x="332" y="178" text-anchor="middle" dominant-baseline="central">9A</text>
+<rect class="r-teal" x="348" y="167" width="32" height="22" rx="4"/>
+<text class="ts x-teal" x="364" y="178" text-anchor="middle" dominant-baseline="central">07</text>
+<rect class="r-teal" x="380" y="167" width="32" height="22" rx="4"/>
+<text class="ts x-teal" x="396" y="178" text-anchor="middle" dominant-baseline="central">12</text>
+<rect class="r-coral" x="412" y="167" width="32" height="22" rx="4"/>
+<text class="th x-coral" x="428" y="178" text-anchor="middle" dominant-baseline="central">80</text>
+<rect class="r-teal" x="444" y="167" width="32" height="22" rx="4"/>
+<text class="ts x-teal" x="460" y="178" text-anchor="middle" dominant-baseline="central">E2</text>
+<rect class="r-teal" x="476" y="167" width="32" height="22" rx="4"/>
+<text class="ts x-teal" x="492" y="178" text-anchor="middle" dominant-baseline="central">EB</text>
+<rect class="r-teal" x="508" y="167" width="32" height="22" rx="4"/>
+<text class="ts x-teal" x="524" y="178" text-anchor="middle" dominant-baseline="central">27</text>
+<rect class="r-teal" x="540" y="167" width="32" height="22" rx="4"/>
+<text class="ts x-teal" x="556" y="178" text-anchor="middle" dominant-baseline="central">B2</text>
+<rect class="r-teal" x="572" y="167" width="32" height="22" rx="4"/>
+<text class="ts x-teal" x="588" y="178" text-anchor="middle" dominant-baseline="central">75</text>
+<rect class="r-gray" x="92" y="192" width="288" height="22" rx="4"/>
+<text class="ts x-gray" x="236" y="203" text-anchor="middle" dominant-baseline="central">0x40..0xFF: not loaded</text>
+<path class="arr" d="M500 189 V264" marker-end="url(#arrow)"/>
+<text class="ts ink" x="488" y="253" text-anchor="end" dominant-baseline="central">Flash row copied into row register</text>
+<rect class="r-gray" x="36" y="272" width="588" height="104" rx="20"/>
+<text class="th x-gray" x="56" y="294" dominant-baseline="central">Row register</text>
+<text class="ts ink" x="428" y="296" text-anchor="middle" dominant-baseline="central">Lookup asked for SBOX[0x3A] = 0x80</text>
+<line class="leader" x1="428" y1="304" x2="428" y2="314"/>
+<text class="ts ink" x="56" y="333" dominant-baseline="central">0x30</text>
+<rect class="r-teal" x="92" y="316" width="32" height="34" rx="4"/>
+<text class="ts x-teal" x="108" y="333" text-anchor="middle" dominant-baseline="central">04</text>
+<rect class="r-teal" x="124" y="316" width="32" height="34" rx="4"/>
+<text class="ts x-teal" x="140" y="333" text-anchor="middle" dominant-baseline="central">C7</text>
+<rect class="r-teal" x="156" y="316" width="32" height="34" rx="4"/>
+<text class="ts x-teal" x="172" y="333" text-anchor="middle" dominant-baseline="central">23</text>
+<rect class="r-teal" x="188" y="316" width="32" height="34" rx="4"/>
+<text class="ts x-teal" x="204" y="333" text-anchor="middle" dominant-baseline="central">C3</text>
+<rect class="r-teal" x="220" y="316" width="32" height="34" rx="4"/>
+<text class="ts x-teal" x="236" y="333" text-anchor="middle" dominant-baseline="central">18</text>
+<rect class="r-teal" x="252" y="316" width="32" height="34" rx="4"/>
+<text class="ts x-teal" x="268" y="333" text-anchor="middle" dominant-baseline="central">96</text>
+<rect class="r-teal" x="284" y="316" width="32" height="34" rx="4"/>
+<text class="ts x-teal" x="300" y="333" text-anchor="middle" dominant-baseline="central">05</text>
+<rect class="r-teal" x="316" y="316" width="32" height="34" rx="4"/>
+<text class="ts x-teal" x="332" y="333" text-anchor="middle" dominant-baseline="central">9A</text>
+<rect class="r-teal" x="348" y="316" width="32" height="34" rx="4"/>
+<text class="ts x-teal" x="364" y="333" text-anchor="middle" dominant-baseline="central">07</text>
+<rect class="r-teal" x="380" y="316" width="32" height="34" rx="4"/>
+<text class="ts x-teal" x="396" y="333" text-anchor="middle" dominant-baseline="central">12</text>
+<rect class="r-coral" x="412" y="316" width="32" height="34" rx="4"/>
+<text class="th x-coral" x="428" y="333" text-anchor="middle" dominant-baseline="central">80</text>
+<rect class="r-teal" x="444" y="316" width="32" height="34" rx="4"/>
+<text class="ts x-teal" x="460" y="333" text-anchor="middle" dominant-baseline="central">E2</text>
+<rect class="r-teal" x="476" y="316" width="32" height="34" rx="4"/>
+<text class="ts x-teal" x="492" y="333" text-anchor="middle" dominant-baseline="central">EB</text>
+<rect class="r-teal" x="508" y="316" width="32" height="34" rx="4"/>
+<text class="ts x-teal" x="524" y="333" text-anchor="middle" dominant-baseline="central">27</text>
+<rect class="r-teal" x="540" y="316" width="32" height="34" rx="4"/>
+<text class="ts x-teal" x="556" y="333" text-anchor="middle" dominant-baseline="central">B2</text>
+<rect class="r-teal" x="572" y="316" width="32" height="34" rx="4"/>
+<text class="ts x-teal" x="588" y="333" text-anchor="middle" dominant-baseline="central">75</text>
+<line class="arr" x1="207" y1="378" x2="207" y2="404" marker-end="url(#arrow)"/>
+<line class="arr" x1="473" y1="378" x2="473" y2="404" marker-end="url(#arrow)"/>
+<rect class="r-teal" x="92" y="412" width="230" height="56" rx="8"/>
+<text class="th x-teal" x="207" y="430" text-anchor="middle" dominant-baseline="central">Next lookup in this row</text>
+<text class="ts x-teal" x="207" y="450" text-anchor="middle" dominant-baseline="central">Fast, no array read</text>
+<rect class="r-gray" x="342" y="412" width="262" height="56" rx="8"/>
+<text class="th x-gray" x="473" y="430" text-anchor="middle" dominant-baseline="central">Next lookup anywhere else</text>
+<text class="ts x-gray" x="473" y="450" text-anchor="middle" dominant-baseline="central">Slow, loads new row register value</text>
+<rect class="r-coral" x="92" y="488" width="12" height="12" rx="3"/>
+<text class="ts ink" x="110" y="494" dominant-baseline="central">The byte asked for</text>
+<rect class="r-teal" x="251" y="488" width="12" height="12" rx="3"/>
+<text class="ts ink" x="269" y="494" dominant-baseline="central">Free, same row</text>
+<rect class="r-gray" x="384" y="488" width="12" height="12" rx="3"/>
+<text class="ts ink" x="402" y="494" dominant-baseline="central">Not loaded</text>
+</svg>

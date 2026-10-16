@@ -42,6 +42,13 @@ depend on whether (p ^ k) >> 4 matched between adjacent lookups. Note that anyth
 another table or just an instruction fetch, overwrites the row first and the collision is lost, which is why the same
 cipher at different optimization levels can go from leaky to not.
 
+![](docs/flash_row_register.svg)
+
+The collision tells you only the higher-level bits are equal, as everything in that row shares only higher-level bits.
+This can eventually find a "key chain difference" which requires brute-forcing one byte, or slightly more advanced attacks
+will directly recover the key. This is the well-known cache and cache-collision attack, but is relevant on parts that
+many firmware developers think "do not have a cache". The result is many cryptographic libraries have timing leakages
+that have not been considered before.
 
 ## The packages
 
