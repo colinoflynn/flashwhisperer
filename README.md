@@ -324,4 +324,4 @@ point at them:
 This was extracted from another larger repo (mostly extracted via LLM).
 Slowly this is being "fixed" for an associated paper.
 
-flashwhisperer is APACHE2 licesnsed.
+flashwhisperer is APACHE2 licensed.
