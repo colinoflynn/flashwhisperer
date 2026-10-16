@@ -1,14 +1,30 @@
 # flashwhisperer
 
-*🤖WARNING🤖: This file LLM generated and may read oddly. Will eventually be human-edited for that real-life touch and typos.*
+*🤖🥩: This document is partially human-written, partially LLM. This repo flags
+LLM-written docs as I find they can be more annoying to read as a human bag of 🥩*
 
-Host-side toolkit for flash-accelerator timing side channels on
-microcontrollers: a simulator, a target-agnostic key-recovery engine, a
-black-box leak assessor, a memory-system mapper, and an arbitration probe.
+FlashWhisperer is a toolkit for evaluating and help to fix side-channel timing leaks that
+are often present on small microcontrollers due to flash/latch timing. It contains:
+
+* A simulator (for considering what leakage looks like)
+* a target-agnostic key-recovery engine
+* A black-box leak assessor for looking at a binary or target
+* A memory-system mapper to determine layout of tables (require for analysis)
+* An arbitration probe to help determine flash row sizes.
 
 Nothing here drives a board by itself. Every package takes either recorded
 data or a transport you supply, which is what lets the recovery engine be
 re-used against a capture from any instrument.
+
+You should also see:
+
+* [flashwhisperer-crypto-eval](https://github.com/colinoflynn/flashwhisperer-crypto-eval) Contains usage and results of this
+across multiple microcontrollers and libraries. This is also the repo that shows you how to use the tool in practice and
+includes the measurement instrument.
+* [flashwhisperer-demos](https://github.com/colinoflynn/flashwhisperer-demos) Contains the application-level demos including
+across network protocols
+
+To install:
 
 ```bash
 pip install -e .            # the five packages
@@ -16,6 +32,16 @@ pip install -e .[serial]    # ...and pyserial, for the transports that want it
 python -m pytest -q         # fast: FIPS vectors, schedule inversion, mode mapping
 python -m pytest -q --runslow   # also engine scans and captured-trace replays
 ```
+
+## The leakage
+
+The flash array doesn’t read bytes, it reads a whole aligned row at a time (normally 8 or 16 bytes), and the controller
+keeps the most recent row in a register that every later flash read overwrites. So when two consecutive S-box lookups land
+in the same row the second one is free, and when they don’t it pays the wait states again, which makes the encryption time
+depend on whether (p ^ k) >> 4 matched between adjacent lookups. Note that anything else touching flash in the gap,
+another table or just an instruction fetch, overwrites the row first and the collision is lost, which is why the same
+cipher at different optimization levels can go from leaky to not.
+
 
 ## The packages
 
@@ -26,17 +52,6 @@ python -m pytest -q --runslow   # also engine scans and captured-trace replays
 | `flashleak` | black-box assessment: given blocks and times, or a target you can send to, decide whether it leaks, without being told the mode, the direction, or which side you're watching |
 | `flashmap` | reverse-engineer a part's memory system: flash read width, read latches, caches, and which configuration knobs reach them |
 | `flasharb` | the arbitration probe's host half: how many cycles a table load saves by colliding with the previous load in the flash read word |
-
-Import layering runs left to right in that table and has no back edges.
-`flashmap` imports none of the others and `tests/test_flashmap.py` asserts
-it; the rest holds because nothing has broken it, which is not the same
-thing. [`docs/PACKAGING.md`](docs/PACKAGING.md) has the re-measurement
-command.
-
-**NOTE:** a package here may not import `serial` at module level, and may
-not import a board driver at all. That rule is what keeps the toolkit
-installable and testable without a bench, and it's why the scripts that
-drive hardware live in the firmware repository rather than in here.
 
 ## Try it without a board
 
@@ -299,9 +314,7 @@ point at them:
 
 ## Status
 
-Extracted from a private research repository, with the history of all five
-packages intact across the reorganisation that first grouped them. The
-distribution is named for this repository; `flashattack` stays the console
-script, since that spelling is in every capture script written against it.
+This was extracted from another larger repo (mostly extracted via LLM).
+Slowly this is being "fixed" for an associated paper.
 
-No licence is declared yet. That is a decision, not an oversight.
+flashwhisperer is APACHE2 licesnsed.
