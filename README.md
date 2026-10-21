@@ -60,6 +60,9 @@ that have not been considered before.
 | `flashmap` | reverse-engineer a part's memory system: flash read width, read latches, caches, and which configuration knobs reach them |
 | `flasharb` | the arbitration probe's host half: how many cycles a table load saves by colliding with the previous load in the flash read word |
 
+*NOTE: This repo was 'extracted' from a larger research repo, so some commits may reference that, or have later timelines than the
+original repo.*
+
 ## Try it without a board
 
 Everything below runs on a fresh clone. No hardware, no firmware, no
