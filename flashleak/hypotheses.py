@@ -424,9 +424,11 @@ def _conclude(a: Assessment, inp, enc, dec, shift, input_side_already=False,
         a.add("traces for this detector to be confident",
               f"order {need:,.0f}", "weak",
               f"mean-peak excess {excess:.2f} now, scaling as sqrt(n) toward "
-              f"~{RECOVERY_EXCESS}. An attacker who knows the key is "
-              "confirming rather than searching, and gets there sooner - "
-              "read this as an upper bound on their cost, not a lower one")
+              f"~{RECOVERY_EXCESS}, which is STALE and known too small. Read "
+              "this as an order of magnitude and nothing more: it is not a "
+              "bound on an attacker's cost in either direction, and on the "
+              "tinyaes vector it comes out about 80x under what the key-known "
+              "ladder needs. See RECOVERY_EXCESS")
         # Layout has to come from the SAME side the leak is on, over ALL 120
         # pairs. Two ways of getting this wrong were tried first: the output
         # test's 12-pair subset spans two offsets and called a single-table

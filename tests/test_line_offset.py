@@ -26,25 +26,18 @@ offset - that is a measurement on a capture, in
 """
 from __future__ import annotations
 
-import os as _os, sys as _sys
-# The five packages live under flashwhisperer/ (REORG_PLAN D2).  Walk up to the
-# .git marker rather than assume a depth: importers of these packages sit at the
-# repository root, in hardware/, results/<campaign>/, demo/<stack>/ and
-# research/<area>/ - four different depths.  `.git` is a FILE in a worktree, so
-# test existence, not isdir.
-_fw = _os.path.dirname(_os.path.abspath(__file__))
-while _fw != _os.path.dirname(_fw) and not _os.path.exists(_os.path.join(_fw, ".git")):
-    _fw = _os.path.dirname(_fw)
-_sys.path.insert(0, _os.path.join(_fw, "flashwhisperer"))
-
+import os as _os
 import pathlib
 import struct
-import sys
 
 import pytest
 
-ROOT = pathlib.Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT))
+# No sys.path walk: the packages sit at the repository root here, so pytest
+# finds them without help (see conftest.py). ROOT was `parents[2]`, a depth
+# that was right while the packages sat one level down inside the research
+# repository and names the directory ABOVE the root here - which also put
+# whatever happens to be beside this checkout on sys.path.
+ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 from flashattack.geometry import (GRANULE, candidate_offsets,  # noqa: E402
                                   line_index, nlines)
@@ -159,18 +152,41 @@ def test_offset_recovered_from_a_built_image(tmp_path, off):
     assert got_off == off % GRANULE, note
 
 
+#: The victim image, which is a build product of the 802154-stm32 checkout and
+#: so lives outside this repository. This used to be one absolute path with a
+#: home directory in it, which meant the test skipped on every machine but the
+#: one it was written on - including, after a rename, that one. Two ways to find
+#: it now, neither of them anybody's home directory: name it outright with
+#: FLASHWHISPERER_VICTIM_ELF, or let it be found in a sibling checkout, which is
+#: how the trees sit on the bench.
+VICTIM_REL = pathlib.Path(
+    "802154-stm32/build/out/NUCLEO-F401RE/S2915A1_UDP_Client-release"
+    "/S2915A1_UDP_Client.elf")
+
+
+def _victim_elf():
+    named = _os.environ.get("FLASHWHISPERER_VICTIM_ELF")
+    if named:
+        return pathlib.Path(named)
+    # Beside this repository, or beside the directory holding it - the second
+    # covers a checkout grouped with the other split-out repos.
+    for base in (ROOT.parent, ROOT.parent.parent):
+        candidate = base / VICTIM_REL
+        if candidate.exists():
+            return candidate
+    return ROOT.parent / VICTIM_REL
+
+
 def test_real_victim_image_if_present():
     """Regression against the actual bench firmware, when it is available.
 
     Skipped on machines without the (out-of-repo) build tree, so the suite still
     runs anywhere - but on the bench it pins the value the OTA tools use.
     """
-    elf = pathlib.Path(
-        r"C:\Users\cofly\Dropbox (Personal)\academic\claude_research"
-        r"\802154-stm32\build\out\NUCLEO-F401RE"
-        r"\S2915A1_UDP_Client-release\S2915A1_UDP_Client.elf")
+    elf = _victim_elf()
     if not elf.exists():
-        pytest.skip("bench build tree not present")
+        pytest.skip("victim image not found at %s "
+                    "(set FLASHWHISPERER_VICTIM_ELF to point at it)" % elf)
     off, addr, note = offset_from_image(str(elf), part="stm32f4")
     assert addr is not None and off is not None, note
     assert off == addr % GRANULE

@@ -286,8 +286,18 @@ broken:
    key-known attack on the same data. This repo's own SNMPv3 capture yields
    a full key at 100 k traces, and flashleak rates it only *suggestive* at
    250 k. That's expected, since a detector that doesn't know the key is
-   searching rather than confirming. Its trace estimate is an UPPER bound
-   on an attacker's cost.
+   searching rather than confirming.
+
+   **NOTE:** this used to go on to call the reported trace estimate an upper
+   bound on an attacker's cost. It is NOT one, in either direction. The
+   constant it scales toward, `RECOVERY_EXCESS` in
+   [`hypotheses.py`](hypotheses.py), was measured while conditioning was
+   splitting unimodal timing into spurious modes, so it is too small and
+   every estimate from it is too optimistic - on the tinyaes vector the
+   detector says order 3 000 where the key-known ladder needs 250 000, which
+   is about 80x the wrong way. Read it as an order of magnitude and nothing
+   more. `hypotheses.py` carries the full story and what re-measuring it
+   would take.
 2. Unconditioned timing. Raw round trips carry outliers and discrete
    transport modes. On that same SNMPv3 capture, raw sigma is 8.6 million
    and every test reads zero; conditioned it is 108 and the data-dependence

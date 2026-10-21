@@ -1,30 +1,32 @@
 """fwscan against firmware whose AES layout we already know.
 
-The four binaries checked into rigs/fw_f4_lib/ are the same images whose
-keys were recovered on the F429, so their table layout is ground truth, not an
-assumption. If the scanner ever stops reproducing it, it is the scanner that
-is wrong.
+The four binaries in a firmware checkout's rigs/fw_f4_lib/ are the same images
+whose keys were recovered on the F429, so their table layout is ground truth,
+not an assumption. If the scanner ever stops reproducing it, it is the scanner
+that is wrong. They are build products and are not in this repository, so every
+case here skips unless FLASHWHISPERER_RIGS points at a firmware checkout's
+rigs/.
 """
 from __future__ import annotations
 
-import os as _os, sys as _sys
-# The five packages live under flashwhisperer/ (REORG_PLAN D2).  Walk up to the
-# .git marker rather than assume a depth: importers of these packages sit at the
-# repository root, in hardware/, results/<campaign>/, demo/<stack>/ and
-# research/<area>/ - four different depths.  `.git` is a FILE in a worktree, so
-# test existence, not isdir.
-_fw = _os.path.dirname(_os.path.abspath(__file__))
-while _fw != _os.path.dirname(_fw) and not _os.path.exists(_os.path.join(_fw, ".git")):
-    _fw = _os.path.dirname(_fw)
-_sys.path.insert(0, _os.path.join(_fw, "flashwhisperer"))
-
+import os as _os
 import pathlib
 
 import pytest
 
 from flashleak import fwscan
 
-FW = pathlib.Path(__file__).resolve().parents[2] / "rigs" / "fw_f4_lib"
+# No sys.path walk: the packages sit at the repository root here, so pytest
+# finds them without help (see conftest.py).
+#
+# Resolve the firmware the way test_placement.py does. This was `parents[2]`,
+# a depth that was right while the packages sat one level down inside the
+# research repository and lands ABOVE the root here - so the images were looked
+# for in a tree that has never held them, and all four cases reported "not
+# built" for a reason that had nothing to do with building.
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+RIGS = pathlib.Path(_os.environ.get("FLASHWHISPERER_RIGS") or (ROOT / "rigs"))
+FW = RIGS / "fw_f4_lib"
 
 CASES = [
     # image,                        expected Te tables, S-box, inverse S-box
@@ -38,7 +40,8 @@ CASES = [
 def _scan(name):
     path = FW / name
     if not path.exists():
-        pytest.skip(f"{name} not built")
+        pytest.skip(f"{name} not present under {FW} "
+                    "(set FLASHWHISPERER_RIGS to a firmware checkout's rigs/)")
     return fwscan.scan(path.read_bytes())
 
 

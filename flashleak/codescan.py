@@ -393,17 +393,36 @@ SELFTEST_ARTEFACTS = (
 )
 
 
+def _rigs_root() -> Path:
+    """Where the firmware build products are.
+
+    The artefacts above are built from a firmware checkout and are not in this
+    repository, so FLASHWHISPERER_RIGS is how you point at one that has them -
+    the same variable the test suite uses.
+
+    This was `parents[2]`, a depth that was right while these packages sat one
+    level down inside the research repository and names the directory ABOVE the
+    repository root here. Every artefact therefore reported "not present"
+    whatever was actually built, and the selftest printed four skips and
+    "agrees on every artefact" without having compared anything.
+    """
+    import os
+    return Path(os.environ.get("FLASHWHISPERER_RIGS")
+                or (Path(__file__).resolve().parents[1] / "rigs"))
+
+
 def selftest() -> int:
     """Does this finder agree with `placement` on builds with known truth?"""
     from . import placement as pl
 
-    root = Path(__file__).resolve().parents[2]
+    rigs = _rigs_root()
     print("codescan selftest - agreement with placement's byte-signature finder\n")
     bad = skipped = 0
     for rel, part in SELFTEST_ARTEFACTS:
-        p = root / rel
+        p = rigs / Path(rel).relative_to("rigs")
         if not p.exists():
-            print(f"  SKIP  {rel} (not present)")
+            print(f"  SKIP  {rel} (not under {rigs}; set FLASHWHISPERER_RIGS "
+                  "to a firmware checkout's rigs/)")
             skipped += 1
             continue
         mine = analyse(str(p), part)
@@ -421,6 +440,14 @@ def selftest() -> int:
               f"{sorted(hex(a) for a in got)[:6]}")
         if missed:
             print(f"          MISSED by codescan: {sorted(hex(a) for a in missed)}")
+    # Refuse a verdict on an empty result set. With no artefacts present this
+    # used to print "agrees on every artefact, 4 skipped", which is a pass
+    # rendered from nothing and read as one for as long as the path above was
+    # pointing at the wrong tree.
+    if skipped == len(SELFTEST_ARTEFACTS):
+        print(f"\n  NO VERDICT: all {skipped} artefacts absent, nothing was "
+              "compared")
+        return 1
     print("\n  " + ("agrees on every artefact" if not bad
                     else f"{bad} disagreement(s)")
           + (f", {skipped} skipped" if skipped else ""))

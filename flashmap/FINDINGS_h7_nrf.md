@@ -46,11 +46,15 @@ tested rather than asserted.
 
 ## 1. Reproducing
 
-Toolchain is WSL-only; flashing and the hosts run on Windows.
+Toolchain is WSL-only; flashing and the hosts run on Windows. Run all of these
+from a firmware checkout's root. The two `make` lines used to carry the absolute
+path of the machine they were run on, which is no use to anybody else, and
+`wsl.exe` translates the Windows working directory for you (a login shell does
+not cd to home, checked), so a relative path is enough.
 
 ```sh
-wsl.exe -e bash -lc "cd /mnt/c/dev/flash-accelerator-tests/rigs/fw_map_h7 && make"
-wsl.exe -e bash -lc "cd /mnt/c/dev/flash-accelerator-tests/rigs/fw_map_nrf && make"
+wsl.exe -e bash -lc "cd rigs/fw_map_h7 && make"
+wsl.exe -e bash -lc "cd rigs/fw_map_nrf && make"
 
 python hardware/boards.py flash h723 rigs/fw_map_h7/fw.bin
 python -m pyocd flash -u 1050219420 -t nrf52840 --connect halt --base-address 0x0 --format bin rigs/fw_map_nrf/fw.bin
