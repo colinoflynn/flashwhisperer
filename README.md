@@ -22,7 +22,9 @@ You should also see:
 across multiple microcontrollers and libraries. This is also the repo that shows you how to use the tool in practice and
 includes the measurement instrument.
 * [flashwhisperer-demos](https://github.com/colinoflynn/flashwhisperer-demos) Contains the application-level demos including
-across network protocols
+across network protocols.
+* [flashwhisperer-paper-artifact](https://github.com/colinoflynn/flashwhisperer-paper-artifact) Contains specific examples/measurements
+used in a reference paper.
 
 To install:
 
